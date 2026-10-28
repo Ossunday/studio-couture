@@ -9,3 +9,4 @@ Produit : **Studio Couture** (slug technique : `studio-couture`).
 - Règles produit : voir `README.md` (10 règles non négociables) et `docs/PHASE_0.md`.
 - Vérifications : `npm test`, `npm run check`, `npm run build`. Ne jamais lancer `npm audit fix --force` sans accord explicite.
 - État courant et résultats réels : `HANDOFF.md`.
+- Règles git permanentes : n’écrire jamais de `git config` local ; utiliser l’identité globale (Oscar Sunday Amintchi) pour tous les commits ; ne jamais faire `git push` (l’utilisateur l’envoie lui-même).

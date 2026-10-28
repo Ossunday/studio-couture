@@ -1,6 +1,17 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-10-28 (renommage, déplacement, corrections).
+Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
+
+## Étape 1 — Sécurité des dépendances (2026-10-28)
+
+- Règles git permanentes ajoutées à `CLAUDE.md` : jamais de `git config` local, identité globale pour les commits, jamais de `git push`.
+- `npm audit` initial : 10 vulnérabilités (7 low, 1 moderate, 2 critical). `@sveltejs/kit` est en `devDependencies` mais embarqué dans le serveur `adapter-node` construit : ses avis sont traités comme production.
+- Aucune version corrigée en 2.x : les avis Kit (GHSA-pfhg-q3qv-9q6r redirection via envoi de formulaire amélioré, GHSA-27mw-82g8-phjj XSS via `cache-control` de page pré-rendue, `range: <3.0.0`) et `cookie <0.7` (GHSA-pxg6-pf52-xh8x) ne sont corrigés que par `@sveltejs/kit@3.1.0`. Vérifié par `npm view` : dernière 2.x = `2.70.3` (déjà résolue par le lockfile, portée explicitée dans `package.json`), dernière `@sveltejs/vite-plugin-svelte` 5.x = `5.1.1` (déjà installée ; 6.x/7.x gardent `deepmerge 4.3.1`, sans correctif amont).
+- **Décision : ne pas migrer vers Kit 3 maintenant.** Notes de migration lues (svelte.dev/docs/kit/migrating-to-sveltekit-3) : Kit 3 exige Node ≥22.17, TypeScript 6, Vite 8, `@sveltejs/vite-plugin-svelte` 7, supprime `svelte.config.js`, remplace `$lib` par `#lib`, change l’API CSRF/cookies/adapter (`ORIGIN` supprimé) — réécriture transversale disproportionnée pour deux avis *low* (CVSS 4,7 et 0, interaction/complexité élevées). **Atténuations en vigueur et à maintenir tant que Kit 2 est utilisé : aucun formulaire amélioré (`use:enhance` interdit), aucune page pré-rendue avec `cache-control` personnalisé, en-têtes photos déjà en `private, no-store` côté serveur.** À replanifier comme chantier dédié avant toute activation de ces fonctionnalités.
+- `vitest` `3.2.7 → 4.1.12` (dernière 4.x, `npm view vitest dist-tags`) : corrige `@vitest/mocker` (GHSA-82fw-gwwq-j7x9, GHSA-qxg6-89mg-rqv8) et `tinypool` (GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr, corrigés dès `tinypool 2.1.2`) sans changement de configuration pour ce projet (même `vite.config.ts`, Vite 6 accepté). Pas de passage à vitest 5 : saut supplémentaire non nécessaire, 4.1.12 corrige déjà les avis concernés.
+- Après mise à jour : `npm audit` = **7 low restantes, toutes liées au seul correctif Kit 3 (`--force` refusé)** ; `npm audit --omit=dev` = **0**.
+- Vérifications réelles : `npm test` **6 fichiers / 14 tests réussis** (vitest 4.1.12), `npm run check` **0 erreur / 0 avertissement** (343 fichiers), `npm run build` **réussi** (adapter-node).
+
 
 ## Renommage « Studio de couture IA » → « Studio Couture »
 

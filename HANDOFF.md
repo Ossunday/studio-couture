@@ -13,6 +13,14 @@ Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
 - Vérifications réelles : `npm test` **6 fichiers / 14 tests réussis** (vitest 4.1.12), `npm run check` **0 erreur / 0 avertissement** (343 fichiers), `npm run build` **réussi** (adapter-node).
 
 
+## Phase 1 — Authentification atelier (2026-10-28)
+
+- Migration `migrations/0002_phase1.sql` : `utilisatrices.identifiant` (unique) + `mot_de_passe_hash`, table `sessions`, `consentements.signature_nom/texte_version`, colonnes photo chiffrée en base, index unique mensurations `(cliente_id, code)`. **Non appliquée ici : aucun PostgreSQL/`psql` ni `STUDIO_COUTURE_DATABASE_URL` dans cette session** — à appliquer avant déploiement (voir fin).
+- Connexion par e-mail **ou** téléphone (normalisation `src/lib/domain/identifiant.ts`), rôles `admin`/`couturiere` inchangés (`permissions.ts`), page admin `/atelier/utilisatrices` pour créer les comptes, `/installation` ouverte seulement tant qu’aucun compte n’existe.
+- Mots de passe : **scrypt** Node (`auth.ts`, format `scrypt$N$r$p$sel$hash`, comparaison à temps constant) — équivalent choisi à argon2 pour éviter un module natif à compiler. Sessions serveur : jeton aléatoire, SHA-256 seul en base, cookie `HttpOnly`, `SameSite=Lax`, `Secure` en production, expiration 7 jours. CSRF : vérification d’origine SvelteKit + jeton par session exigé sur chaque écriture. Limitation de débit connexion : 5 échecs / 15 min par IP+identifiant (mémoire, mono-instance — limite documentée).
+- Accès données derrière `Repository` (`repository.ts`) : PostgreSQL (production) ou mémoire (`STUDIO_COUTURE_REPOSITORY=memoire`, tests/Playwright uniquement).
+- Tests réels : `npm test` **8 fichiers / 23 tests réussis**, `npm run check` **0 erreur**, `npm run build` **réussi**.
+
 ## Renommage « Studio de couture IA » → « Studio Couture »
 
 - Produit : `Studio Couture`, slug `studio-couture` (ancien : `studio-couture-ia`).

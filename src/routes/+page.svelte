@@ -27,7 +27,9 @@
     </section>
   {/if}
 
-  <button disabled title="Disponible à la phase suivante, après votre accord.">
-    Commencer — phase suivante
-  </button>
+  {#if data.connectee}
+    <p><a class="bouton" href="/clientes">Ouvrir les clientes</a></p>
+  {:else}
+    <p><a class="bouton" href="/connexion">Se connecter à l’atelier</a></p>
+  {/if}
 </main>

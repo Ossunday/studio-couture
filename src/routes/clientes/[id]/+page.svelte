@@ -1,5 +1,21 @@
 <script lang="ts">
   let { data, form } = $props();
+
+  // Garde client (le contrôle autoritaire reste validerPhoto côté serveur, 5 Mo) :
+  // sans elle, un fichier de plus de 6 Mo heurterait BODY_SIZE_LIMIT d’adapter-node
+  // et afficherait une page 413 brute au lieu de ce message.
+  let erreurPhotoLocale = $state('');
+  function verifierTaillePhoto(event: Event) {
+    const saisie = event.currentTarget as HTMLInputElement;
+    const fichier = saisie.files?.[0];
+    // 5 Mo : même seuil que TAILLE_PHOTO_MAX_OCTETS (src/lib/server/crypto.ts).
+    if (fichier && fichier.size > 5 * 1024 * 1024) {
+      erreurPhotoLocale = 'Photo trop lourde : 5 Mo maximum.';
+      saisie.value = '';
+    } else {
+      erreurPhotoLocale = '';
+    }
+  }
 </script>
 
 <main>
@@ -69,6 +85,7 @@
       </ul>
     {/if}
     {#if data.consentement}
+      {#if erreurPhotoLocale}<p class="alerte" role="alert">{erreurPhotoLocale}</p>{/if}
       <form method="post" action="?/televerserPhoto" enctype="multipart/form-data" class="grille">
         <input type="hidden" name="_csrf" value={data.csrfToken} />
         <label>Type de photo
@@ -79,7 +96,7 @@
           </select>
         </label>
         <label>Photo (JPEG, PNG ou WebP, 5 Mo maximum)
-          <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+          <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required onchange={verifierTaillePhoto} />
         </label>
         <button type="submit">Envoyer la photo chiffrée</button>
       </form>

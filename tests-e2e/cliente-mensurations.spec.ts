@@ -30,7 +30,26 @@ test('cliente puis mensurations validées par la couturière', async ({ page }) 
   await page.getByRole('button', { name: 'Enregistrer le consentement signé' }).click();
   await expect(page.getByText('Consentement photo enregistré.')).toBeVisible();
 
-  // Mensurations manuelles en cm (virgule acceptée).
+  // Photo de 4 Mo (sous la limite applicative de 5 Mo) : ne doit pas finir en 413
+  // adapter-node (défaut 512 Ko) — BODY_SIZE_LIMIT=6M côté serveur construit.
+  await page.locator('input[name="photo"]').setInputFiles({
+    name: 'photo-4mo.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.alloc(4 * 1024 * 1024, 1)
+  });
+  await page.getByRole('button', { name: 'Envoyer la photo chiffrée' }).click();
+  await expect(page.getByText('Photo chiffrée enregistrée.')).toBeVisible();
+
+  // Photo trop grosse (5,5 Mo) : message français de l’application, pas une page 413 brute.
+  await page.locator('input[name="photo"]').setInputFiles({
+    name: 'photo-trop-grosse.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.alloc(Math.floor(5.5 * 1024 * 1024), 1)
+  });
+  await page.getByRole('button', { name: 'Envoyer la photo chiffrée' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Photo trop lourde : 5 Mo maximum.' })).toBeVisible();
+
+  // Mensurations manuelles en cm (virgule acceptée) : formulaire séparé, champs texte seuls.
   await page.locator('input[name="tour_taille_cm"]').fill('82,5');
   await page.locator('input[name="tour_hanches_cm"]').fill('100');
   await page.locator('input[name="longueur_jupe_cm"]').fill('60');

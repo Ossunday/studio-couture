@@ -18,6 +18,9 @@ export default defineConfig({
       PORT: '4173',
       HOST: '127.0.0.1',
       ORIGIN: 'http://127.0.0.1:4173',
+      // Même valeur qu’en production (voir .env.example) : adapter-node plafonne
+      // le corps des requêtes à 512 Ko par défaut, sous la limite photo de 5 Mo.
+      BODY_SIZE_LIMIT: '6M',
       STUDIO_COUTURE_REPOSITORY: 'memoire',
       STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64: Buffer.alloc(32, 7).toString('base64'),
       STUDIO_COUTURE_SESSION_SECRET: 'secret-de-test-e2e-32-octets-minimum-non-production'

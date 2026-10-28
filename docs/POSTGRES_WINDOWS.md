@@ -53,6 +53,19 @@ npm run dev
 
 et ouvrir `/installation` pour créer le premier atelier (la page se verrouille dès qu’un compte existe).
 
+## 5. Lancer le serveur construit (production)
+
+Après `npm run build`, le serveur se lance avec `node build/index.js`. **Variable indispensable : `BODY_SIZE_LIMIT=6M`.** Sans elle, adapter-node plafonne le corps des requêtes à 512 Ko par défaut et l’envoi d’une photo (jusqu’à 5 Mo acceptés par l’application) échoue en « 413 Payload Too Large » avant même d’atteindre le code. `6M` = 5 Mo de photo + marge pour l’encodage multipart. Ne jamais mettre `Infinity` : la limite reste en place, et le contrôle fin reste côté application — `validerPhoto` (`src/lib/server/crypto.ts`, 5 Mo maximum) refuse avec le message en français « Photo trop lourde : 5 Mo maximum. » (doublé d’un contrôle immédiat dans le navigateur sur la fiche cliente). La limite d’adapter-node est globale (il n’existe pas de réglage par route) : c’est ce contrôle applicatif qui fait foi pour les photos, les autres formulaires n’acceptent aucun fichier.
+
+La variable est lue par adapter-node dans l’environnement du processus au lancement — elle doit donc être posée dans le shell ou le gestionnaire de service qui démarre le serveur, par exemple en PowerShell :
+
+```powershell
+$env:BODY_SIZE_LIMIT = '6M'
+node build/index.js
+```
+
+Même ligne dans `.env.example` (`BODY_SIZE_LIMIT=6M`) pour mémoire, à reporter dans l’environnement réel du serveur.
+
 ## Alternative pour plus tard : Docker Compose
 
 `docker-compose.yml` (racine) lance PostgreSQL lié uniquement à `127.0.0.1`, avec un mot de passe lu depuis la variable d’environnement `POSTGRES_PASSWORD` de la machine — jamais écrit dans le fichier. Les mêmes commandes `psql … -f migrations/0001_init.sql` puis `0002_phase1.sql` s’appliquent ensuite, avec `-h 127.0.0.1`.

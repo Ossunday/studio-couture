@@ -1,0 +1,18 @@
+# Alternative « pour plus tard » uniquement — la méthode principale de développement
+# est l’installation directe de PostgreSQL sur Windows (docs/POSTGRES_WINDOWS.md).
+# Le mot de passe n’est jamais écrit ici : il est lu depuis la variable
+# d’environnement POSTGRES_PASSWORD de la machine (démarrage refusé si absente).
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: studio_couture
+      POSTGRES_USER: studio_couture
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definis POSTGRES_PASSWORD dans l environnement de la machine}
+    ports:
+      # Lié à la boucle locale uniquement : jamais exposé sur le réseau.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - studio_couture_pg:/var/lib/postgresql/data
+volumes:
+  studio_couture_pg:

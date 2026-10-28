@@ -20,7 +20,7 @@ export default defineConfig({
       ORIGIN: 'http://127.0.0.1:4173',
       STUDIO_COUTURE_REPOSITORY: 'memoire',
       STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64: Buffer.alloc(32, 7).toString('base64'),
-      STUDIO_COUTURE_SESSION_SECRET: 'secret-e2e-local'
+      STUDIO_COUTURE_SESSION_SECRET: 'secret-de-test-e2e-32-octets-minimum-non-production'
     }
   }
 });

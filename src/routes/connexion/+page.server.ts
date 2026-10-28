@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { normaliserIdentifiant } from '$lib/domain/identifiant';
-import { SESSION_COOKIE, expirationSession, genererJetonSession, hacherJeton, hacherMotDePasse, limiteurConnexion, verifierMotDePasse } from '$lib/server/auth';
+import { SESSION_COOKIE, expirationSession, genererJetonSession, hacherJeton, hacherMotDePasse, limiteurConnexion, optionsCookieSession, verifierMotDePasse } from '$lib/server/auth';
 import { getRepository } from '$lib/server/repository';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -38,13 +38,7 @@ export const actions: Actions = {
     limiteurConnexion.reinitialiser(cle);
     const jeton = genererJetonSession();
     await repo.creerSession(compte.id, hacherJeton(jeton), expirationSession());
-    cookies.set(SESSION_COOKIE, jeton, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60
-    });
+    cookies.set(SESSION_COOKIE, jeton, optionsCookieSession(process.env.NODE_ENV === 'production'));
     throw redirect(303, '/clientes');
   }
 };

@@ -20,7 +20,7 @@ const envEnfant = {
   PORT,
   HOST,
   STUDIO_COUTURE_REPOSITORY: 'memoire',
-  STUDIO_COUTURE_SESSION_SECRET: 'secret-debug-local',
+  STUDIO_COUTURE_SESSION_SECRET: 'secret-de-diagnostic-32-octets-minimum-local',
   STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64: Buffer.alloc(32, 7).toString('base64')
 };
 if (SANS_ORIGIN) delete envEnfant.ORIGIN;

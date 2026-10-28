@@ -20,7 +20,7 @@ const enfant = spawn(process.execPath, ['build/index.js'], {
     HOST,
     ORIGIN,
     STUDIO_COUTURE_REPOSITORY: 'memoire',
-    STUDIO_COUTURE_SESSION_SECRET: 'secret-debug-local',
+    STUDIO_COUTURE_SESSION_SECRET: 'secret-de-diagnostic-32-octets-minimum-local',
     STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64: Buffer.alloc(32, 7).toString('base64')
   },
   stdio: ['ignore', 'pipe', 'pipe']

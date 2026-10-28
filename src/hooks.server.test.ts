@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { handle } from './hooks.server';
+import { handle, init } from './hooks.server';
 
 /**
  * Garde-fou : « referrer-policy: no-referrer » faisait envoyer par Chromium
@@ -24,5 +24,20 @@ describe('en-têtes de sécurité (hooks.server)', () => {
     expect(reponse.headers.get('referrer-policy')).not.toBe('no-referrer');
     expect(reponse.headers.get('x-content-type-options')).toBe('nosniff');
     expect(reponse.headers.get('x-frame-options')).toBe('DENY');
+  });
+
+  it('init refuse le démarrage sans secrets valides, même en dépôt mémoire', async () => {
+    const avant = { ...process.env };
+    try {
+      delete process.env.STUDIO_COUTURE_SESSION_SECRET;
+      delete process.env.STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64;
+      process.env.STUDIO_COUTURE_REPOSITORY = 'memoire';
+      await expect(init()).rejects.toThrow(/Démarrage refusé/);
+      process.env.STUDIO_COUTURE_SESSION_SECRET = 'secret-de-test-hooks-32-octets-minimum';
+      process.env.STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64 = Buffer.alloc(32, 5).toString('base64');
+      await expect(init()).resolves.toBeUndefined();
+    } finally {
+      process.env = avant;
+    }
   });
 });

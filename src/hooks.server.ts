@@ -1,7 +1,17 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, ServerInit } from '@sveltejs/kit';
 import { SESSION_COOKIE, hacherJeton, jetonCsrf } from '$lib/server/auth';
+import { validerConfigurationDemarrage } from '$lib/server/config';
 import { getRepository } from '$lib/server/repository';
 import { ENV_SESSION_SECRET } from '$lib/brand';
+
+/**
+ * Démarrage du serveur : secrets obligatoires (session ≥ 32 octets, clé photo
+ * exactement 32 octets). Sans eux, le serveur refuse de démarrer — y compris
+ * en mode dépôt mémoire (tests/Playwright fournissent des secrets de test).
+ */
+export const init: ServerInit = async () => {
+  validerConfigurationDemarrage();
+};
 
 /** SSR uniquement, français d'abord. Session serveur + en-têtes vie privée. */
 export const handle: Handle = async ({ event, resolve }) => {

@@ -34,6 +34,11 @@ Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
 - Clé via `STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64` (32 octets) ; absente ici (aucun secret dans cette session) — upload réel à tester après configuration.
 - Tests réels : `npm test` **10 fichiers / 29 tests réussis**, `check` **0 erreur** (après correction d’un type `Response`), `build` à re-vérifier au jalon Playwright.
 
+## Phase 1 — Mensurations manuelles (2026-10-28)
+
+- Saisie manuelle sur la fiche cliente : 8 mensurations courantes (poitrine, taille, hanches, dos, épaules, manche, jupe, pantalon), **en cm**, virgule ou point, bornes de plausibilité documentées dans `src/lib/domain/mensurations-saisie.ts` — aucune formule de patron ajoutée (règle n°3 intacte). Enregistrées en `source = saisie_couturiere`, `valideeParCouturiere = true` (donc utilisables par le moteur quand les formules seront validées), mise à jour par `(cliente, code)`.
+- Tests réels : `npm test` **11 fichiers / 32 tests réussis**, `check` **0 erreur**, `build` **réussi**.
+
 ## Renommage « Studio de couture IA » → « Studio Couture »
 
 - Produit : `Studio Couture`, slug `studio-couture` (ancien : `studio-couture-ia`).

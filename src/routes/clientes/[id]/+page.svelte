@@ -88,6 +88,26 @@
     {/if}
   </section>
 
+  <section class="carte" aria-labelledby="titre-mensurations">
+    <h2 id="titre-mensurations">Mensurations (saisie manuelle, en cm)</h2>
+    {#if form?.mensurationsEnregistrees}<p role="status">Mensurations enregistrées et validées par la couturière.</p>{/if}
+    <p>Mesurez au mètre ruban, puis saisissez en centimètres (ex. 82,5). Laissez vide ce qui n’est pas mesuré.</p>
+    <form method="post" action="?/mensurations" class="grille">
+      <input type="hidden" name="_csrf" value={data.csrfToken} />
+      {#each data.mensurations as m}
+        <label>{m.libelle} — entre {m.minCm} et {m.maxCm} cm
+          <input
+            name={m.code}
+            inputmode="decimal"
+            value={m.valeurCm ?? ''}
+            placeholder="Non mesuré"
+          />
+        </label>
+      {/each}
+      <button type="submit">Enregistrer les mensurations</button>
+    </form>
+  </section>
+
   {#if data.peutSupprimer}
     <section class="carte">
       <h2>Supprimer la cliente</h2>

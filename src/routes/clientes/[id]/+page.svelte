@@ -61,7 +61,8 @@
   </section>
 
   <section class="carte" aria-labelledby="titre-photos">
-    <h2 id="titre-photos">Photos (suppression automatique après 7 jours)</h2>
+    <h2 id="titre-photos">Ajouter une photo (option)</h2>
+    <p>Les photos sont facultatives : un patron peut être créé sans elles, depuis « Nouveau patron ». Le consentement ci-dessus n’est demandé qu’au moment d’envoyer une photo.</p>
     {#if form?.photoAjoutee}<p role="status">Photo chiffrée enregistrée. Elle sera supprimée automatiquement dans 7 jours.</p>{/if}
     {#if form?.photoSupprimee}<p role="status">Photo supprimée.</p>{/if}
     {#if data.photos.length === 0}

@@ -19,6 +19,7 @@ export const DEFINITIONS_MENSURATIONS: readonly DefinitionMensuration[] = [
   { code: 'largeur_epaules_cm', libelle: 'Largeur d’épaules (cm)', minCm: 25, maxCm: 70 },
   { code: 'longueur_manche_cm', libelle: 'Longueur de manche (cm)', minCm: 20, maxCm: 90 },
   { code: 'longueur_jupe_cm', libelle: 'Longueur de jupe (cm)', minCm: 20, maxCm: 150 },
+  { code: 'hauteur_fourche_cm', libelle: 'Hauteur de fourche (cm)', minCm: 15, maxCm: 45 },
   { code: 'longueur_pantalon_cm', libelle: 'Longueur de pantalon (cm)', minCm: 40, maxCm: 150 }
 ] as const;
 

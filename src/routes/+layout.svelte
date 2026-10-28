@@ -8,6 +8,7 @@
   <p class="marque"><a href="/">{BRAND_NAME}</a></p>
   {#if data.utilisatrice}
     <nav aria-label="Atelier">
+      <a href="/">Nouveau patron</a>
       <a href="/clientes">Clientes</a>
       {#if data.utilisatrice.role === 'admin'}<a href="/atelier/utilisatrices">Équipe</a>{/if}
       <span>{data.utilisatrice.nom} ({data.utilisatrice.role === 'admin' ? 'administratrice' : 'couturière'})</span>

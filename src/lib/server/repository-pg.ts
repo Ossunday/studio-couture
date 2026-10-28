@@ -4,7 +4,7 @@ import type { CompteUtilisatrice, Repository } from './repository';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** Implémentation PostgreSQL — suppose les migrations 0001 et 0002 appliquées. */
+/** Implémentation PostgreSQL — suppose les migrations 0001, 0002 et 0003 appliquées. */
 export class RepositoryPg implements Repository {
   constructor(private readonly pool: Pool) {}
 

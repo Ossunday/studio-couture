@@ -6,7 +6,8 @@ import { chiffrer, dechiffrer } from './crypto';
 import { RepositoryPg } from './repository-pg';
 
 /**
- * Intégration PostgreSQL réelle de RepositoryPg (migrations 0001 + 0002 supposées appliquées).
+ * Intégration PostgreSQL réelle de RepositoryPg (migrations 0001 + 0002 supposées appliquées ;
+ * 0003 recommandée en production, mais le nettoyage afterAll passe aussi sans elle).
  * Ne s’exécute que si STUDIO_COUTURE_DATABASE_URL est définie ; ignoré proprement sinon,
  * pour que `npm test` reste vert sans base. Ne jamais afficher l’URL ni aucun secret :
  * elle n’est lue que pour construire le pool, sans journalisation.
@@ -46,8 +47,18 @@ describe.skipIf(!databaseUrl)('RepositoryPg — intégration PostgreSQL', () => 
 
   afterAll(async () => {
     try {
-      // Suppression en cascade : utilisatrices, sessions, clientes, consentements, photos, mensurations.
-      for (const id of atelierIds) await pool.query('delete from ateliers where id = $1', [id]);
+      // Ordre explicite, pour passer même si la migration 0003 n'est pas appliquée :
+      // mensurations.validee_par (sans action avant 0003) bloque la suppression des
+      // utilisatrices, et photos_clientes.consentement_id celle des consentements.
+      // On supprime donc d'abord les mensurations, photos et consentements des
+      // clientes de test ; la suppression des ateliers cascade ensuite le reste
+      // (utilisatrices, sessions, clientes, projets).
+      for (const id of atelierIds) {
+        await pool.query('delete from mensurations where cliente_id in (select id from clientes where atelier_id = $1)', [id]);
+        await pool.query('delete from photos_clientes where cliente_id in (select id from clientes where atelier_id = $1)', [id]);
+        await pool.query('delete from consentements where cliente_id in (select id from clientes where atelier_id = $1)', [id]);
+        await pool.query('delete from ateliers where id = $1', [id]);
+      }
     } finally {
       await pool.end();
     }

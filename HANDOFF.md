@@ -21,6 +21,12 @@ Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
 - Accès données derrière `Repository` (`repository.ts`) : PostgreSQL (production) ou mémoire (`STUDIO_COUTURE_REPOSITORY=memoire`, tests/Playwright uniquement).
 - Tests réels : `npm test` **8 fichiers / 23 tests réussis**, `npm run check` **0 erreur**, `npm run build` **réussi**.
 
+## Phase 1 — Clientes et consentement signé (2026-10-28)
+
+- CRUD clientes SSR (`/clientes`, recherche nom/téléphone, `/clientes/nouvelle`, fiche, `/modifier`, suppression **admin seule** selon `permissions.ts`) ; isolation par atelier vérifiée côté serveur sur chaque accès. États vide (aucune cliente / aucun résultat), erreur (formulaire) présents.
+- Consentement photo : formulaire signé (case d’accord explicite texte v1 + nom tapé en signature, accord rendu indicatif optionnel, entraînement IA toujours refusé), révocation qui supprime immédiatement les photos. Aucune photo possible sans consentement actif (`assertConsentementPhoto`, testé).
+- Tests réels : `npm test` **9 fichiers / 26 tests réussis**, `check` **0 erreur**, `build` **réussi**.
+
 ## Renommage « Studio de couture IA » → « Studio Couture »
 
 - Produit : `Studio Couture`, slug `studio-couture` (ancien : `studio-couture-ia`).

@@ -55,6 +55,13 @@ Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
 - **PostgreSQL** : méthode principale documentée dans `docs/POSTGRES_WINDOWS.md` (installation directe Windows, commandes exactes `psql` pour `migrations/0001_init.sql` puis `0002_phase1.sql`). `docker-compose.yml` ajouté **pour plus tard seulement** : PostgreSQL lié à `127.0.0.1`, mot de passe lu depuis `POSTGRES_PASSWORD` de la machine, jamais écrit dans le fichier.
 - Vérifications réelles : `npm test` **14 fichiers / 47 tests réussis**, `npm run check` **0 erreur** (400 fichiers), `npm run build` **réussi**, `npm run test:e2e` **1 réussi** (avec refus de démarrage actif : les secrets de test fournis par Playwright suffisent, le dépôt mémoire n’est pas exempté).
 
+## Test d’intégration PostgreSQL `RepositoryPg` (2026-10-28)
+
+- Ajouté `src/lib/server/repository-pg.integration.test.ts` : suite conditionnelle `describe.skipIf(!process.env[ENV_DATABASE_URL])` (`STUDIO_COUTURE_DATABASE_URL` via `brand.ts`). Sans la variable, aucun pool n’est créé et la suite est ignorée ; avec, elle exerce le vrai `RepositoryPg` (migrations 0001 + 0002 supposées appliquées). Aucun fichier `.env` lu, aucune URL ni aucun secret affiché/journalisé.
+- Couverture (6 tests) : création de deux ateliers et de leurs comptes (admin + couturière), session valide/expirée/supprimée, cliente, consentement actif avec `usageEntrainementIa = false`, photo AES-256-GCM stockée chiffrée et relue par déchiffrement, mensuration saisie puis mise à jour par `(cliente, code)`, cloisonnement entre deux ateliers (lecture/modification/suppression croisées sans effet), purge des photos expirées (expirées supprimées, valides conservées). Nettoyage `afterAll` par suppression des ateliers créés (cascade SQL) ; identifiants uniques par exécution. Base dédiée aux tests recommandée : `purgerPhotosExpirees` supprime toute photo expirée de la base.
+- **Non exécutée contre PostgreSQL réel dans cette session** (variable absente, comme les jalons précédents) — vérification réelle à lancer par vous, base de test avec migrations appliquées : `STUDIO_COUTURE_DATABASE_URL='<url-base-de-test>' npm test -- src/lib/server/repository-pg.integration.test.ts` (syntaxe Git Bash ; ne collez l’URL que dans votre terminal, jamais dans le dépôt).
+- Vérifications réelles ici : `npm test` **14 fichiers réussis / 1 ignoré, 47 tests réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement** (401 fichiers).
+
 ## Renommage « Studio de couture IA » → « Studio Couture »
 
 - Produit : `Studio Couture`, slug `studio-couture` (ancien : `studio-couture-ia`).

@@ -27,6 +27,13 @@ Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
 - Consentement photo : formulaire signé (case d’accord explicite texte v1 + nom tapé en signature, accord rendu indicatif optionnel, entraînement IA toujours refusé), révocation qui supprime immédiatement les photos. Aucune photo possible sans consentement actif (`assertConsentementPhoto`, testé).
 - Tests réels : `npm test` **9 fichiers / 26 tests réussis**, `check` **0 erreur**, `build` **réussi**.
 
+## Phase 1 — Photos chiffrées et suppression à 7 jours (2026-10-28)
+
+- Upload depuis la fiche cliente (consentement actif exigé) : JPEG/PNG/WebP, 5 Mo max, chiffré **AES-256-GCM** avant stockage, données chiffrées en base PostgreSQL (aucun fichier en clair, aucune URL publique). Lecture authentifiée même atelier via `/clientes/[id]/photos/[photoId]`, déchiffrement en mémoire, `cache-control: private, no-store`.
+- Expiration = création + 7 jours (`retention.ts`) affichée sur la fiche ; purge : suppression des lignes expirées à l’ouverture d’une fiche + script cron `scripts/purger-photos-expirees.mjs` (quotidien recommandé). Révocation du consentement = suppression immédiate des photos.
+- Clé via `STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64` (32 octets) ; absente ici (aucun secret dans cette session) — upload réel à tester après configuration.
+- Tests réels : `npm test` **10 fichiers / 29 tests réussis**, `check` **0 erreur** (après correction d’un type `Response`), `build` à re-vérifier au jalon Playwright.
+
 ## Renommage « Studio de couture IA » → « Studio Couture »
 
 - Produit : `Studio Couture`, slug `studio-couture` (ancien : `studio-couture-ia`).

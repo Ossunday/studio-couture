@@ -30,3 +30,22 @@ export function dechiffrer(blob: BlobChiffre, cle: Buffer): Buffer {
   decipher.setAuthTag(blob.authTag);
   return Buffer.concat([decipher.update(blob.donnees), decipher.final()]);
 }
+
+/** Clé maître des photos depuis l’environnement serveur (32 octets en base64). */
+export function clePhotoDepuisEnv(): Buffer {
+  const base64 = process.env[ENV_PHOTO_ENCRYPTION_KEY];
+  if (!base64) throw new Error(`${ENV_PHOTO_ENCRYPTION_KEY} manquante (voir README).`);
+  return cleDepuisBase64(base64);
+}
+
+export const TYPES_PHOTO_ACCEPTES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const TAILLE_PHOTO_MAX_OCTETS = 5 * 1024 * 1024;
+
+export function validerPhoto(typeMime: string, tailleOctets: number): void {
+  if (!(TYPES_PHOTO_ACCEPTES as readonly string[]).includes(typeMime)) {
+    throw new Error('Format de photo non accepté : utilisez JPEG, PNG ou WebP.');
+  }
+  if (!Number.isInteger(tailleOctets) || tailleOctets <= 0 || tailleOctets > TAILLE_PHOTO_MAX_OCTETS) {
+    throw new Error('Photo trop lourde : 5 Mo maximum.');
+  }
+}

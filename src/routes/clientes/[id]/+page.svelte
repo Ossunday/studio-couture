@@ -44,6 +44,50 @@
     {/if}
   </section>
 
+  <section class="carte" aria-labelledby="titre-photos">
+    <h2 id="titre-photos">Photos (suppression automatique après 7 jours)</h2>
+    {#if form?.photoAjoutee}<p role="status">Photo chiffrée enregistrée. Elle sera supprimée automatiquement dans 7 jours.</p>{/if}
+    {#if form?.photoSupprimee}<p role="status">Photo supprimée.</p>{/if}
+    {#if data.photos.length === 0}
+      <p class="etat-vide">Aucune photo pour cette cliente.</p>
+    {:else}
+      <ul>
+        {#each data.photos as photo}
+          <li>
+            <a href="/clientes/{data.cliente.id}/photos/{photo.id}">
+              Photo {photo.type === 'modele' ? 'du modèle' : photo.type === 'tissu' ? 'du tissu' : 'de la cliente'}
+            </a>
+            — ajoutée le {new Date(photo.creeeLe).toLocaleDateString('fr-FR')},
+            suppression automatique le {new Date(photo.expireLe).toLocaleDateString('fr-FR')}
+            <form method="post" action="?/supprimerPhoto">
+              <input type="hidden" name="_csrf" value={data.csrfToken} />
+              <input type="hidden" name="photo_id" value={photo.id} />
+              <button type="submit">Supprimer cette photo</button>
+            </form>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    {#if data.consentement}
+      <form method="post" action="?/televerserPhoto" enctype="multipart/form-data" class="grille">
+        <input type="hidden" name="_csrf" value={data.csrfToken} />
+        <label>Type de photo
+          <select name="type_photo">
+            <option value="cliente_complete">Photo complète de la cliente</option>
+            <option value="modele">Photo du modèle choisi</option>
+            <option value="tissu">Photo du tissu</option>
+          </select>
+        </label>
+        <label>Photo (JPEG, PNG ou WebP, 5 Mo maximum)
+          <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+        </label>
+        <button type="submit">Envoyer la photo chiffrée</button>
+      </form>
+    {:else}
+      <p>Enregistrez d’abord le consentement signé ci-dessus pour pouvoir ajouter une photo.</p>
+    {/if}
+  </section>
+
   {#if data.peutSupprimer}
     <section class="carte">
       <h2>Supprimer la cliente</h2>

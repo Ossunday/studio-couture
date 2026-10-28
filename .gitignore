@@ -10,3 +10,5 @@ build/
 /uploads/
 /private-storage/
 *.enc
+test-results/
+/playwright-report/

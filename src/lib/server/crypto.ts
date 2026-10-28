@@ -1,0 +1,32 @@
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { ENV_PHOTO_ENCRYPTION_KEY } from '../brand';
+
+/**
+ * Chiffrement côté serveur des photos clientes (règle n°8) : AES-256-GCM.
+ * La clé maître vient de STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64 (32 octets).
+ * Fonctions pures testables : la clé est passée en paramètre.
+ */
+export interface BlobChiffre {
+  iv: Buffer;
+  authTag: Buffer;
+  donnees: Buffer;
+}
+
+export function cleDepuisBase64(base64: string): Buffer {
+  const cle = Buffer.from(base64, 'base64');
+  if (cle.length !== 32) throw new Error(`${ENV_PHOTO_ENCRYPTION_KEY} doit contenir 32 octets.`);
+  return cle;
+}
+
+export function chiffrer(donnees: Buffer, cle: Buffer): BlobChiffre {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', cle, iv);
+  const chiffre = Buffer.concat([cipher.update(donnees), cipher.final()]);
+  return { iv, authTag: cipher.getAuthTag(), donnees: chiffre };
+}
+
+export function dechiffrer(blob: BlobChiffre, cle: Buffer): Buffer {
+  const decipher = createDecipheriv('aes-256-gcm', cle, blob.iv);
+  decipher.setAuthTag(blob.authTag);
+  return Buffer.concat([decipher.update(blob.donnees), decipher.final()]);
+}

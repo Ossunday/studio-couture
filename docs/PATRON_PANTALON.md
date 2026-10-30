@@ -30,7 +30,8 @@ longueur de pantalon `L` (taille→sol/cheville).
 
 Options du modèle (section repliée « Options », jamais obligatoires,
 constantes dans `BROUILLON_PANTALON_LARGE`) : largeur du bas par pièce
-27 cm, profondeur du pli devant 4 cm, hauteur finie de ceinture 4 cm.
+**calculée par défaut** (jambe droite, voir ci-dessous ; option explicite
+18 à 40 cm), profondeur du pli devant 4 cm, hauteur finie de ceinture 4 cm.
 
 ## Lignes de construction (y vers le bas, origine = milieu devant à la taille)
 
@@ -62,10 +63,18 @@ constantes dans `BROUILLON_PANTALON_LARGE`) : largeur du bas par pièce
 - Taille tracée : devant = effective + profondeur du pli (le pli fermé
   ramène à l'effective) ; dos = effective + largeur de pince 3 cm (P10).
 - Extension de fourche : devant `(H+6) ÷ 16` ; dos = devant + 2,5 cm (P3).
-- Courbe de fourche : Bézier cubique du point J (milieu, 4 cm au-dessus
-  de la fourche ; dos : milieu incliné de 1,5 cm vers l'extérieur) vers
-  B3, **tangente verticale aux deux extrémités** — pas de coude, vérifié
-  par test (angle > 160° au point de fourche, 3 morphologies).
+- Courbe de fourche **en J** : Bézier cubique du point J (milieu, à
+  **9 cm devant / 11 cm dos** au-dessus de la fourche ; dos : milieu
+  incliné de 1,5 cm vers l'extérieur) vers B3. Tangente **verticale au
+  milieu** (premier contrôle sous J), puis courbe progressive : tangente
+  finale **inclinée de 15° par rapport à la verticale** (diagonale, jamais
+  verticale aux deux bouts — pas de marche en S). Raccord à l'entrejambe
+  vérifié par test (angle > 160° et tangente finale non verticale, 3
+  morphologies). Structure (devant/dos, courbe en J) observée sur la
+  référence locale de pantalon femme du dossier `references-locales/`
+  (fichier cité « patron-femme.jpg » dans la consigne, présent ici sous
+  le nom « exemple de patron pantalon femme généré avec ia.jpg ») :
+  **aucun chiffre copié**.
 - Côté : Bézier quadratique B→B2 décalée de 0,4 cm vers l'extérieur
   (galbe des hanches), puis droite B2→X1 ; le genou C est sur cette
   droite. Le côté dos est la **translation** du côté devant (même suite
@@ -74,8 +83,15 @@ constantes dans `BROUILLON_PANTALON_LARGE`) : largeur du bas par pièce
 - Entrejambe : droite B3→X2 (« entrejambe droit »). La hauteur de B3 dos
   est **résolue par calcul** (`L − √(entrejambe_devant² − dx_dos²)`)
   pour que les longueurs d'entrejambe devant/dos soient égales ;
-  testées à 0,3 cm près. L'abaissement dos qui en résulte (~0,2 à
-  1,5 cm selon morphologie) remplace l'ancien « +0,5 cm » arbitraire.
+  testées à 0,3 cm près. Avec le bas large calculé ci-dessous,
+  l'abaissement dos qui en résulte est quasi nul (≈ 0,0 cm sur les
+  3 jeux) ; il remplace l'ancien « +0,5 cm » arbitraire.
+- Largeur du bas par défaut : **calculée à partir du genou**, plus de
+  constante 27 cm (qui rendait la jambe plus étroite en bas qu'au genou).
+  Le genou étant sur les droites côté/entrejambe, on résout par itération
+  la jambe droite `bas = plus grand genou (devant, dos)` : 32,0 cm
+  (petite), 35,8 cm (moyenne), 44,6 cm (forte). L'option explicite
+  « largeur du bas » reste bornée à 18–40 cm (P5, a_valider).
 - Pli devant : sur le fil droit O, profondeur = option (4 cm), lignes
   dessinées de la taille aux hanches + 6 cm (P10, longueur a_valider).
 - Pince dos : largeur 3 cm, longueur 12 cm, centrée au milieu du dos (P11).
@@ -101,12 +117,16 @@ l'étiquette).
 ## Vérification
 
 `src/lib/patterns/pantalon-large/geometry.test.ts` : égalités de
-coutures (côté, entrejambe), ceinture, continuité de fourche, et
-**test doré** du jeu moyenne (82/100/27/105) dont chaque valeur
-attendue est recalculée à la main en commentaire du test. Jeux petite
-(64/88/24/96) et forte (110/128/31/108) soumis aux mêmes égalités.
-Captures 360 px / 768 px des trois jeux : Playwright, `test-results/`
-(non commité).
+coutures (côté, entrejambe), ceinture, courbe de fourche en J (hauteur
+≥ 8 cm, tangente finale non verticale, angle de raccord > 160°), bas
+par défaut ≥ genou, étiquettes de cote deux à deux disjointes et
+« Hanches » loin des crans, et **test doré** du jeu moyenne
+(82/100/27/105) dont chaque valeur attendue est recalculée à la main en
+commentaire du test. Jeux petite (64/88/24/96) et forte (110/128/31/108)
+soumis aux mêmes égalités. Playwright 360 px : aucun débordement
+horizontal de page (accueil, mesures, aperçu), dessin dans un conteneur
+défilant d'environ 700 px. Captures 360 px / 768 px des trois jeux :
+Playwright, `test-results/` (non commité).
 
 ## Décisions réversibles (autonomie, 2026-10-30)
 

@@ -28,14 +28,14 @@ export const FORMULES_PANTALON_LARGE: readonly FormulePatron[] = [
   ]),
   f('fourche', 'fourche', [
     'Extension fourche devant = (hanches + aisance) ÷ 16 ; dos = devant + 2,5 cm — a_valider',
-    'Courbe de fourche en Bézier cubique, tangente verticale aux deux bouts ; milieu dos incliné de 1,5 cm et remonté de 2 cm — a_valider',
+    'Courbe de fourche en J : tangente verticale au milieu, hauteur 9 cm devant / 11 cm dos, tangente finale inclinée de 15° par rapport à la verticale ; milieu dos incliné de 1,5 cm et remonté de 2 cm — a_valider',
     'Point de fourche dos abaissé par calcul pour égaliser la longueur d’entrejambe devant/dos — a_valider'
   ]),
   f('plis_et_pince', 'plis_et_pince', [
     'Un pli devant sur le fil droit, profondeur 4 cm (option), fermé il ramène la taille à la largeur effective — a_valider',
     'Pince dos : largeur 3 cm, longueur 12 cm, au milieu du dos — a_valider'
   ]),
-  f('largeur_bas', 'largeur_bas', ['Largeur du bas par pièce 27 cm (option du modèle large), jambe droite entre fourche et bas — a_valider']),
+  f('largeur_bas', 'largeur_bas', ['Largeur du bas par pièce : par défaut calculée pour une jambe droite (bas = plus grand genou devant/dos, résolu par itération), option explicite 18 à 40 cm — a_valider']),
   f('ceinture_et_marges', 'ceinture_et_marges', [
     'Ceinture : longueur = taille + aisance + 3 cm de recouvrement, hauteur finie 4 cm (coupée 8 cm) — a_valider',
     'Marges : 1 cm partout, ourlet 2 cm en bas, incluses dans le trait de coupe — a_valider'

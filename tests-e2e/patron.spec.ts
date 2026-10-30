@@ -78,6 +78,26 @@ test('captures patron 360 px et 768 px pour les 3 morphologies (test-results/, n
   }
 });
 
+test('360 px : aucun débordement horizontal de page (accueil, mesures, aperçu)', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await connecter(page);
+  const urls = [
+    '/',
+    '/patron/mesures?modele=pantalon_large',
+    '/patron/apercu?modele=pantalon_large&nom=moyenne&tour_taille_cm=82&tour_hanches_cm=100&hauteur_fourche_cm=27&longueur_pantalon_cm=105'
+  ];
+  for (const url of urls) {
+    await page.goto(url);
+    const mesure = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));
+    expect(mesure.scrollWidth, `${url} : ${mesure.scrollWidth} > ${mesure.innerWidth}`).toBeLessThanOrEqual(mesure.innerWidth);
+  }
+  // Le dessin reste lisible : son cadre fait environ 700 px dans un conteneur défilant.
+  const cadre = page.locator('.patron-cadre');
+  await expect(cadre).toBeVisible();
+  const largeurCadre = await cadre.evaluate((el) => el.clientWidth);
+  expect(largeurCadre).toBeGreaterThanOrEqual(690);
+});
+
 test('mesure hors bornes : message qui nomme la mesure à vérifier', async ({ page }) => {
   await connecter(page);
   await page.goto('/patron/mesures?modele=pantalon_large');

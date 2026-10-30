@@ -50,9 +50,9 @@
     {#if data.modele === 'pantalon_large'}
       <details>
         <summary>Options du modèle (facultatif)</summary>
-        <p>Valeurs du modèle si vous ne changez rien : bas large, un pli devant, ceinture de 4 cm. Aucun champ obligatoire ici.</p>
+        <p>Valeurs du modèle si vous ne changez rien : bas calculé à partir du genou (jambe droite), un pli devant, ceinture de 4 cm. Aucun champ obligatoire ici.</p>
         <label>Largeur du bas par pièce (cm)
-          <input name="largeur_bas_cm" inputmode="decimal" placeholder="27" />
+          <input name="largeur_bas_cm" inputmode="decimal" placeholder="calculée : jambe droite" />
         </label>
         <label>Profondeur du pli devant (cm)
           <input name="profondeur_pli_cm" inputmode="decimal" placeholder="4" />

@@ -12,10 +12,12 @@
     Essayez d’abord sur un tissu peu coûteux, ne coupez pas un tissu précieux avec ce brouillon.
   </section>
 
-  <p>
-    {#each data.mesures as m}<span class="mesure-resume">{m.libelle} : {m.valeur} cm · </span>{/each}
+  <p class="mesures-resume">
+    {#each data.mesures as m, i}{#if i > 0}<span aria-hidden="true">{' · '}</span>{/if}<span>{m.libelle} : {m.valeur} cm</span>{/each}
   </p>
 
+  <div class="patron-defilant">
+    <div class="patron-cadre">
   <svg viewBox="0 0 {data.largeur} {data.hauteur}" role="img" aria-label="Aperçu du patron brouillon {data.titre} pour {data.nom} : devant, dos et ceinture, avec marges de couture et cotes" class="patron">
     <title>Aperçu du patron brouillon {data.titre} pour {data.nom}</title>
     {#each data.pieces as piece}
@@ -51,6 +53,9 @@
       </marker>
     </defs>
   </svg>
+    </div>
+  </div>
+  <p class="aide-defilement">Sur téléphone, faites défiler le dessin de gauche à droite pour lire toutes les cotes.</p>
   <p class="legende">Trait plein noir : coupe (marges comprises). Pointillé rouge : couture — 1 cm de marge, 2 cm d’ourlet en bas. Trait avec flèches : fil droit. Croix : crans. Vert : cotes en cm, étiquettes sur fond clair. Gris : lignes de construction (hanches, genou, fourche). Poche : bientôt — non incluse dans ce brouillon.</p>
 
   <section class="carte" aria-label="Mesures du patron">
@@ -83,9 +88,14 @@
 </main>
 
 <style>
-  .patron { width: 100%; height: auto; border: 2px solid #111; border-radius: 8px; background: #fff; }
+  /* Conteneur défilable horizontalement : le dessin garde une largeur lisible
+     (environ 700 px) sur téléphone sans faire déborder la page. */
+  .patron-defilant { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+  .patron-cadre { min-width: 700px; }
+  .patron { width: 100%; height: auto; display: block; border: 2px solid #111; border-radius: 8px; background: #fff; }
+  .aide-defilement { font-size: 15px; }
   .legende { font-size: 15px; }
-  .mesure-resume { white-space: nowrap; }
+  .mesures-resume { overflow-wrap: anywhere; }
   table { border-collapse: collapse; margin-bottom: 12px; }
   th, td { border: 1px solid #888; padding: 4px 10px; text-align: left; font-weight: 400; }
   th { font-weight: 600; }

@@ -20,7 +20,11 @@ export const BROUILLON_PANTALON_LARGE = {
   longueurPinceDosCm: 12,
   remonteeMilieuDosCm: 2,
   inclinaisonMilieuDosCm: 1.5,
-  largeurBasPieceCm: 27,
+  /** Courbe de fourche en J : hauteur (milieu → point de fourche), dos plus profonde/longue que devant — a_valider. */
+  hauteurCourbeFourcheDevantCm: 9,
+  hauteurCourbeFourcheDosCm: 11,
+  /** Tangente finale de la courbe : inclinaison par rapport à la verticale, vers le milieu — a_valider. */
+  inclinaisonTangenteFourcheDegres: 15,
   galbeCoteCm: 0.4,
   croisureCeintureCm: 3,
   hauteurCeintureFinieCm: 4
@@ -45,12 +49,37 @@ export interface OptionsResolues {
   hauteurCeintureFinieCm: number;
 }
 
-export function resoudreOptions(o: OptionsPantalonLarge = {}): OptionsResolues {
+export function resoudreOptions(m: MesuresPantalonLarge, o: OptionsPantalonLarge = {}): OptionsResolues {
   return {
-    largeurBasPieceCm: o.largeurBasPieceCm ?? BROUILLON_PANTALON_LARGE.largeurBasPieceCm,
+    // Sans largeur explicitement choisie, le bas n'est PAS une constante :
+    // il est résolu dans construire() pour égaler la largeur du genou (jambe droite).
+    largeurBasPieceCm: o.largeurBasPieceCm ?? largeurBasJambeDroite(m, o),
     profondeurPliCm: o.profondeurPliCm ?? BROUILLON_PANTALON_LARGE.profondeurPliDevantCm,
     hauteurCeintureFinieCm: o.hauteurCeintureFinieCm ?? BROUILLON_PANTALON_LARGE.hauteurCeintureFinieCm
   };
+}
+
+/**
+ * Largeur du bas par défaut d'une jambe droite : on cherche, par itération,
+ * la largeur telle que bas = largeur au genou (le genou étant sur les droites
+ * côté et entrejambe, les deux largeurs se déterminent mutuellement).
+ * On retient le plus grand des deux genoux (devant/dos) pour qu'aucune jambe
+ * ne rétrécisse vers le bas. Règle a_valider (voir FORMULES_A_VALIDER.md, P5).
+ */
+function largeurBasJambeDroite(m: MesuresPantalonLarge, o: OptionsPantalonLarge): number {
+  const base: OptionsResolues = {
+    largeurBasPieceCm: Math.max(18, (m.tourHanchesCm + BROUILLON_PANTALON_LARGE.aisanceHanchesCm) / 4),
+    profondeurPliCm: o.profondeurPliCm ?? BROUILLON_PANTALON_LARGE.profondeurPliDevantCm,
+    hauteurCeintureFinieCm: o.hauteurCeintureFinieCm ?? BROUILLON_PANTALON_LARGE.hauteurCeintureFinieCm
+  };
+  let candidat = base.largeurBasPieceCm;
+  for (let i = 0; i < 40; i++) {
+    const a = construireAvecOptions(m, { ...base, largeurBasPieceCm: candidat }).analyse;
+    const genouMax = Math.max(a.devant.largeurGenouCm, a.dos.largeurGenouCm);
+    if (Math.abs(genouMax - candidat) < 0.01) break;
+    candidat = genouMax;
+  }
+  return candidat;
 }
 
 const dist = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
@@ -87,6 +116,11 @@ export interface AnalysePiece {
   largeurGenouCm: number;
   largeurBasCm: number;
   hauteurFourcheCm: number;
+  hauteurCourbeFourcheCm: number;
+  /** Angle de la tangente finale de la courbe de fourche par rapport à la verticale (degrés). */
+  tangenteFinaleFourcheDegres: number;
+  /** Angle au point de fourche entre la courbe et l'entrejambe (degrés, 180 = raccord droit). */
+  angleRaccordFourcheDegres: number;
   longueurCoteCm: number;
   longueurEntrejambeCm: number;
   pointFourche: Point;
@@ -149,11 +183,31 @@ function construireJambe(
   const O: Point = { x: (X1.x + X2.x) / 2, y: m.longueurPantalonCm }; // milieu du bas, sur le fil droit
   const kneeSide: Point = lerp(B2, X1, (partage.yGenou - partage.yHip) / (m.longueurPantalonCm - partage.yHip));
   const kneeInseam: Point = lerp(fork, X2, (partage.yGenou - yFork) / (m.longueurPantalonCm - yFork));
-  const J: Point = dos
-    ? { x: -c.inclinaisonMilieuDosCm, y: yFork - 4 }
-    : { x: 0, y: yFork - 4 };
-  // Courbe de fourche : Bézier cubique J → fourche, tangente verticale aux deux bouts (pas de coude).
-  const courbeFourche = cubic(J, { x: J.x, y: J.y + 3 }, { x: fork.x, y: fork.y - 3 }, fork, 24);
+  const hauteurCourbe = dos ? c.hauteurCourbeFourcheDosCm : c.hauteurCourbeFourcheDevantCm;
+  const J: Point = dos ? { x: -c.inclinaisonMilieuDosCm, y: yFork - hauteurCourbe } : { x: 0, y: yFork - hauteurCourbe };
+  // Courbe de fourche en J : départ au milieu avec tangente verticale (premier
+  // point de contrôle sous J), puis courbe progressive qui rejoint le point de
+  // fourche avec une tangente diagonale inclinée par rapport à la verticale
+  // (deuxième point de contrôle décalé vers le milieu) — jamais verticale aux
+  // deux bouts, donc pas de marche en S, et raccord doux à l'entrejambe.
+  const theta = (c.inclinaisonTangenteFourcheDegres * Math.PI) / 180;
+  const ctrl1: Point = { x: J.x, y: J.y + hauteurCourbe * 0.55 };
+  const ctrl2: Point = {
+    x: fork.x + Math.sin(theta) * hauteurCourbe * 0.5,
+    y: fork.y - Math.cos(theta) * hauteurCourbe * 0.5
+  };
+  const courbeFourche = cubic(J, ctrl1, ctrl2, fork, 24);
+  const avantFourche = courbeFourche[courbeFourche.length - 2]!;
+  const vectTangente = { x: fork.x - avantFourche.x, y: fork.y - avantFourche.y };
+  const tangenteFinaleDegres = (Math.atan2(Math.abs(vectTangente.x), Math.abs(vectTangente.y)) * 180) / Math.PI;
+  const vCourbe = { x: avantFourche.x - fork.x, y: avantFourche.y - fork.y };
+  const vEntrejambe = { x: X2.x - fork.x, y: X2.y - fork.y };
+  const angleRaccordDegres =
+    (Math.acos(
+      Math.max(-1, Math.min(1, (vCourbe.x * vEntrejambe.x + vCourbe.y * vEntrejambe.y) / (Math.hypot(vCourbe.x, vCourbe.y) * Math.hypot(vEntrejambe.x, vEntrejambe.y))))
+    ) *
+      180) /
+    Math.PI;
   // Côté galbé : Bézier quadratique taille → hanches, puis droite hanches → bas (genou sur la droite).
   const ctrlCote: Point = { x: (B.x + B2.x) / 2 + c.galbeCoteCm, y: (B.y + B2.y) / 2 };
   const cotePoints = [B, ...quad(B, ctrlCote, B2), kneeSide, X1];
@@ -195,7 +249,7 @@ function construireJambe(
   }
   const cotes: CotePiece[] = [
     { libelle: 'Taille', valeurCm: waistEff, de: { x: A.x, y: 10.5 }, a: { x: waistEff, y: 10.5 }, texte: { x: waistEff / 2, y: 10.5 } },
-    { libelle: 'Hanches', valeurCm: largeurHanches, de: { x: dos ? J.x * (partage.yHip / Math.max(1, yFork)) : 0, y: partage.yHip }, a: B2, texte: { x: B2.x / 2, y: partage.yHip - 3 } },
+    { libelle: 'Hanches', valeurCm: largeurHanches, de: { x: dos ? J.x * (partage.yHip / Math.max(1, yFork)) : 0, y: partage.yHip }, a: B2, texte: { x: B2.x / 2 - 1, y: partage.yHip - 1.8 } },
     { libelle: 'Genou', valeurCm: largeurGenou, de: kneeInseam, a: kneeSide, texte: { x: (kneeInseam.x + kneeSide.x) / 2, y: partage.yGenou - 2.2 } },
     { libelle: 'Bas', valeurCm: opts.largeurBasPieceCm, de: X2, a: X1, texte: { x: O.x, y: m.longueurPantalonCm - 2.2 } },
     { libelle: 'Fourche', valeurCm: yFork, de: { x: A.x + 2.5, y: dos ? 0 : 0 }, a: { x: A.x + 2.5, y: yFork }, texte: { x: A.x + 11.5, y: yFork - 2.5 } },
@@ -243,6 +297,9 @@ function construireJambe(
       largeurGenouCm: largeurGenou,
       largeurBasCm: opts.largeurBasPieceCm,
       hauteurFourcheCm: yFork,
+      hauteurCourbeFourcheCm: hauteurCourbe,
+      tangenteFinaleFourcheDegres: tangenteFinaleDegres,
+      angleRaccordFourcheDegres: angleRaccordDegres,
       longueurCoteCm: longueurCote,
       longueurEntrejambeCm: longueurEntrejambe,
       pointFourche: fork
@@ -250,7 +307,7 @@ function construireJambe(
   };
 }
 
-function construire(m: MesuresPantalonLarge, options: OptionsPantalonLarge): { pieces: PieceBrouillon[]; analyse: AnalysePantalon } {
+function construireAvecOptions(m: MesuresPantalonLarge, opts: OptionsResolues): { pieces: PieceBrouillon[]; analyse: AnalysePantalon } {
   if (m.hauteurFourcheCm >= m.longueurPantalonCm - 15) {
     throw new Error('Vérifiez la hauteur de fourche : elle doit être nettement plus petite que la longueur du pantalon.');
   }
@@ -258,7 +315,6 @@ function construire(m: MesuresPantalonLarge, options: OptionsPantalonLarge): { p
     throw new Error('Vérifiez le tour de hanches : il est en général proche ou supérieur au tour de taille.');
   }
   const c = BROUILLON_PANTALON_LARGE;
-  const opts = resoudreOptions(options);
   const Ww = m.tourTailleCm + c.aisanceTailleCm;
   const Hh = m.tourHanchesCm + c.aisanceHanchesCm;
   const waistOutlineDevant = Ww / 4 - c.ecartDevantDosCm + opts.profondeurPliCm;
@@ -314,6 +370,10 @@ function construire(m: MesuresPantalonLarge, options: OptionsPantalonLarge): { p
       ecartEntrejambeCm: Math.abs(devant.analyse.longueurEntrejambeCm - dos.analyse.longueurEntrejambeCm)
     }
   };
+}
+
+function construire(m: MesuresPantalonLarge, options: OptionsPantalonLarge): { pieces: PieceBrouillon[]; analyse: AnalysePantalon } {
+  return construireAvecOptions(m, resoudreOptions(m, options));
 }
 
 export function analyserPantalonLarge(m: MesuresPantalonLarge, options: OptionsPantalonLarge = {}): AnalysePantalon {

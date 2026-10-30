@@ -41,6 +41,84 @@ describe('aperçu — containment des étiquettes de cote (correction visuelle)'
   });
 });
 
+describe('courbe de fourche en J et jambe large (correction après captures)', () => {
+  it.each(JEUX)('jeu $nom : hauteur de courbe ≥ 8 cm, dos plus profonde, tangente finale non verticale, raccord > 160°', (jeu) => {
+    const a = analyserPantalonLarge({ ...jeu });
+    for (const piece of [a.devant, a.dos]) {
+      expect(piece.hauteurCourbeFourcheCm).toBeGreaterThanOrEqual(8);
+      // Non verticale : nettement inclinée, mais assez proche de l'entrejambe pour rester > 160°.
+      expect(piece.tangenteFinaleFourcheDegres).toBeGreaterThan(8);
+      expect(piece.tangenteFinaleFourcheDegres).toBeLessThan(30);
+      expect(piece.angleRaccordFourcheDegres).toBeGreaterThan(160);
+    }
+    expect(a.devant.hauteurCourbeFourcheCm).toBe(9);
+    expect(a.dos.hauteurCourbeFourcheCm).toBe(11);
+    expect(a.dos.hauteurCourbeFourcheCm).toBeGreaterThan(a.devant.hauteurCourbeFourcheCm);
+    // Vérification indépendante sur les points échantillonnés de la couture.
+    const pieces = genererPatronPantalonLarge({ ...jeu });
+    for (const [i, piece] of pieces.slice(0, 2).entries()) {
+      const analyse = i === 0 ? a.devant : a.dos;
+      const pts = piece.couture;
+      const iFork = pts.findIndex((p) => Math.abs(p.x - analyse.pointFourche.x) < 1e-9 && Math.abs(p.y - analyse.pointFourche.y) < 1e-9);
+      expect(iFork, `${jeu.nom}/${piece.id} point de fourche retrouvé`).toBeGreaterThan(0);
+      const fourche = pts[iFork]!;
+      const apres = pts[iFork + 1]!; // premier point de courbe après la fourche dans le tracé
+      const avant = pts[iFork - 1]!; // point d'entrejambe (bas)
+      const v1 = { x: avant.x - fourche.x, y: avant.y - fourche.y };
+      const v2 = { x: apres.x - fourche.x, y: apres.y - fourche.y };
+      const angle = (Math.acos((v1.x * v2.x + v1.y * v2.y) / (Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y))) * 180) / Math.PI;
+      expect(angle, `${jeu.nom}/${piece.id} angle échantillonné`).toBeGreaterThan(160);
+      const J = pts[pts.length - 1]!;
+      expect(fourche.y - J.y).toBeCloseTo(analyse.hauteurCourbeFourcheCm, 6);
+    }
+  });
+
+  it.each(JEUX)('jeu $nom : bas par défaut ≥ genou (jambe droite ou évasée), devant et dos', (jeu) => {
+    const a = analyserPantalonLarge({ ...jeu });
+    expect(a.devant.largeurBasCm).toBeGreaterThanOrEqual(a.devant.largeurGenouCm - 0.05);
+    expect(a.dos.largeurBasCm).toBeGreaterThanOrEqual(a.dos.largeurGenouCm - 0.05);
+    expect(a.devant.largeurBasCm).toBe(a.dos.largeurBasCm);
+  });
+
+  it('jeu moyenne : le défaut n’est plus la constante 27 cm', () => {
+    const a = analyserPantalonLarge({ tourTailleCm: 82, tourHanchesCm: 100, hauteurFourcheCm: 27, longueurPantalonCm: 105 });
+    expect(a.devant.largeurBasCm).toBeGreaterThan(30);
+  });
+});
+
+describe('étiquettes de cote : aucun recouvrement, Hanches loin des crans et des bords', () => {
+  it.each(JEUX)('jeu $nom : étiquettes deux à deux disjointes', (jeu) => {
+    const { pieces } = agencerPieces(genererPatronPantalonLarge({ ...jeu }));
+    const fonds = pieces.flatMap((p) =>
+      (p.cotes ?? []).map((c) => ({ piece: p.id, libelle: c.libelle, boite: boiteEtiquetteCote(c.texte.x + p.dx, c.texte.y + p.dy, c.libelle, fmt(c.valeurCm)) }))
+    );
+    for (let i = 0; i < fonds.length; i++)
+      for (let j = i + 1; j < fonds.length; j++) {
+        const a = fonds[i]!.boite;
+        const b = fonds[j]!.boite;
+        const seTouchent = a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+        expect(seTouchent, `${fonds[i]!.piece}/${fonds[i]!.libelle} × ${fonds[j]!.piece}/${fonds[j]!.libelle}`).toBe(false);
+      }
+  });
+
+  it.each(JEUX)('jeu $nom : « Hanches » ne touche ni cran (carré ±1 cm) ni bord de coupe de sa pièce', (jeu) => {
+    const { pieces } = agencerPieces(genererPatronPantalonLarge({ ...jeu }));
+    for (const p of pieces.slice(0, 2)) {
+      const cote = p.cotes!.find((c) => c.libelle === 'Hanches')!;
+      const fond = boiteEtiquetteCote(cote.texte.x + p.dx, cote.texte.y + p.dy, cote.libelle, fmt(cote.valeurCm));
+      for (const cran of p.crans) {
+        const cx = cran.x + p.dx;
+        const cy = cran.y + p.dy;
+        const touche = fond.x1 < cx + 1 && cx - 1 < fond.x2 && fond.y1 < cy + 1 && cy - 1 < fond.y2;
+        expect(touche, `${jeu.nom}/${p.id} Hanches × cran (${cx.toFixed(1)},${cy.toFixed(1)})`).toBe(false);
+      }
+      const b = boite(p);
+      expect(fond.x1 - b.x1).toBeGreaterThanOrEqual(2);
+      expect(b.x2 - fond.x2).toBeGreaterThanOrEqual(0.5);
+    }
+  });
+});
+
 describe('pantalon large — vérifications géométriques (le vrai test)', () => {
   it.each(JEUX)('jeu $nom : côté devant = dos et entrejambe devant = dos à 0,3 cm près', (jeu) => {
     const a = analyserPantalonLarge({ ...jeu });
@@ -62,30 +140,32 @@ describe('pantalon large — vérifications géométriques (le vrai test)', () =
     //  taille+aisance = 86 → quart 21,5 ; devant effectif 21,5−1 = 20,5 ; dos 21,5+1 = 22,5
     //  hanches+aisance = 106 → quart 26,5 ; devant 25,5 ; dos 27,5
     //  extension fourche devant = 106÷16 = 6,625 ; dos = 9,125
-    //  pli de fil (crease) devant = (25,5 − 6,625)÷2 = 9,4375 ; bas/pièce 27
-    //    → côté bas devant = 9,4375+13,5 = 22,9375 ; entrejambe bas devant = −4,0625
-    //  entrejambe devant = √(2,5625² + 78²) = √6090,57 ≈ 78,04
+    //  bas par défaut : jambe droite résolue (bas = plus grand genou) ≈ 35,8 ;
+    //    entrejambe bas devant = 9,4375 − 35,8÷2 ≈ −8,46
+    //  entrejambe devant = √((−8,46+6,625)² + 78²) ≈ 78,0
     //  ceinture = 86 + 3 = 89 ; hauteur finie 4
     const a = analyserPantalonLarge({ tourTailleCm: 82, tourHanchesCm: 100, hauteurFourcheCm: 27, longueurPantalonCm: 105 });
     expect(a.devant.largeurTailleEffectiveCm).toBeCloseTo(20.5, 6);
     expect(a.dos.largeurTailleEffectiveCm).toBeCloseTo(22.5, 6);
     expect(a.devant.largeurHanchesCm).toBeCloseTo(25.5, 6);
     expect(a.dos.largeurHanchesCm).toBeCloseTo(27.5, 1);
-    expect(a.devant.largeurBasCm).toBe(27);
-    expect(a.dos.largeurBasCm).toBe(27);
+    expect(a.devant.largeurBasCm).toBeCloseTo(35.8, 1);
+    expect(a.dos.largeurBasCm).toBeCloseTo(35.8, 1);
     expect(a.devant.hauteurFourcheCm).toBe(27);
     expect(a.devant.longueurEntrejambeCm).toBeCloseTo(78.04, 1);
     expect(a.dos.longueurEntrejambeCm).toBeCloseTo(78.04, 1);
     expect(a.longueurCeintureCm).toBe(89);
-    // Dos remonté et fourche dos légèrement abaissée par l'égalisation
-    expect(a.dos.hauteurFourcheCm).toBeGreaterThan(27);
-    expect(a.dos.hauteurFourcheCm).toBeLessThan(29);
+    // Avec la jambe droite large, l'égalisation donne une fourche dos quasi au même niveau (≈ 27,0).
+    expect(a.dos.hauteurFourcheCm).toBeGreaterThan(26.5);
+    expect(a.dos.hauteurFourcheCm).toBeLessThan(27.5);
   });
 
   it.each(JEUX)('jeu $nom : courbe de fourche sans coude (angle au point de fourche > 160°)', (jeu) => {
-    for (const piece of genererPatronPantalonLarge({ ...jeu }).slice(0, 2)) {
+    const a = analyserPantalonLarge({ ...jeu });
+    for (const [i, piece] of genererPatronPantalonLarge({ ...jeu }).slice(0, 2).entries()) {
+      const analyse = i === 0 ? a.devant : a.dos;
       const pts = piece.couture;
-      const iFork = pts.findIndex((p) => p.x === Math.min(...pts.map((q) => q.x)));
+      const iFork = pts.findIndex((p) => Math.abs(p.x - analyse.pointFourche.x) < 1e-9 && Math.abs(p.y - analyse.pointFourche.y) < 1e-9);
       const avant = pts[iFork - 1]!;
       const fourche = pts[iFork]!;
       const apres = pts[iFork + 1]!;
@@ -93,7 +173,6 @@ describe('pantalon large — vérifications géométriques (le vrai test)', () =
       const v2 = { x: apres.x - fourche.x, y: apres.y - fourche.y };
       const angle = (Math.acos((v1.x * v2.x + v1.y * v2.y) / (Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y))) * 180) / Math.PI;
       expect(angle, `${jeu.nom}/${piece.id}`).toBeGreaterThan(160);
-      // Devant et dos différents : le dos est plus large aux hanches
     }
     const pieces = genererPatronPantalonLarge({ ...jeu });
     expect(pieces[0]!.couture).not.toEqual(pieces[1]!.couture);

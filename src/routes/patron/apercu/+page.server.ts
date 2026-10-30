@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { definitionMensuration } from '$lib/domain/mensurations-saisie';
-import { pointsEnAttribut } from '$lib/patterns/brouillon';
+import { boiteEtiquetteCote, pointsEnAttribut } from '$lib/patterns/brouillon';
 import { FORMULES_PANTALON_LARGE } from '$lib/patterns/pantalon-large/formulas';
 import { FORMULES_JUPE_DROITE } from '$lib/patterns/jupe-droite/formulas';
 import {
@@ -59,22 +59,28 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       crans: p.crans.map((c) => ({ x: c.x + p.dx, y: c.y + p.dy })),
       traits: (p.traitsInterieurs ?? []).map((t) => pointsEnAttribut(t, p.dx, p.dy)),
       lignes: (p.lignesConstruction ?? []).map((t) => pointsEnAttribut(t, p.dx, p.dy)),
-      cotes: (p.cotes ?? []).map((ct) => ({
-        libelle: ct.libelle,
-        valeur: fmt(ct.valeurCm),
-        x1: ct.de.x + p.dx,
-        y1: ct.de.y + p.dy,
-        x2: ct.a.x + p.dx,
-        y2: ct.a.y + p.dy,
-        tx: ct.texte.x + p.dx,
-        ty: ct.texte.y + p.dy
-      })),
+      cotes: (p.cotes ?? []).map((ct) => {
+        const valeur = fmt(ct.valeurCm);
+        const fond = boiteEtiquetteCote(ct.texte.x + p.dx, ct.texte.y + p.dy, ct.libelle, valeur);
+        return {
+          libelle: ct.libelle,
+          valeur,
+          x1: ct.de.x + p.dx,
+          y1: ct.de.y + p.dy,
+          x2: ct.a.x + p.dx,
+          y2: ct.a.y + p.dy,
+          tx: ct.texte.x + p.dx,
+          ty: ct.texte.y + p.dy,
+          fondX: fond.x1,
+          fondY: fond.y1,
+          fondLargeur: fond.x2 - fond.x1,
+          fondHauteur: fond.y2 - fond.y1
+        };
+      }),
       tableau: (p.mesuresPatron ?? []).map((mm) => ({ libelle: mm.libelle, valeur: fmt(mm.valeurCm) })),
       etiquetteX: Math.min(...p.coupe.map((pt) => pt.x)) + p.dx + 2,
-      etiquetteY:
-        p.id === 'ceinture'
-          ? Math.min(...p.coupe.map((pt) => pt.y)) + p.dy - 4.5
-          : Math.min(...p.coupe.map((pt) => pt.y)) + p.dy + 5
+      // Nom au-dessus de la pièce, dans la bande d'agencement : jamais collé au trait de taille.
+      etiquetteY: Math.min(...p.coupe.map((pt) => pt.y)) + p.dy - 4.5
     })),
     formules: formules.map((f) => ({ element: f.element, hypotheses: f.hypotheses, statut: f.statut })),
     hrefPdf: `/patron/pdf?${paramsPdf.toString()}`,

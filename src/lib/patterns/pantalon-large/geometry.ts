@@ -198,8 +198,8 @@ function construireJambe(
     { libelle: 'Hanches', valeurCm: largeurHanches, de: { x: dos ? J.x * (partage.yHip / Math.max(1, yFork)) : 0, y: partage.yHip }, a: B2, texte: { x: B2.x / 2, y: partage.yHip - 3 } },
     { libelle: 'Genou', valeurCm: largeurGenou, de: kneeInseam, a: kneeSide, texte: { x: (kneeInseam.x + kneeSide.x) / 2, y: partage.yGenou - 2.2 } },
     { libelle: 'Bas', valeurCm: opts.largeurBasPieceCm, de: X2, a: X1, texte: { x: O.x, y: m.longueurPantalonCm - 2.2 } },
-    { libelle: 'Fourche', valeurCm: yFork, de: { x: A.x + 2.5, y: dos ? 0 : 0 }, a: { x: A.x + 2.5, y: yFork }, texte: { x: A.x + 8.5, y: yFork - 2.5 } },
-    { libelle: 'Côté', valeurCm: longueurCote, de: { x: B.x - 3, y: B.y }, a: { x: X1.x - 3, y: X1.y }, texte: { x: (B.x + X1.x) / 2 - 6, y: (B.y + X1.y) / 2 } },
+    { libelle: 'Fourche', valeurCm: yFork, de: { x: A.x + 2.5, y: dos ? 0 : 0 }, a: { x: A.x + 2.5, y: yFork }, texte: { x: A.x + 11.5, y: yFork - 2.5 } },
+    { libelle: 'Côté', valeurCm: longueurCote, de: { x: B.x - 3, y: B.y }, a: { x: X1.x - 3, y: X1.y }, texte: { x: (B.x + X1.x) / 2 - 8, y: (B.y + X1.y) / 2 } },
     { libelle: 'Entrejambe', valeurCm: longueurEntrejambe, de: { x: fork.x + 3, y: fork.y }, a: { x: X2.x + 3, y: X2.y }, texte: { x: O.x, y: (fork.y + X2.y) / 2 + 8 } }
   ];
   const mesuresPatron = [
@@ -296,7 +296,7 @@ function construire(m: MesuresPantalonLarge, options: OptionsPantalonLarge): { p
     crans: [{ x: Ww / 2, y: 0 }, { x: Ww, y: 0 }],
     cotes: [
       { libelle: 'Longueur ceinture', valeurCm: longueurCeinture, de: { x: 0, y: hauteurCoupee / 2 }, a: { x: longueurCeinture, y: hauteurCoupee / 2 }, texte: { x: longueurCeinture / 2, y: hauteurCoupee / 2 - 2 } },
-      { libelle: 'Hauteur finie', valeurCm: opts.hauteurCeintureFinieCm, de: { x: longueurCeinture - 3, y: 0 }, a: { x: longueurCeinture - 3, y: hauteurCoupee }, texte: { x: longueurCeinture - 9, y: hauteurCoupee / 2 + 3 } }
+      { libelle: 'Hauteur finie', valeurCm: opts.hauteurCeintureFinieCm, de: { x: longueurCeinture - 3, y: 0 }, a: { x: longueurCeinture - 3, y: hauteurCoupee }, texte: { x: longueurCeinture - 16, y: hauteurCoupee / 2 + 3 } }
     ],
     mesuresPatron: [
       { libelle: 'Longueur de ceinture (avec recouvrement)', valeurCm: longueurCeinture },

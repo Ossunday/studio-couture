@@ -119,27 +119,46 @@ export function construirePiece(base: Omit<PieceBrouillon, 'coupe'>): PieceBroui
   return { ...base, coupe };
 }
 
-/** Place les pièces côte à côte (écart 5 cm), ceinture éventuelle dessous. */
+/**
+ * Boîte (fond clair inclus) d'une étiquette de cote rendue dans l'aperçu :
+ * texte centré en (cx, cy), police 2,3. Source unique du calcul —
+ * l'aperçu SVG et le test de containment utilisent les mêmes valeurs.
+ */
+export function boiteEtiquetteCote(cx: number, cy: number, libelle: string, valeurTexte: string): { x1: number; y1: number; x2: number; y2: number } {
+  const demiLargeur = ((libelle.length + valeurTexte.length + 4) * 1.24) / 2;
+  return { x1: cx - demiLargeur, y1: cy - 2.6, x2: cx + demiLargeur, y2: cy + 1 };
+}
+
+/** Marge intérieure d'agencement : aucun trait ni étiquette ne touche le bord du viewBox. */
+export const MARGE_AGENCEMENT_CM = 4;
+/** Bande libre au-dessus de chaque pièce pour son nom (2 lignes), hors du trait de taille. */
+export const BANDE_NOM_CM = 8;
+
+/** Place les pièces côte à côte (écart 5 cm), ceinture éventuelle dessous, avec marges autour. */
 export function agencerPieces(pieces: PieceBrouillon[]): { pieces: PiecePlacee[]; largeur: number; hauteur: number } {
   const placees: PiecePlacee[] = [];
-  let x = 0;
-  let hauteurLigne = 0;
+  let x = MARGE_AGENCEMENT_CM;
+  let basLigne = 0;
   for (const piece of pieces.filter((p) => p.id !== 'ceinture')) {
     const minX = Math.min(...piece.coupe.map((pt) => pt.x));
     const minY = Math.min(...piece.coupe.map((pt) => pt.y));
-    placees.push({ ...piece, dx: x - minX, dy: -minY });
+    placees.push({ ...piece, dx: x - minX, dy: MARGE_AGENCEMENT_CM + BANDE_NOM_CM - minY });
     x += largeurPiece(piece) + 5;
-    hauteurLigne = Math.max(hauteurLigne, hauteurPiece(piece));
+    basLigne = Math.max(basLigne, MARGE_AGENCEMENT_CM + BANDE_NOM_CM + hauteurPiece(piece));
   }
-  let hauteur = hauteurLigne;
+  let hauteur = basLigne + MARGE_AGENCEMENT_CM;
   const ceinture = pieces.find((p) => p.id === 'ceinture');
   if (ceinture) {
     const minX = Math.min(...ceinture.coupe.map((pt) => pt.x));
     const minY = Math.min(...ceinture.coupe.map((pt) => pt.y));
-    placees.push({ ...ceinture, dx: -minX, dy: hauteurLigne + 9 - minY });
-    hauteur = hauteurLigne + 9 + hauteurPiece(ceinture);
+    placees.push({ ...ceinture, dx: MARGE_AGENCEMENT_CM - minX, dy: basLigne + BANDE_NOM_CM + 2 - minY });
+    hauteur = basLigne + BANDE_NOM_CM + 2 + hauteurPiece(ceinture) + MARGE_AGENCEMENT_CM;
   }
-  return { pieces: placees, largeur: Math.max(x - 5, ceinture ? largeurPiece(ceinture) : 0), hauteur };
+  return {
+    pieces: placees,
+    largeur: Math.max(x - 5 + MARGE_AGENCEMENT_CM, ceinture ? MARGE_AGENCEMENT_CM + largeurPiece(ceinture) + MARGE_AGENCEMENT_CM : 0),
+    hauteur
+  };
 }
 
 export function pointsEnAttribut(points: Point[], dx = 0, dy = 0): string {

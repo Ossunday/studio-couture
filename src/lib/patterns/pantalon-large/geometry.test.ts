@@ -1,11 +1,45 @@
 import { describe, expect, it } from 'vitest';
+import { agencerPieces, boite, boiteEtiquetteCote } from '../brouillon';
 import { analyserPantalonLarge, genererPatronPantalonLarge } from './geometry';
+
+const fmt = (v: number) => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
 
 const JEUX = [
   { nom: 'petite', tourTailleCm: 64, tourHanchesCm: 88, hauteurFourcheCm: 24, longueurPantalonCm: 96 },
   { nom: 'moyenne', tourTailleCm: 82, tourHanchesCm: 100, hauteurFourcheCm: 27, longueurPantalonCm: 105 },
   { nom: 'forte', tourTailleCm: 110, tourHanchesCm: 128, hauteurFourcheCm: 31, longueurPantalonCm: 108 }
 ] as const;
+
+describe('aperçu — containment des étiquettes de cote (correction visuelle)', () => {
+  const MARGE_MIN = 2; // cm à l'intérieur du viewBox global
+  it.each(JEUX)('jeu $nom : chaque étiquette (texte + fond) est dans le viewBox avec marge, et dans la boîte de coupe de sa pièce', (jeu) => {
+    const { pieces, largeur, hauteur } = agencerPieces(genererPatronPantalonLarge({ ...jeu }));
+    // Aucun trait ne touche le bord : chaque boîte de coupe garde la marge d'agencement.
+    for (const p of pieces) {
+      const b = boite(p);
+      expect(b.x1, `${p.id} bord gauche`).toBeGreaterThanOrEqual(4 - 0.01);
+      expect(b.y1, `${p.id} bord haut`).toBeGreaterThanOrEqual(4 - 0.01);
+      expect(b.x2, `${p.id} bord droit`).toBeLessThanOrEqual(largeur - 4 + 0.01);
+      expect(b.y2, `${p.id} bord bas`).toBeLessThanOrEqual(hauteur - 4 + 0.01);
+    }
+    for (const p of pieces) {
+      const b = boite(p);
+      for (const cote of p.cotes ?? []) {
+        const fond = boiteEtiquetteCote(cote.texte.x + p.dx, cote.texte.y + p.dy, cote.libelle, fmt(cote.valeurCm));
+        const ou = `${jeu.nom}/${p.id}/${cote.libelle}`;
+        expect(fond.x1, ou).toBeGreaterThanOrEqual(MARGE_MIN);
+        expect(fond.y1, ou).toBeGreaterThanOrEqual(MARGE_MIN);
+        expect(fond.x2, ou).toBeLessThanOrEqual(largeur - MARGE_MIN);
+        expect(fond.y2, ou).toBeLessThanOrEqual(hauteur - MARGE_MIN);
+        // Et jamais hors du trait de coupe (boîte de la pièce placée).
+        expect(fond.x1, `${ou} dans la coupe (gauche)`).toBeGreaterThanOrEqual(b.x1 - 0.01);
+        expect(fond.x2, `${ou} dans la coupe (droite)`).toBeLessThanOrEqual(b.x2 + 0.01);
+        expect(fond.y1, `${ou} dans la coupe (haut)`).toBeGreaterThanOrEqual(b.y1 - 0.01);
+        expect(fond.y2, `${ou} dans la coupe (bas)`).toBeLessThanOrEqual(b.y2 + 0.01);
+      }
+    }
+  });
+});
 
 describe('pantalon large — vérifications géométriques (le vrai test)', () => {
   it.each(JEUX)('jeu $nom : côté devant = dos et entrejambe devant = dos à 0,3 cm près', (jeu) => {

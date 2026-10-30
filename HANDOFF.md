@@ -108,6 +108,17 @@ Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
 - Vérifications réelles : `npm test` **69 réussis / 6 ignorés** (16 fichiers + 1 ignoré), `npm run check` **0 erreur / 0 avertissement** (421 fichiers), `npm run build` **réussi**, `npm run test:e2e` **4 réussis**. ⛔ Toujours brouillon : validation tailleur (P1–P12) requise avant tout usage réel.
 
 
+## Correction visuelle aperçu pantalon (2026-10-30, après 485f3dd)
+
+Correction de **placement uniquement** — aucune formule, aucune géométrie de pièce modifiée (seules les coordonnées `texte` de deux cotes, les marges d'agencement et la bande des noms ont bougé).
+
+- **Marge d'agencement** : `agencerPieces` place désormais chaque pièce à 4 cm minimum de tout bord du viewBox (`MARGE_AGENCEMENT_CM`), avec une **bande de nom de 8 cm au-dessus de chaque pièce** (`BANDE_NOM_CM`) : les noms « Devant (×2) » / « Dos (×2) » + « Marge incluse — brouillon » sont au-dessus du trait de taille, plus rien ne touche le cadre (avant : coupe collée à y=0, nom à l'intérieur contre la taille). La ceinture garde sa bande au-dessus d'elle, marge basse de 4 cm aussi.
+- **Étiquettes déplacées à l'intérieur** : « Fourche » recentrée (x milieu 8,5 → 11,5 dans le repère pièce), « Hauteur finie » de la ceinture rentrée (longueur −9 → −16), « Côté » rentré de 2 cm. Calcul du fond clair factorisé dans `boiteEtiquetteCote` (`brouillon.ts`) : l'aperçu SVG et le test utilisent **la même fonction**.
+- **Test de containment ajouté** (`geometry.test.ts`, 3 jeux) : boîte de coupe de chaque pièce à ≥ 4 cm des bords du viewBox, et chaque étiquette de cote (texte + fond) contenue dans le viewBox avec marge ≥ 2 cm **et** dans la boîte du trait de coupe de sa pièce. Vérification visuelle réelle sur `patron-apercu-moyenne-768.png` régénérée : haut décollé du cadre, « Fourche 27,0 cm » entière dans le devant, « Hauteur finie 4,0 cm » entière dans la ceinture.
+- Captures 360/768 px des 3 jeux régénérées dans `test-results/` (non commitées). Vérifications réelles : `npm test` **72 réussis / 6 ignorés**, `npm run check` **0 erreur** (421 fichiers), `npm run build` **réussi**, `npm run test:e2e` **4 réussis**.
+
+## Renommage « Studio de couture IA » → « Studio Couture »
+
 - Produit : `Studio Couture`, slug `studio-couture` (ancien : `studio-couture-ia`).
 - Créé `src/lib/brand.ts` : `BRAND_NAME`, `BRAND_SLUG`, `BRAND_SHORT_NAME`, `BRAND_DESCRIPTION`, `BRAND_DESCRIPTION_LONG`, `BRAND_DATABASE_NAME` (`studio_couture`), `BRAND_ENV_PREFIX` (`STUDIO_COUTURE_`), `ENV_DATABASE_URL`, `ENV_PHOTO_ENCRYPTION_KEY`, `ENV_SESSION_SECRET`, `brandCacheName(version)`.
 - Pointent sur `brand.ts` : `src/lib/i18n/fr.ts` (`app.nom`, `app.tagline`), en-tête + pied de page (`src/routes/+layout.svelte`), titre (`src/routes/+page.svelte`), cache service worker (`src/service-worker.ts` → `studio-couture-v<version>`), base de données (`src/lib/server/db.ts` : `STUDIO_COUTURE_DATABASE_URL` prioritaire, `DATABASE_URL` en repli), clé photo (`src/lib/server/crypto.ts`).

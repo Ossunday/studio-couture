@@ -34,7 +34,7 @@
       {#each piece.cotes as cote}
         <g class="cote">
           <line x1={cote.x1} y1={cote.y1} x2={cote.x2} y2={cote.y2} stroke="#14532d" stroke-width="0.22" marker-start="url(#fleche-cote)" marker-end="url(#fleche-cote)" />
-          <rect x={cote.tx - (cote.libelle.length + cote.valeur.length + 3) * 0.85} y={cote.ty - 2.6} width={(cote.libelle.length + cote.valeur.length + 3) * 1.7} height="3.6" fill="#ffffff" opacity="0.92" />
+          <rect x={cote.fondX} y={cote.fondY} width={cote.fondLargeur} height={cote.fondHauteur} fill="#ffffff" opacity="0.92" />
           <text x={cote.tx} y={cote.ty} font-size="2.3" fill="#14532d" text-anchor="middle">{cote.libelle} {cote.valeur} cm</text>
         </g>
       {/each}

@@ -1,6 +1,6 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-10-28 (étape 1 sécurité, puis phase 1).
+Dernière mise à jour : 2026-10-30 (démo publique guidée et design atelier).
 
 ## Étape 1 — Sécurité des dépendances (2026-10-28)
 
@@ -128,6 +128,19 @@ Tout reste `a_valider`, `source: null` ; gardé tel quel : devant ≠ dos, côt�
 - **Note référence** : la consigne citait `docs/references-locales/patron-femme.jpg` ; ce nom exact n'existe pas dans le dossier — l'image de patron de pantalon femme présente est « exemple de patron pantalon femme généré avec ia.jpg ». C'est elle qui a été regardée (structure seulement). Si une autre image était visée, l'indiquer.
 - **Captures régénérées** : `test-results/patron-apercu-{petite,moyenne,forte}-{360,768}.png` (+ parcours 360) via Playwright, non commitées — vérification visuelle faite sur les 6 : courbe en J lisible, bas = genou au tableau, aucun débordement en 360 (le dessin se fait défiler horizontalement, dos et ceinture accessibles par défilement).
 - Vérifications réelles : `npm test` **85 réussis / 6 ignorés** (16 fichiers + 1 ignoré), `npm run check` **0 erreur / 0 avertissement** (421 fichiers), `npm run build` **réussi**, `npm run test:e2e` **5 réussis**. ⛔ Toujours brouillon : validation tailleur (P1–P12) requise avant tout usage réel.
+
+## Démo publique guidée et design « Atelier chic et chaleureux » (2026-10-30)
+
+Tout reste `a_valider`, `source: null` ; bannière « Brouillon non validé » conservée partout, moteur de production toujours bloqué.
+
+- **Design (source unique)** : `src/lib/design/tokens.css` — ivoire `#FBF6EE`, papier `#FFFDF8`, encre `#1E1A17`, vert profond `#1F3D36` (principal), terracotta `#B5532F` (action), laiton `#C9A24B` (filets/accents), vert cote `#2F6B4F` ; coins 14 px, ombres douces, titres en pile serif système (aucune police distante/CDN), corps sans système ≥ 16 px, tailles fluides `clamp`. En-tête avec motif mètre ruban en SVG inline laiton ; icônes main levée `src/lib/design/icones/` (Ciseaux, Metre, Aiguille, Epingle). Transitions 200–300 ms, tracé du patron animé en `stroke-dashoffset`, apparition douce des sections — tout coupé sous `prefers-reduced-motion`. Parcours connecté repris dans le même design (CSS global, en-tête, cotes de l'aperçu alignées : cote `#2F6B4F`, couture `#B5532F`).
+- **Accueil `/`** : hero « Votre patron sur mesure, en 2 minutes », un seul grand bouton terracotta « Voir la démo guidée » → `/demo`, lien discret « Espace atelier (connexion) », 3 cartes gestes (Choisir / Mesurer / Obtenir le patron), badge « Brouillon à valider par un maître tailleur ».
+- **Démo `/demo` (seule route publique ajoutée)** : 4 étapes avec barre de progression et bouton Retour, aucun compte, aucune session, aucun cookie nouveau, **aucune écriture en base, aucun upload**. (1) Modèle : pantalon large actif, jupe droite « Bientôt » désactivée. (2) Mesures : préréglages Petite/Moyenne/Forte préremplissant les 4 mesures, chaque champ illustré (`IllustrationMesure`) avec plage admise et exemple, messages d'erreur en français nommant la mesure. (3) Patron : aperçu SVG coté existant dans `VisionneusePatron` (onglets Devant/Dos/Ceinture/Tout, zoom +/−/Ajuster, glisser pour déplacer, pincement tactile, légende repliable, tracé animé). (4) Résultat : PDF A4 1:1 via `/demo/pdf`, rappel du carré de contrôle de 10 cm, « Et ensuite » (toile d'essayage bon marché, validation maître tailleur, bientôt 3D et devis tissu). Bulles de guidage accessibles au clavier, une par étape, fermables et rappelables par le bouton « Aide ». Préparation du rendu factorisée dans `src/lib/patterns/apercu-rendu.ts` (`preparerPiece`), partagée avec l'aperçu connecté.
+- **Sécurité démo** : `/demo/pdf` revalide les mesures côté serveur (`validerMesuresPatron`), n'enregistre rien, répond `private, no-store` ; **limite mémoire 30 PDF/min/IP** (`src/lib/server/limite-demo.ts`, fenêtre glissante, testée unitairement — mono-instance comme la limite de connexion). CSRF et en-têtes inchangés ; aucun `.env*` ouvert.
+- **Icônes PWA** : monogramme « SC » vert + laiton (`static/monogramme.svg`, favicon aligné), exporté en `static/icon-192.png` et `static/icon-512.png` via le Chromium Playwright déjà installé (aucun outil ajouté) ; manifeste : fond `#FBF6EE`, thème `#1F3D36`, `theme-color` aligné — plus de 404 sur les icônes.
+- **Tests ajoutés** : unitaires limite démo (30 autorisées puis refus, isolation par IP, réouverture de fenêtre) ; Playwright `tests-e2e/demo.spec.ts` — parcours public complet en 360 px sans connexion (4 étapes, onglets, zoom 125 %, téléchargement dont le contenu commence par `%PDF`), refus d'une mesure hors bornes avec message français, `scrollWidth <= innerWidth` sur `/`, `/demo` et chaque étape en 360 **et** 768 px.
+- **Captures** : `test-results/demo-{accueil,1-modele,2-mesures,3-patron,4-resultat}-{360,768}.png` via Playwright, non commitées — relues visuellement : aucun débordement, patron lisible et zoomable en 360 px.
+- Vérifications réelles : `npm test` **87 réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement** (432 fichiers), `npm run build` **réussi**, `npm run test:e2e` **8 réussis**. ⛔ Toujours brouillon : validation tailleur (P1–P12) requise avant tout usage réel ; question ouverte P5 inchangée (plage explicite du bas 18–40 cm vs défaut calculé 44,6 cm sur la forte).
 
 ## Renommage « Studio de couture IA » → « Studio Couture »
 

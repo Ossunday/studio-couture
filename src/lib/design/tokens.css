@@ -1,0 +1,35 @@
+/* Studio Couture — « Atelier chic et chaleureux ».
+   Source unique des couleurs, typographies, rayons et ombres.
+   Contrastes vérifiés AA sur ivoire/papier (texte) et blanc sur primaire/action. */
+:root {
+  --ivoire: #fbf6ee;
+  --papier: #fffdf8;
+  --encre: #1e1a17;
+  --vert: #1f3d36;
+  --vert-texte-sur-ivoire: #1f3d36;
+  --terracotta: #b5532f;
+  --terracotta-fonce: #96421f;
+  --laiton: #c9a24b;
+  --laiton-doux: #e9dcbc;
+  --vert-cote: #2f6b4f;
+  --rouge-doux: #fff1e8;
+  --bord: #d8cbb4;
+  --serif: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --rayon: 14px;
+  --ombre: 0 12px 32px rgb(30 26 23 / 0.09), 0 2px 8px rgb(30 26 23 / 0.06);
+  --ombre-petite: 0 4px 14px rgb(30 26 23 / 0.07);
+  --titre-1: clamp(2.1rem, 7vw, 3.7rem);
+  --titre-2: clamp(1.55rem, 4.5vw, 2.3rem);
+  --titre-3: clamp(1.2rem, 3vw, 1.45rem);
+  --texte-base: clamp(1rem, 2.6vw, 1.125rem);
+  --focus: #7a4b00;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

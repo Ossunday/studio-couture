@@ -21,35 +21,35 @@
   <svg viewBox="0 0 {data.largeur} {data.hauteur}" role="img" aria-label="Aperçu du patron brouillon {data.titre} pour {data.nom} : devant, dos et ceinture, avec marges de couture et cotes" class="patron">
     <title>Aperçu du patron brouillon {data.titre} pour {data.nom}</title>
     {#each data.pieces as piece}
-      <polygon points={piece.coupe} fill="#fff8ec" stroke="#111" stroke-width="0.35" />
-      <polygon points={piece.couture} fill="none" stroke="#7a1f1f" stroke-width="0.25" stroke-dasharray="1.2 0.8" />
+      <polygon points={piece.coupe} fill="#fffdf8" stroke="#1e1a17" stroke-width="0.35" />
+      <polygon points={piece.couture} fill="none" stroke="#b5532f" stroke-width="0.25" stroke-dasharray="1.2 0.8" />
       {#each piece.lignes as ligne}
         <polyline points={ligne} fill="none" stroke="#8a8a8a" stroke-width="0.18" stroke-dasharray="1.6 1.2" />
       {/each}
-      <line x1={piece.filDroit.x1} y1={piece.filDroit.y1} x2={piece.filDroit.x2} y2={piece.filDroit.y2} stroke="#111" stroke-width="0.3" marker-start="url(#fleche)" marker-end="url(#fleche)" />
+      <line x1={piece.filDroit.x1} y1={piece.filDroit.y1} x2={piece.filDroit.x2} y2={piece.filDroit.y2} stroke="#1e1a17" stroke-width="0.3" marker-start="url(#fleche)" marker-end="url(#fleche)" />
       {#each piece.crans as cran}
-        <path d="M {cran.x - 1} {cran.y} H {cran.x + 1} M {cran.x} {cran.y - 1} V {cran.y + 1}" stroke="#111" stroke-width="0.3" />
+        <path d="M {cran.x - 1} {cran.y} H {cran.x + 1} M {cran.x} {cran.y - 1} V {cran.y + 1}" stroke="#1e1a17" stroke-width="0.3" />
       {/each}
       {#each piece.traits as trait}
-        <polyline points={trait} fill="none" stroke="#7a1f1f" stroke-width="0.25" stroke-dasharray="1 0.7" />
+        <polyline points={trait} fill="none" stroke="#b5532f" stroke-width="0.25" stroke-dasharray="1 0.7" />
       {/each}
       {#each piece.cotes as cote}
         <g class="cote">
-          <line x1={cote.x1} y1={cote.y1} x2={cote.x2} y2={cote.y2} stroke="#14532d" stroke-width="0.22" marker-start="url(#fleche-cote)" marker-end="url(#fleche-cote)" />
+          <line x1={cote.x1} y1={cote.y1} x2={cote.x2} y2={cote.y2} stroke="#2f6b4f" stroke-width="0.22" marker-start="url(#fleche-cote)" marker-end="url(#fleche-cote)" />
           <rect x={cote.fondX} y={cote.fondY} width={cote.fondLargeur} height={cote.fondHauteur} fill="#ffffff" opacity="0.92" />
-          <text x={cote.tx} y={cote.ty} font-size="2.3" fill="#14532d" text-anchor="middle">{cote.libelle} {cote.valeur} cm</text>
+          <text x={cote.tx} y={cote.ty} font-size="2.3" fill="#2f6b4f" text-anchor="middle">{cote.libelle} {cote.valeur} cm</text>
         </g>
       {/each}
       <rect x={piece.etiquetteX - 0.5} y={piece.etiquetteY - 3.4} width={piece.nom.length * 1.9 + 1} height="7.6" fill="#ffffff" opacity="0.92" />
-      <text x={piece.etiquetteX} y={piece.etiquetteY} font-size="3" fill="#111">{piece.nom}</text>
-      <text x={piece.etiquetteX} y={piece.etiquetteY + 3.4} font-size="2" fill="#111">Marge incluse — brouillon</text>
+      <text x={piece.etiquetteX} y={piece.etiquetteY} font-size="3" fill="#1e1a17">{piece.nom}</text>
+      <text x={piece.etiquetteX} y={piece.etiquetteY + 3.4} font-size="2" fill="#1e1a17">Marge incluse — brouillon</text>
     {/each}
     <defs>
       <marker id="fleche" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto">
-        <path d="M0 0 L4 2 L0 4 z" fill="#111" />
+        <path d="M0 0 L4 2 L0 4 z" fill="#1e1a17" />
       </marker>
       <marker id="fleche-cote" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto">
-        <path d="M0 0 L4 2 L0 4 z" fill="#14532d" />
+        <path d="M0 0 L4 2 L0 4 z" fill="#2f6b4f" />
       </marker>
     </defs>
   </svg>
@@ -92,7 +92,7 @@
      (environ 700 px) sur téléphone sans faire déborder la page. */
   .patron-defilant { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
   .patron-cadre { min-width: 700px; }
-  .patron { width: 100%; height: auto; display: block; border: 2px solid #111; border-radius: 8px; background: #fff; }
+  .patron { width: 100%; height: auto; display: block; border: 2px solid var(--encre); border-radius: 10px; background: #fff; }
   .aide-defilement { font-size: 15px; }
   .legende { font-size: 15px; }
   .mesures-resume { overflow-wrap: anywhere; }

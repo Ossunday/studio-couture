@@ -27,9 +27,9 @@ test('patron pantalon large en 3 écrans, sans cliente obligatoire', async ({ pa
 
   await connecter(page);
 
-  // Écran 1 — choisir le modèle (action 1).
+  // Écran 1 — accueil public, puis modèle dans l'espace atelier connecté.
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Quel patron voulez-vous faire ?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Votre patron sur mesure, en 2 minutes' })).toBeVisible();
   await expect(page.getByRole('img', { name: /Illustration : pantalon large/ })).toBeVisible();
   await page.screenshot({ path: 'test-results/patron-1-modele-360.png' });
   await page.getByRole('link', { name: /Pantalon large/ }).click();

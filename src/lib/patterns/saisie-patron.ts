@@ -1,6 +1,6 @@
 import { definitionMensuration, validerMensurationSaisie } from '../domain/mensurations-saisie';
 import { genererPatronJupeDroite, type MesuresJupeDroite } from './jupe-droite/geometry';
-import { genererPatronPantalonLarge, type MesuresPantalonLarge } from './pantalon-large/geometry';
+import { genererPatronPantalonLarge, type MesuresPantalonLarge, type OptionsPantalonLarge } from './pantalon-large/geometry';
 import { agencerPieces, type PieceBrouillon, type PiecePlacee } from './brouillon';
 
 export type ModelePatron = 'pantalon_large' | 'jupe_droite';
@@ -77,15 +77,38 @@ function versMesuresJupe(mesures: Record<string, number>): MesuresJupeDroite {
   };
 }
 
-export function genererPieces(modele: ModelePatron, mesures: Record<string, number>): PieceBrouillon[] {
-  return modele === 'pantalon_large' ? genererPatronPantalonLarge(versMesuresPantalon(mesures)) : genererPatronJupeDroite(versMesuresJupe(mesures));
+export function genererPieces(modele: ModelePatron, mesures: Record<string, number>, options: OptionsPantalonLarge = {}): PieceBrouillon[] {
+  return modele === 'pantalon_large' ? genererPatronPantalonLarge(versMesuresPantalon(mesures), options) : genererPatronJupeDroite(versMesuresJupe(mesures));
+}
+
+/** Options facultatives du pantalon (section repliée, jamais obligatoires). */
+export function lireOptionsPantalon(lire: (code: string) => string | null | undefined): OptionsPantalonLarge {
+  const num = (code: string, libelle: string, min: number, max: number): number | undefined => {
+    const brut = (lire(code) ?? '').toString().trim().replace(',', '.');
+    if (!brut) return undefined;
+    const v = Number(brut);
+    if (!Number.isFinite(v) || v < min || v > max) throw new Error(`Vérifiez : ${libelle} — entrez un nombre entre ${min} et ${max} cm.`);
+    return v;
+  };
+  return {
+    largeurBasPieceCm: num('largeur_bas_cm', 'largeur du bas', 18, 40),
+    profondeurPliCm: num('profondeur_pli_cm', 'profondeur du pli', 0, 8),
+    hauteurCeintureFinieCm: num('hauteur_ceinture_cm', 'hauteur de ceinture', 3, 6)
+  };
+}
+
+export function parametresOptionsPantalon(params: URLSearchParams, options: OptionsPantalonLarge): void {
+  if (options.largeurBasPieceCm !== undefined) params.set('largeur_bas_cm', String(options.largeurBasPieceCm));
+  if (options.profondeurPliCm !== undefined) params.set('profondeur_pli_cm', String(options.profondeurPliCm));
+  if (options.hauteurCeintureFinieCm !== undefined) params.set('hauteur_ceinture_cm', String(options.hauteurCeintureFinieCm));
 }
 
 export function genererPiecesPlacees(
   modele: ModelePatron,
-  mesures: Record<string, number>
+  mesures: Record<string, number>,
+  options: OptionsPantalonLarge = {}
 ): { pieces: PiecePlacee[]; largeur: number; hauteur: number } {
-  return agencerPieces(genererPieces(modele, mesures));
+  return agencerPieces(genererPieces(modele, mesures, options));
 }
 
 /** Paramètres d'URL partagés entre l'aperçu et le PDF (patron sans cliente obligatoire). */

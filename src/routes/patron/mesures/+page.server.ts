@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { definitionMensuration } from '$lib/domain/mensurations-saisie';
-import { estModelePatron, MODELES, parametresPatron, validerMesuresPatron } from '$lib/patterns/saisie-patron';
+import { estModelePatron, lireOptionsPantalon, MODELES, parametresOptionsPantalon, parametresPatron, validerMesuresPatron } from '$lib/patterns/saisie-patron';
 import { assertCsrf, exigerConnexion } from '$lib/server/garde';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -28,11 +28,17 @@ export const actions: Actions = {
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const nom = String(data.get('nom') ?? '').trim().slice(0, 60) || 'sans nom';
     let mesures: Record<string, number>;
+    let suffixeOptions = '';
     try {
       mesures = validerMesuresPatron(modele, (code) => String(data.get(code) ?? ''));
+      if (modele === 'pantalon_large') {
+        const params = new URLSearchParams();
+        parametresOptionsPantalon(params, lireOptionsPantalon((code) => String(data.get(code) ?? '')));
+        suffixeOptions = params.toString() ? `&${params.toString()}` : '';
+      }
     } catch (e) {
       return fail(400, { erreur: e instanceof Error ? e.message : 'Mesures à vérifier.' });
     }
-    throw redirect(303, `/patron/apercu?${parametresPatron(modele, nom, mesures).toString()}`);
+    throw redirect(303, `/patron/apercu?${parametresPatron(modele, nom, mesures).toString()}${suffixeOptions}`);
   }
 };

@@ -59,6 +59,25 @@ test('patron pantalon large en 3 écrans, sans cliente obligatoire', async ({ pa
   expect(chemin).toBeTruthy();
 });
 
+test('captures patron 360 px et 768 px pour les 3 morphologies (test-results/, non commitées)', async ({ page }) => {
+  await connecter(page);
+  const jeux = [
+    { nom: 'petite', taille: 64, hanches: 88, fourche: 24, longueur: 96 },
+    { nom: 'moyenne', taille: 82, hanches: 100, fourche: 27, longueur: 105 },
+    { nom: 'forte', taille: 110, hanches: 128, fourche: 31, longueur: 108 }
+  ];
+  for (const j of jeux) {
+    const url = `/patron/apercu?modele=pantalon_large&nom=${j.nom}&tour_taille_cm=${j.taille}&tour_hanches_cm=${j.hanches}&hauteur_fourche_cm=${j.fourche}&longueur_pantalon_cm=${j.longueur}`;
+    for (const largeur of [360, 768]) {
+      await page.setViewportSize({ width: largeur, height: 900 });
+      await page.goto(url);
+      await expect(page.getByRole('heading', { name: 'Mesures du patron' })).toBeVisible();
+      await expect(page.getByText('Entrejambe', { exact: false }).first()).toBeVisible();
+      await page.screenshot({ path: `test-results/patron-apercu-${j.nom}-${largeur}.png`, fullPage: true });
+    }
+  }
+});
+
 test('mesure hors bornes : message qui nomme la mesure à vérifier', async ({ page }) => {
   await connecter(page);
   await page.goto('/patron/mesures?modele=pantalon_large');

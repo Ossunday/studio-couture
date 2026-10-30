@@ -1,38 +1,119 @@
-# Patron du pantalon — choix de la base (2026-10-28)
+# Patron du pantalon large — méthode de tracé (brouillon, 2026-10-30)
 
-## Base libre examinée : FreeSewing Titan
+Statut : **brouillon non validé**. Toutes les formules sont `a_valider`,
+`source: null` dans `src/lib/patterns/pantalon-large/formulas.ts`
+(règle n°3). Aucune ne devient production sans réponse datée et signée
+d'un maître tailleur (voir `docs/FORMULES_A_VALIDER.md`).
 
-- Paquet : `@freesewing/titan` version **4.10.2** (npm), « A FreeSewing pattern for a unisex trouser block », auteurs Joost De Cock et Debra Bean.
-- **Licence : MIT** (vérifiée via `npm view @freesewing/titan license` et le badge du README du paquet téléchargé). `@freesewing/core` est aussi MIT (4.10.2). L'usage aurait donc été licite, y compris commercial.
-- Documentation lue : README et sources du paquet (`package/src/front.mjs`, `back.mjs`, `about.json` : difficulté 3, étiqueté `block: true`).
+## Origine de la méthode
 
-### Mesures qu'elle exige (relevées dans les sources, `measurements.*`)
+Structure classique de tracé de pantalon, observée sur les références
+locales de l'atelier (`docs/references-locales/`, usage local, jamais
+committées ni copiées dans l'application) : pièces **devant** et **dos**
+distinctes, lignes de construction horizontales, courbe de fourche,
+cotes chiffrées, tracé par points nommés (A, B, B2, B3, C, O, X) et
+formules proportionnelles aux tours du corps. Ces images de présentation
+contiennent des chiffres incohérents (générés par IA) : **aucun chiffre
+n'en est repris** — seuls la structure et le principe de proportions le
+sont. Le modèle visé : pantalon large marron, taille haute, à plis,
+ceinture à bouton (photo du modèle, même dossier).
 
-`crossSeamBack`, `crossSeamFront`, `knee` (tour de genou), `seatBackArc`, `seatFrontArc`, `seatFront`, `waistBackArc`, `waistFrontArc`, `waistToFloor`, `waistToHips`, `waistToKnee`, `waistToSeat`, `waistToUpperLeg` — **13 mensurations**, dont des arcs devant/dos et des hauteurs taille→genou/sol qui supposent un protocole de mesure d'atelier, plus des options d'aisance (`waistEase`, `seatEase`, `kneeEase`…).
+Base libre FreeSewing Titan (MIT) : examinée et écartée en phase
+précédente (13 mensurations d'atelier, bloc sans style) — décision
+réversible déjà tracée, inchangée.
 
-### Décision : non retenue pour ce parcours
+## Entrées
 
-1. **Incompatible avec l'objectif produit** (patron en moins de 2 minutes, 3–4 mesures au mètre ruban par une couturière mobile) : 13 mesures expertes contre 4 visées.
-2. **C'est un bloc, pas un modèle fini** : devant + dos seulement, ni ceinture finie ni style « pantalon large » ; il aurait fallu construire le modèle par-dessus, donc réintroduire des formules maison non sourcées.
-3. **Poids d'intégration** : `@freesewing/core` + plugins pour générer SVG/PDF, à l'encontre du budget de poids (`docs/BUDGET.md`) et du SSR léger actuel ; le générateur PDF A4 maison couvre le besoin sans dépendance.
+Cliente (4 champs obligatoires, écran mesures) : tour de taille `T`,
+tour de hanches `H`, hauteur de fourche `F` (assise, taille→chaise),
+longueur de pantalon `L` (taille→sol/cheville).
 
-À re-évaluer si un jour un écran « mesures complètes d'atelier » existe : Titan (MIT) redeviendrait candidate pour remplacer le brouillon.
+Options du modèle (section repliée « Options », jamais obligatoires,
+constantes dans `BROUILLON_PANTALON_LARGE`) : largeur du bas par pièce
+27 cm, profondeur du pli devant 4 cm, hauteur finie de ceinture 4 cm.
 
-## Base retenue pour l'instant : brouillon « a_valider »
+## Lignes de construction (y vers le bas, origine = milieu devant à la taille)
 
-Construction géométrique simple et explicite dans `src/lib/patterns/pantalon-large/geometry.ts` (constantes `BROUILLON_PANTALON_LARGE`), registre `src/lib/patterns/pantalon-large/formulas.ts` — **toutes les formules `statut: 'a_valider'`, `source: null`** (règle n°3). L'aperçu et le PDF affichent « Brouillon non validé », les formules sont visibles sur l'écran patron, et le moteur de production (`tenterGenerationPatron`) reste bloqué comme avant.
+| Ligne | Hauteur | Formule | Statut |
+|---|---|---|---|
+| Taille | 0 | — | — |
+| Hanches | `min(18 ; 0,70×F)` | P4 | a_valider |
+| Fourche | `F` (devant) | mesure cliente | — |
+| Genou | `F + (L−F)/2` | mi-fourche/bas | a_valider |
+| Bas | `L` | mesure cliente | — |
 
-### Mesures exigées par notre brouillon (et pourquoi)
+## Points (devant ; dos = mêmes lettres, valeurs dos)
 
-| Mesure | Pourquoi |
-|---|---|
-| Tour de taille | largeur de ceinture et haut des jambes |
-| Tour de hanches | largeur des jambes (le plus fort) |
-| **Hauteur de fourche** | **indispensable** : sans elle, impossible de placer le point de fourche ni de déduire l'entrejambe (longueur − fourche). Mesure assise taille→chaise, expliquée par l'illustration de l'écran mesures. |
-| Longueur de pantalon | longueur totale des jambes |
+| Point | Définition | Formule |
+|---|---|---|
+| A | milieu à la taille | devant (0 ; 0) ; dos (0 ; −2) : milieu dos **remonté de 2 cm** |
+| B | côté à la taille | x = largeur de taille tracée (voir ci-dessous), y = 0 |
+| B2 | côté aux hanches | x = largeur de hanches, sur la ligne de hanches |
+| B3 | point de fourche | x = −extension de fourche, sur la ligne de fourche (dos : abaissé par calcul, ci-dessous) |
+| C | genou | sur les droites côté et entrejambe, ligne de genou |
+| O | milieu du bas | milieu de X1–X2 ; le **fil droit** passe par O |
+| X1 / X2 | bas côté / bas entrejambe | O ± largeur du bas ÷ 2 |
 
-Sorties : devant, dos, ceinture — fil droit, crans, marges 1 cm / ourlet 2 cm, aperçu SVG immédiat, PDF A4 à l'échelle 1:1 avec carré de contrôle de 10 cm (`src/lib/patterns/pdf.ts`).
+## Formules (toutes a_valider, source : aucune — à confirmer)
 
-## Questions ouvertes pour le tailleur
+- Aisances : taille `T+4`, hanches `H+6` (P1).
+- Répartition : devant = quart − 1 cm, dos = quart + 1 cm, à la taille
+  comme aux hanches (P2). Largeurs effectives devant/dos différentes.
+- Taille tracée : devant = effective + profondeur du pli (le pli fermé
+  ramène à l'effective) ; dos = effective + largeur de pince 3 cm (P10).
+- Extension de fourche : devant `(H+6) ÷ 16` ; dos = devant + 2,5 cm (P3).
+- Courbe de fourche : Bézier cubique du point J (milieu, 4 cm au-dessus
+  de la fourche ; dos : milieu incliné de 1,5 cm vers l'extérieur) vers
+  B3, **tangente verticale aux deux extrémités** — pas de coude, vérifié
+  par test (angle > 160° au point de fourche, 3 morphologies).
+- Côté : Bézier quadratique B→B2 décalée de 0,4 cm vers l'extérieur
+  (galbe des hanches), puis droite B2→X1 ; le genou C est sur cette
+  droite. Le côté dos est la **translation** du côté devant (même suite
+  de déplacements) : longueurs de côté devant = dos par construction,
+  testées à 0,3 cm près.
+- Entrejambe : droite B3→X2 (« entrejambe droit »). La hauteur de B3 dos
+  est **résolue par calcul** (`L − √(entrejambe_devant² − dx_dos²)`)
+  pour que les longueurs d'entrejambe devant/dos soient égales ;
+  testées à 0,3 cm près. L'abaissement dos qui en résulte (~0,2 à
+  1,5 cm selon morphologie) remplace l'ancien « +0,5 cm » arbitraire.
+- Pli devant : sur le fil droit O, profondeur = option (4 cm), lignes
+  dessinées de la taille aux hanches + 6 cm (P10, longueur a_valider).
+- Pince dos : largeur 3 cm, longueur 12 cm, centrée au milieu du dos (P11).
+- Ceinture : longueur = `T + 4 (aisance) + 3 (recouvrement)`, hauteur
+  finie 4 cm coupée 8 cm (pliée en deux) (P7). Test : longueur −
+  recouvrement = somme des tailles effectives ×2, à 0,5 cm près.
+- Poche : **non tracée** — mention « bientôt » dans l'aperçu (P12).
+- Marges incluses : coupe = couture + 1 cm, ourlet 2 cm en bas (P8).
 
-Voir `docs/FORMULES_A_VALIDER.md` — aucune valeur ne passera en production sans ses réponses.
+## Cotes et rendu
+
+Chaque pièce (devant, dos, ceinture) porte ses cotes avec flèches et
+valeurs en cm : taille (pli/pince fermé), hanches, genou, bas, hauteur
+de fourche, longueur de côté, longueur d'entrejambe ; ceinture :
+longueur et hauteur finie. Étiquettes centrées **sur fond clair** à
+l'intérieur des pièces (jamais sur un bord ni une flèche), nom +
+quantité (×2, ×1), fil droit, crans (taille, hanches, genou), mention
+« marge de couture incluse », bannière brouillon. Tableau « Mesures du
+patron » sous l'aperçu avec les mêmes valeurs. Le PDF A4 1:1 reprend
+les mêmes cotes (texte écrit une seule fois, sur la page qui contient
+l'étiquette).
+
+## Vérification
+
+`src/lib/patterns/pantalon-large/geometry.test.ts` : égalités de
+coutures (côté, entrejambe), ceinture, continuité de fourche, et
+**test doré** du jeu moyenne (82/100/27/105) dont chaque valeur
+attendue est recalculée à la main en commentaire du test. Jeux petite
+(64/88/24/96) et forte (110/128/31/108) soumis aux mêmes égalités.
+Captures 360 px / 768 px des trois jeux : Playwright, `test-results/`
+(non commité).
+
+## Décisions réversibles (autonomie, 2026-10-30)
+
+1. Répartition −1/+1 cm et extension ÷16 conservées des hypothèses
+   précédentes, faute de source — questions tailleur inchangées.
+2. Abaissement de fourche dos **calculé** (égalisation d'entrejambe)
+   plutôt que constant : réversible si le tailleur impose une valeur.
+3. Ceinture coupée à 2× la hauteur finie (8 cm pour 4 cm fini), comme
+   avant ; la cote affichée donne la hauteur finie demandée (4 cm).
+4. Options du modèle en paramètres d'URL facultatifs, rien en base.

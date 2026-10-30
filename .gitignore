@@ -10,5 +10,6 @@ build/
 /uploads/
 /private-storage/
 *.enc
+docs/references-locales/
 test-results/
 /playwright-report/

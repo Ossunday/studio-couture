@@ -7,11 +7,15 @@ import { FORMULES_JUPE_DROITE } from '$lib/patterns/jupe-droite/formulas';
 import {
   estModelePatron,
   genererPiecesPlacees,
+  lireOptionsPantalon,
   MODELES,
+  parametresOptionsPantalon,
   parametresPatron,
   validerMesuresPatron
 } from '$lib/patterns/saisie-patron';
 import { exigerConnexion } from '$lib/server/garde';
+
+const fmt = (v: number) => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   exigerConnexion(locals.utilisatrice);
@@ -19,13 +23,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   if (!estModelePatron(modele)) throw redirect(303, '/');
   const nom = (url.searchParams.get('nom') ?? '').trim().slice(0, 60) || 'sans nom';
   let mesures: Record<string, number>;
+  let options = {};
   try {
     mesures = validerMesuresPatron(modele, (code) => url.searchParams.get(code));
+    if (modele === 'pantalon_large') options = lireOptionsPantalon((code) => url.searchParams.get(code));
   } catch {
     throw redirect(303, `/patron/mesures?modele=${modele}`);
   }
-  const { pieces, largeur, hauteur } = genererPiecesPlacees(modele, mesures);
+  const { pieces, largeur, hauteur } = genererPiecesPlacees(modele, mesures, options);
   const formules = modele === 'pantalon_large' ? FORMULES_PANTALON_LARGE : FORMULES_JUPE_DROITE;
+  const paramsPdf = parametresPatron(modele, nom, mesures);
+  parametresOptionsPantalon(paramsPdf, options);
   return {
     modele,
     titre: MODELES[modele].titre,
@@ -50,11 +58,26 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       },
       crans: p.crans.map((c) => ({ x: c.x + p.dx, y: c.y + p.dy })),
       traits: (p.traitsInterieurs ?? []).map((t) => pointsEnAttribut(t, p.dx, p.dy)),
+      lignes: (p.lignesConstruction ?? []).map((t) => pointsEnAttribut(t, p.dx, p.dy)),
+      cotes: (p.cotes ?? []).map((ct) => ({
+        libelle: ct.libelle,
+        valeur: fmt(ct.valeurCm),
+        x1: ct.de.x + p.dx,
+        y1: ct.de.y + p.dy,
+        x2: ct.a.x + p.dx,
+        y2: ct.a.y + p.dy,
+        tx: ct.texte.x + p.dx,
+        ty: ct.texte.y + p.dy
+      })),
+      tableau: (p.mesuresPatron ?? []).map((mm) => ({ libelle: mm.libelle, valeur: fmt(mm.valeurCm) })),
       etiquetteX: Math.min(...p.coupe.map((pt) => pt.x)) + p.dx + 2,
-      etiquetteY: Math.min(...p.coupe.map((pt) => pt.y)) + p.dy + 5
+      etiquetteY:
+        p.id === 'ceinture'
+          ? Math.min(...p.coupe.map((pt) => pt.y)) + p.dy - 4.5
+          : Math.min(...p.coupe.map((pt) => pt.y)) + p.dy + 5
     })),
     formules: formules.map((f) => ({ element: f.element, hypotheses: f.hypotheses, statut: f.statut })),
-    hrefPdf: `/patron/pdf?${parametresPatron(modele, nom, mesures).toString()}`,
+    hrefPdf: `/patron/pdf?${paramsPdf.toString()}`,
     hrefMesures: `/patron/mesures?modele=${modele}`
   };
 };

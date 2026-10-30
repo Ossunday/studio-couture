@@ -13,10 +13,20 @@ export interface Point {
   y: number;
 }
 
+export interface CotePiece {
+  libelle: string;
+  valeurCm: number;
+  /** Segment de cotation dessiné (cm, repère local). */
+  de: Point;
+  a: Point;
+  /** Centre de l'étiquette (fond clair dessiné par le rendu). */
+  texte: Point;
+}
+
 export interface PieceBrouillon {
   id: string;
   nom: string;
-  /** Trait de couture (cm, repère local de la pièce, y vers le bas). */
+  /** Trait de couture (cm, repère local de la pièce, y vers le bas). Courbes échantillonnées en points. */
   couture: Point[];
   /** Trait de coupe = couture + marges (1 cm, ourlet 2 cm en bas). */
   coupe: Point[];
@@ -26,6 +36,12 @@ export interface PieceBrouillon {
   crans: Point[];
   /** Traits intérieurs en pointillés (pinces, pli…) : polylignes libres. */
   traitsInterieurs?: Point[][];
+  /** Cotes avec flèches et valeurs (aperçu SVG et PDF). */
+  cotes?: CotePiece[];
+  /** Lignes de construction (hanches, genou…) en tirets légers. */
+  lignesConstruction?: Point[][];
+  /** Mesures calculées de la pièce, pour le tableau « Mesures du patron ». */
+  mesuresPatron?: { libelle: string; valeurCm: number }[];
 }
 
 export interface PiecePlacee extends PieceBrouillon {
@@ -120,8 +136,8 @@ export function agencerPieces(pieces: PieceBrouillon[]): { pieces: PiecePlacee[]
   if (ceinture) {
     const minX = Math.min(...ceinture.coupe.map((pt) => pt.x));
     const minY = Math.min(...ceinture.coupe.map((pt) => pt.y));
-    placees.push({ ...ceinture, dx: -minX, dy: hauteurLigne + 5 - minY });
-    hauteur = hauteurLigne + 5 + hauteurPiece(ceinture);
+    placees.push({ ...ceinture, dx: -minX, dy: hauteurLigne + 9 - minY });
+    hauteur = hauteurLigne + 9 + hauteurPiece(ceinture);
   }
   return { pieces: placees, largeur: Math.max(x - 5, ceinture ? largeurPiece(ceinture) : 0), hauteur };
 }

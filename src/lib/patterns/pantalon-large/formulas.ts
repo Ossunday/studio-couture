@@ -1,66 +1,44 @@
 import type { FormulePatron } from '../types';
 
 /**
- * PANTALON LARGE (brouillon) — registre de formules, règle n°3.
- *
- * Base libre examinée : FreeSewing Titan (@freesewing/titan 4.10.2, licence MIT
- * vérifiée) — NON retenue, voir docs/PATRON_PANTALON.md : c'est un bloc qui
- * exige 13 mensurations d'atelier, incompatible avec le parcours visé
- * (3 à 4 mesures au mètre ruban). Construction ci-dessous : hypothèses simples
- * et explicites, TOUTES « a_valider » par un tailleur, source null.
- * Les valeurs chiffrées vivent dans geometry.ts (BROUILLON_PANTALON_LARGE)
- * et sont listées dans docs/FORMULES_A_VALIDER.md.
+ * PANTALON LARGE (brouillon) — registre règle n°3. Tracé classique par
+ * lignes de construction (docs/PATRON_PANTALON.md), inspiré dans sa
+ * STRUCTURE des références locales (devant/dos, courbe de fourche, cotes,
+ * points A/B/B2/B3/C/O/X) — aucun chiffre copié de ces images générées
+ * par IA. TOUTES les formules : statut a_valider, source null.
+ * Valeurs dans geometry.ts (BROUILLON_PANTALON_LARGE) et
+ * docs/FORMULES_A_VALIDER.md.
  */
+const f = (id: string, element: string, hypotheses: string[]): FormulePatron => ({
+  id: `pantalon_large.${id}`,
+  garmentId: 'pantalon_large',
+  element,
+  source: null,
+  hypotheses,
+  aisanceCm: {},
+  statut: 'a_valider'
+});
+
 export const FORMULES_PANTALON_LARGE: readonly FormulePatron[] = [
-  {
-    id: 'pantalon_large.aisances',
-    garmentId: 'pantalon_large',
-    element: 'aisances',
-    source: null,
-    hypotheses: ['Aisance taille +4 cm et hanches +6 cm (brouillon, pantalon large) — à valider selon tissu'],
-    aisanceCm: {},
-    statut: 'a_valider'
-  },
-  {
-    id: 'pantalon_large.repartition_devant_dos',
-    garmentId: 'pantalon_large',
-    element: 'repartition_devant_dos',
-    source: null,
-    hypotheses: ['Quarts égaux devant et dos (tour ÷ 4) — simplification de brouillon, la répartition réelle diffère'],
-    aisanceCm: {},
-    statut: 'a_valider'
-  },
-  {
-    id: 'pantalon_large.fourche',
-    garmentId: 'pantalon_large',
-    element: 'fourche',
-    source: null,
-    hypotheses: [
-      'Extension de fourche devant = (tour de hanches + aisance) ÷ 16 ; dos = devant + 2 cm — à valider',
-      'Hauteur des hanches placée à 18 cm sous la taille — à valider'
-    ],
-    aisanceCm: {},
-    statut: 'a_valider'
-  },
-  {
-    id: 'pantalon_large.largeur_bas',
-    garmentId: 'pantalon_large',
-    element: 'largeur_bas',
-    source: null,
-    hypotheses: ['Largeur du bas de jambe (par pièce) = quart de hanches + 4 cm (effet « large ») — à valider'],
-    aisanceCm: {},
-    statut: 'a_valider'
-  },
-  {
-    id: 'pantalon_large.ceinture_et_marges',
-    garmentId: 'pantalon_large',
-    element: 'ceinture_et_marges',
-    source: null,
-    hypotheses: [
-      'Ceinture : longueur = tour de taille + aisance + 3 cm de croisure, hauteur coupée 8 cm (4 cm fini) — à valider',
-      'Marges : 1 cm partout, ourlet 2 cm — valeurs demandées par le produit, à confirmer'
-    ],
-    aisanceCm: {},
-    statut: 'a_valider'
-  }
+  f('aisances', 'aisances', ['Aisance taille +4 cm, hanches +6 cm — a_valider selon tissu']),
+  f('repartition_devant_dos', 'repartition_devant_dos', ['Devant = quart − 1 cm, dos = quart + 1 cm (taille et hanches) — a_valider']),
+  f('lignes_construction', 'lignes_construction', [
+    'Ligne de hanches à 18 cm sous la taille, plafonnée à 70 % de la hauteur de fourche — a_valider',
+    'Ligne de genou à mi-chemin entre fourche et bas — a_valider'
+  ]),
+  f('fourche', 'fourche', [
+    'Extension fourche devant = (hanches + aisance) ÷ 16 ; dos = devant + 2,5 cm — a_valider',
+    'Courbe de fourche en Bézier cubique, tangente verticale aux deux bouts ; milieu dos incliné de 1,5 cm et remonté de 2 cm — a_valider',
+    'Point de fourche dos abaissé par calcul pour égaliser la longueur d’entrejambe devant/dos — a_valider'
+  ]),
+  f('plis_et_pince', 'plis_et_pince', [
+    'Un pli devant sur le fil droit, profondeur 4 cm (option), fermé il ramène la taille à la largeur effective — a_valider',
+    'Pince dos : largeur 3 cm, longueur 12 cm, au milieu du dos — a_valider'
+  ]),
+  f('largeur_bas', 'largeur_bas', ['Largeur du bas par pièce 27 cm (option du modèle large), jambe droite entre fourche et bas — a_valider']),
+  f('ceinture_et_marges', 'ceinture_et_marges', [
+    'Ceinture : longueur = taille + aisance + 3 cm de recouvrement, hauteur finie 4 cm (coupée 8 cm) — a_valider',
+    'Marges : 1 cm partout, ourlet 2 cm en bas, incluses dans le trait de coupe — a_valider'
+  ]),
+  f('poche', 'poche', ['Poche : non incluse dans ce brouillon, mention « bientôt » affichée — forme et position a_valider'])
 ];

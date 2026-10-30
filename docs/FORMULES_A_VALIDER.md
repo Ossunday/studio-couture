@@ -8,19 +8,24 @@ chaque aperçu et chaque PDF portent « Brouillon non validé », et le moteur d
 Pour valider : répondre à la question de chaque ligne, dater et signer — la réponse devient
 la `source` dans les fichiers `formulas.ts` et le statut passe à `valide_par_tailleur`.
 
-## Pantalon large (`src/lib/patterns/pantalon-large/`)
+## Pantalon large (`src/lib/patterns/pantalon-large/`) — tracé refait le 2026-10-30
 
-| # | Formule (hypothèse actuelle) | Code | Question pour le tailleur |
+Méthode complète : `docs/PATRON_PANTALON.md` (points A, B, B2, B3, C, O, X).
+
+| # | Formule (hypothèse actuelle) | Code | Question exacte pour le tailleur |
 |---|---|---|---|
 | P1 | Aisance taille **+4 cm**, hanches **+6 cm** | `BROUILLON_PANTALON_LARGE.aisance*` | Quelles aisances pour un pantalon large en tissu chaîne et trame ? Et en tissu extensible ? |
-| P2 | Devant et dos = **quarts égaux** (tour ÷ 4) | `geometry.ts: jambe()` | Quelle répartition devant/dos pour la taille et pour les hanches ? |
-| P3 | Extension de fourche devant = **(hanches + aisance) ÷ 16**, dos = devant **+2 cm** | `geometry.ts: jambe()` | Quelle extension de fourche devant et dos (en cm ou en fraction du tour de hanches) ? |
-| P4 | Ligne de hanches à **18 cm** sous la taille (plafonnée à 70 % de la fourche) | `hauteurHanchesCm` | À quelle hauteur placer la ligne de hanches par rapport à la taille et à la fourche ? |
-| P5 | Largeur du bas de jambe par pièce = **quart de hanches + 4 cm**, côté bas décalé de **+1 cm** | `elargissementBasCm` | Quelle largeur de bas pour un « pantalon large » ? Le bas doit-il être droit, évasé, resserré ? |
-| P6 | Dos : taille relevée de **1 cm**, fourche abaissée de **0,5 cm** | `geometry.ts: jambe(dos)` | Quels relevés/abaissements dos appliquer ? Faut-il une pince dos, et de quelle profondeur ? |
-| P7 | Ceinture : longueur = taille + aisance **+ 3 cm de croisure**, hauteur coupée **8 cm** (4 cm fini) | `croisureCeintureCm`, `hauteurCeintureCoupeeCm` | Hauteur de ceinture finie ? Croisure et fermeture (bouton, crochet, élastique dos) ? |
-| P8 | Marges **1 cm**, ourlet **2 cm** (imposées par le produit) | `brouillon.ts: construirePiece()` | Confirmez-vous 1 cm / 2 cm partout, y compris fourche et ceinture ? |
-| P9 | Aucune pince au pantalon brouillon | — | Faut-il des pinces (devant/dos) quand l'écart taille/hanches dépasse un seuil ? Lequel ? |
+| P2 | Répartition devant/dos : **quart − 1 cm devant, quart + 1 cm dos** (taille et hanches) | `ecartDevantDosCm` | La répartition devant/dos est-elle bien −1/+1 cm par quart, à la taille comme aux hanches ? Sinon, quels écarts ? |
+| P3 | Extension de fourche devant = **(hanches + aisance) ÷ 16**, dos = devant **+2,5 cm** | `diviseurExtensionFourche`, `supplementExtensionDosCm` | L'extension de fourche devant vaut-elle (tour de hanches)÷16 ? Le dos doit-il dépasser le devant de 2,5 cm, plus, moins ? |
+| P4 | Ligne de hanches à **18 cm** sous la taille (plafonnée à 70 % de la fourche) ; genou à **mi-chemin fourche→bas** | `hauteurHanchesCm`, genou calculé | À quelle hauteur placer la ligne de hanches ? Le genou se place-t-il à mi-chemin entre fourche et bas ? |
+| P5 | Largeur du bas **27 cm par pièce** (option), côté bas sur la droite hanches→bas | `largeurBasPieceCm` (option) | Quelle largeur de bas par pièce pour le « pantalon large » du modèle (marron, taille haute) ? La jambe doit-elle rester droite de la hanche au bas ? |
+| P6 | Dos : milieu **remonté de 2 cm**, milieu incliné de **1,5 cm** à la fourche, point de fourche dos **abaissé par calcul** pour égaliser l'entrejambe devant/dos | `remonteeMilieuDosCm`, `inclinaisonMilieuDosCm`, calcul entrejambe | La remontée du milieu dos vaut-elle 2 cm et son inclinaison 1,5 cm ? L'égalisation calculée de l'entrejambe donne un abaissement dos de 0,2 à 1,5 cm selon la morphologie : est-ce la bonne façon, ou faut-il un abaissement fixe (lequel) quitte à reprendre l'entrejambe à la couture ? |
+| P7 | Ceinture : longueur = taille + aisance **+ 3 cm de recouvrement**, hauteur **finie 4 cm** (coupée 8 cm) | `croisureCeintureCm`, `hauteurCeintureFinieCm` (option) | Hauteur de ceinture finie de 4 cm et recouvrement de 3 cm conviennent-ils ? Fermeture : bouton + braguette, crochets, ou élastique dos ? |
+| P8 | Marges **1 cm**, ourlet **2 cm**, incluses au trait de coupe | `brouillon.ts: construirePiece()` | Confirmez-vous 1 cm / 2 cm partout, y compris fourche, entrejambe et ceinture ? |
+| P9 | Courbe de fourche en **Bézier cubique à tangente verticale** aux deux bouts, départ 4 cm au-dessus de la fourche | `geometry.ts: courbeFourche` | La profondeur et la forme de la courbe de fourche (devant plus creuse, dos plus allongée) sont-elles justes à l'essayage ? Faut-il creuser davantage le dos ? |
+| P10 | **Un pli devant** sur le fil droit, profondeur **4 cm** (option), lignes jusqu'aux hanches + 6 cm | `profondeurPliCm` (option) | Un pli ou deux plis par devant pour ce modèle ? Profondeur de 4 cm juste ? Sur quelle longueur le pli est-il cousu/repassé ? |
+| P11 | **Pince dos** : largeur **3 cm**, longueur **12 cm**, au milieu du dos | `largeurPinceDosCm`, `longueurPinceDosCm` | La pince dos de 3 × 12 cm au milieu du dos est-elle juste ? Une ou deux pinces dos selon l'écart taille/hanches, et à partir de quel écart ? |
+| P12 | **Poche non tracée** (« bientôt ») | mention aperçu | Quelle poche pour ce modèle (italienne, passepoilée) ? Position et profondeur d'ouverture à tracer ? |
 
 ## Jupe droite (`src/lib/patterns/jupe-droite/`)
 

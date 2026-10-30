@@ -67,6 +67,27 @@ function pagesPourPiece(piece: PieceBrouillon, titreModele: string, nomCliente: 
         ops.push(`${cheminPage(trait, false)} S`);
         ops.push('[] 0 d');
       }
+      for (const ligne of piece.lignesConstruction ?? []) {
+        ops.push('[2 3] 0 d 0.5 w 0.5 g');
+        ops.push(`${cheminPage(ligne, false)} S`);
+        ops.push('[] 0 d 1 w 0 G');
+      }
+      // Cotes : mêmes lignes et valeurs que l'aperçu SVG. Le trait est
+      // fenêtré par la page ; le texte n'est écrit que sur la page qui
+      // contient son étiquette, pour ne pas le répéter ni le tronquer.
+      for (const cote of piece.cotes ?? []) {
+        ops.push('0.8 w 0 0.4 0 RG');
+        ops.push(`${cheminPage([cote.de, cote.a], false)} S`);
+        ops.push('0 0 0 RG 1 w');
+        const tx = (cote.texte.x - decalageX) * PT_PAR_CM + MARGE;
+        const ty = PAGE_H - ((cote.texte.y - decalageY) * PT_PAR_CM + MARGE);
+        if (tx > MARGE && tx < PAGE_L - MARGE && ty > MARGE && ty < PAGE_H - MARGE) {
+          const etiquette = `${cote.libelle} ${cote.valeurCm.toFixed(1).replace('.', ',')} cm`;
+          ops.push(`BT /F1 8 Tf ${(tx - etiquette.length * 2).toFixed(1)} ${ty.toFixed(1)} Td (${textePdf(etiquette)}) Tj ET`);
+        }
+      }
+      ops.push('BT /F1 9 Tf 28 782 Td');
+      ops.push(`(${textePdf('Marge de couture incluse (1 cm, ourlet 2 cm)')}) Tj ET`);
       ops.push('Q');
       ops.push('BT /F1 13 Tf 28 818 Td');
       ops.push(`(${textePdf(`${titreModele} — ${piece.nom} — ${nomCliente}`)}) Tj ET`);

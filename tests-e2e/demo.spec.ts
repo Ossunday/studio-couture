@@ -125,6 +125,52 @@ test('salle d’essayage : aucun débordement à 360, 768 et 1280 px, captures �
   }
 });
 
+test('3D : canvas présent et non vide, étiquette honnête, captures 360/768/1280', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); // vue de face stable pour les captures (rotation auto coupée)
+  for (const largeur of [360, 768, 1280]) {
+    await page.setViewportSize({ width: largeur, height: 900 });
+    await allerSalle(page);
+    await page.getByRole('button', { name: 'Vue 3D' }).click();
+    const canvas = page.getByTestId('scene-3d-canvas');
+    await expect(canvas).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Volume généré à partir des cotes du patron — pas une simulation de drapé.')).toBeVisible();
+    await page.waitForTimeout(600);
+    const pixels = await canvas.evaluate((c: HTMLCanvasElement) => {
+      const copie = document.createElement('canvas');
+      copie.width = 64; copie.height = 64;
+      const contexte = copie.getContext('2d')!;
+      contexte.drawImage(c, 0, 0, 64, 64);
+      const donnees = contexte.getImageData(0, 0, 64, 64).data;
+      let nonTransparents = 0;
+      for (let i = 3; i < donnees.length; i += 4) if (donnees[i]! > 0) nonTransparents++;
+      return { nonTransparents, url: c.toDataURL().length };
+    });
+    expect(pixels.nonTransparents, `canvas 3D vide à ${largeur} px`).toBeGreaterThan(100);
+    expect(pixels.url).toBeGreaterThan(1000);
+    await verifierLargeur(page, `3D ${largeur}`);
+    await page.screenshot({ path: `test-results/demo-3-3d-${largeur}.png`, fullPage: true });
+    await canvas.screenshot({ path: `test-results/demo-3-3d-element-${largeur}.png` });
+  }
+});
+
+test('3D : repli propre sur le patron à plat quand WebGL est désactivé', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    // @ts-expect-error simulation WebGL absent pour le test de repli
+    HTMLCanvasElement.prototype.getContext = function (type: string, ...reste: unknown[]) {
+      if (type === 'webgl2' || type === 'webgl') return null;
+      // @ts-expect-error délégation au contexte d'origine
+      return original.call(this, type, ...reste);
+    };
+  });
+  await page.setViewportSize({ width: 360, height: 900 });
+  await allerSalle(page);
+  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'WebGL absent' })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByRole('img', { name: /Aperçu du patron brouillon/ })).toBeVisible();
+  await verifierLargeur(page, 'repli 3D 360');
+});
+
 test('captures démo 360 px et 768 px : accueil et chaque étape (test-results/, non commitées)', async ({ page }) => {
   for (const largeur of [360, 768]) {
     await page.setViewportSize({ width: largeur, height: 900 });

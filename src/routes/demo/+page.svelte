@@ -44,6 +44,26 @@
   let couleurId = $state('bleu-denim');
   let matiere = $state<MatiereId>('denim');
   let vue = $state<'3d' | 'plat'>('plat');
+  let message3d = $state('');
+  // Chargé dynamiquement seulement quand la vue 3D est demandée (étape 3).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let Scene3D = $state<any>(null);
+  async function activerVue3d() {
+    message3d = '';
+    vue = '3d';
+    if (!Scene3D) {
+      try {
+        Scene3D = (await import('$lib/demo/three/Scene3DPantalon.svelte')).default;
+      } catch {
+        vue = 'plat';
+        message3d = 'Le chargement de la 3D a échoué : voici le patron à plat.';
+      }
+    }
+  }
+  function repli3d(message: string) {
+    vue = 'plat';
+    message3d = message;
+  }
   let panneauMobile = $state<'mesures' | 'tissu' | 'patron'>('mesures');
   let minuteur: ReturnType<typeof setTimeout> | undefined;
   const couleurChoisie = $derived(couleurTissu(couleurId));
@@ -135,6 +155,16 @@
     const { pieces, largeur, hauteur } = genererPiecesPlacees('pantalon_large', mesuresValidees);
     return { pieces: pieces.map(preparerPiece), largeur: Math.ceil(largeur), hauteur: Math.ceil(hauteur) };
   });
+  const mesures3d = $derived(
+    mesuresValidees
+      ? {
+          tourTailleCm: mesuresValidees.tour_taille_cm!,
+          tourHanchesCm: mesuresValidees.tour_hanches_cm!,
+          hauteurFourcheCm: mesuresValidees.hauteur_fourche_cm!,
+          longueurPantalonCm: mesuresValidees.longueur_pantalon_cm!
+        }
+      : null
+  );
   const hrefPdf = $derived.by(() => {
     if (!mesuresValidees) return '/demo';
     const params = new URLSearchParams(Object.fromEntries(Object.entries(mesuresValidees).map(([k, v]) => [k, String(v)])));
@@ -232,13 +262,18 @@
         <div class="scene-essayage carte-scene">
           <div class="scene-haut">
             <div class="bascule" role="group" aria-label="Choix de la vue">
-              <button type="button" disabled title="La vue 3D arrive dans l’étape suivante de la démo" aria-disabled="true">Vue 3D</button>
+              <button type="button" class:actif={vue === '3d'} aria-pressed={vue === '3d'} onclick={activerVue3d}>Vue 3D</button>
               <button type="button" class:actif={vue === 'plat'} aria-pressed={vue === 'plat'} onclick={() => (vue = 'plat')}>Patron à plat</button>
             </div>
             <LoupeTissu couleurId={couleurId} matiere={matiere} />
           </div>
           <div class="ombre-sol" aria-hidden="true"></div>
-          <VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />
+          {#if message3d}<p class="erreur-mesure" role="alert">{message3d}</p>{/if}
+          {#if vue === '3d' && Scene3D && mesures3d}
+            <Scene3D mesures={mesures3d} couleurId={couleurId} matiere={matiere} onIndisponible={repli3d} />
+          {:else}
+            <VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />
+          {/if}
         </div>
 
         <div class="tiroir">
@@ -318,7 +353,7 @@
         <ol>
           <li>Coupez une toile d’essayage dans un tissu bon marché.</li>
           <li>Faites valider les formules par votre maître tailleur avant un tissu précieux.</li>
-          <li>Bientôt : aperçu 3D et devis de tissu.</li>
+          <li>Revenez à l’étape 3 pour revoir le volume en 3D (généré des cotes, pas un drapé simulé), et bientôt : devis de tissu.</li>
         </ol>
       </section>
       <p>

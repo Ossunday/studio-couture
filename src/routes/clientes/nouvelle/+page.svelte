@@ -1,15 +1,23 @@
 <script lang="ts">
+  import Carte from '$lib/design/Carte.svelte';
+  import ChampTexte from '$lib/design/ChampTexte.svelte';
   let { data, form } = $props();
 </script>
 
 <main>
+  <p><a href="/clientes">← Toutes les clientes</a></p>
   <h1>Nouvelle cliente</h1>
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
-  <form method="post" class="grille">
-    <input type="hidden" name="_csrf" value={data.csrfToken} />
-    <label>Nom de la cliente <input name="nom" required minlength="2" maxlength="80" autocomplete="name" /></label>
-    <label>Téléphone (optionnel) <input name="telephone" type="tel" autocomplete="tel" /></label>
-    <button type="submit">Créer la fiche cliente</button>
-  </form>
-  <p><a href="/clientes">Retour à la liste</a></p>
+  <Carte>
+    <form method="post" class="grille-form">
+      <input type="hidden" name="_csrf" value={data.csrfToken} />
+      <ChampTexte label="Nom de la cliente" name="nom" requis autocomplete="name" aide="Nom complet, tel qu’il apparaîtra sur ses patrons." />
+      <ChampTexte label="Téléphone (optionnel)" name="telephone" type="tel" autocomplete="tel" />
+      <button type="submit">Créer la fiche cliente</button>
+    </form>
+  </Carte>
 </main>
+
+<style>
+  .grille-form { display: grid; gap: 16px; max-width: 560px; }
+</style>

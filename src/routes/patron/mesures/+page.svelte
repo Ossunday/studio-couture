@@ -69,6 +69,6 @@
 <style>
   .champ { display: flex; gap: 12px; align-items: flex-start; }
   .champ label { display: grid; gap: 6px; font-weight: 600; flex: 1; }
-  .champ input { min-height: var(--touch); font: inherit; padding: 10px; border: 2px solid #111; border-radius: 8px; width: 100%; }
+  .champ input { min-height: 48px; font: inherit; padding: 10px 14px; border: 1.5px solid var(--bord-fort); border-radius: 12px; width: 100%; background: #fff; color: var(--encre); }
   .aide { font-weight: 400; font-size: 15px; }
 </style>

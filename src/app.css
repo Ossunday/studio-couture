@@ -1,32 +1,37 @@
 @import './lib/design/tokens.css';
 
-/* Mobile d'abord, plein soleil : contraste fort, cibles ≥ 48px. */
+/* Design v2 — mobile d'abord, cibles ≥ 48 px, micro-animations 200–300 ms. */
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; font-family: var(--sans); background: var(--ivoire); color: var(--encre); font-size: var(--texte-base); line-height: 1.55; }
-h1, h2, h3 { font-family: var(--serif); line-height: 1.12; color: var(--vert); }
+body { margin: 0; font-family: var(--sans); background: var(--fond); color: var(--encre); font-size: var(--texte-base); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--sans); line-height: 1.15; color: var(--encre); font-weight: 700; letter-spacing: -0.01em; }
 h1 { font-size: var(--titre-1); }
 h2 { font-size: var(--titre-2); }
-h3 { font-size: var(--titre-3); }
-main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 40px; animation: apparition 0.45s ease both; }
-@keyframes apparition { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+h3 { font-size: var(--titre-3); font-weight: 650; }
+main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
 a, button { min-height: 48px; min-width: 48px; }
 a { color: var(--vert); text-underline-offset: 3px; }
-a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-button { font: inherit; padding: 12px 20px; border: 2px solid var(--vert); background: var(--vert); color: #fff; border-radius: var(--rayon); cursor: pointer; transition: background-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+button { font: inherit; font-weight: 600; padding: 12px 20px; border: 1.5px solid var(--primaire); background: var(--primaire); color: var(--primaire-texte); border-radius: var(--rayon); cursor: pointer; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
 button:hover { box-shadow: var(--ombre-petite); }
-button[disabled] { background: var(--papier); color: #5b5348; border-color: #8a7d67; cursor: not-allowed; box-shadow: none; }
+button:active { transform: translateY(1px); }
+button[disabled] { background: var(--papier); color: var(--encre-douce); border-color: var(--bord-fort); cursor: not-allowed; box-shadow: none; }
 .etapes { list-style: none; padding: 0; display: grid; gap: 12px; }
-.etapes li { border: 1px solid var(--bord); border-radius: var(--rayon); padding: 16px; background: var(--papier); box-shadow: var(--ombre-petite); }
-.etiquette-rendu { display: inline-block; font-weight: 700; border: 2px solid var(--terracotta); color: var(--terracotta-fonce); padding: 2px 10px; border-radius: 999px; }
+.etapes li { border: 1px solid var(--bord); border-radius: var(--rayon-carte); padding: 16px; background: var(--carte); box-shadow: var(--ombre-petite); }
+.etiquette-rendu { display: inline-block; font-weight: 700; border: 1.5px solid var(--terracotta); color: var(--terracotta-fonce); padding: 2px 12px; border-radius: var(--rayon-puce); }
 .alerte { border-left: 6px solid var(--terracotta); padding: 14px 16px; background: var(--rouge-doux); border-radius: 0 var(--rayon) var(--rayon) 0; }
-.bouton { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 22px; border: 2px solid var(--vert); background: var(--vert); color: #fff; border-radius: var(--rayon); font-weight: 700; text-decoration: none; transition: background-color 0.25s ease, box-shadow 0.25s ease; }
-.bouton-action { background: var(--terracotta); border-color: var(--terracotta); color: #fff; box-shadow: var(--ombre-petite); }
+.bouton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 22px; border: 1.5px solid var(--primaire); background: var(--primaire); color: var(--primaire-texte); border-radius: var(--rayon); font-weight: 650; text-decoration: none; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
+.bouton:hover { box-shadow: var(--ombre-petite); }
+.bouton:active { transform: translateY(1px); }
+.bouton-action { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
 .bouton-action:hover { background: var(--terracotta-fonce); border-color: var(--terracotta-fonce); }
+.bouton-secondaire { background: var(--carte); color: var(--encre); border-color: var(--bord-fort); }
 .bouton-discret { background: transparent; color: var(--vert); border-color: transparent; box-shadow: none; }
-.carte { border: 1px solid var(--bord); border-radius: var(--rayon); padding: 18px; margin: 14px 0; background: var(--papier); box-shadow: var(--ombre-petite); }
+.carte { border: 1px solid var(--bord); border-radius: var(--rayon-carte); padding: 20px; margin: 16px 0; background: var(--carte); box-shadow: var(--ombre-petite); }
 form.grille { display: grid; gap: 16px; max-width: 640px; }
 form.grille label { display: grid; gap: 6px; font-weight: 600; }
-form.grille input, form.grille select { min-height: 48px; font: inherit; padding: 10px 12px; border: 2px solid var(--vert); border-radius: 10px; width: 100%; background: #fff; color: var(--encre); }
-.etat-vide { border: 2px dashed #8a7d67; border-radius: var(--rayon); padding: 24px 16px; text-align: center; background: var(--papier); }
+form.grille input, form.grille select { min-height: 48px; font: inherit; padding: 10px 14px; border: 1.5px solid var(--bord-fort); border-radius: 12px; width: 100%; background: #fff; color: var(--encre); transition: border-color var(--transition), box-shadow var(--transition); }
+form.grille input:focus, form.grille select:focus { border-color: var(--primaire); box-shadow: 0 0 0 3px rgb(20 17 15 / 0.08); outline: none; }
+.etat-vide { border: 1.5px dashed var(--bord-fort); border-radius: var(--rayon-carte); padding: 28px 20px; text-align: center; background: var(--carte); color: var(--encre-douce); }
 .filet-laiton { border: 0; border-top: 2px solid var(--laiton); opacity: 0.85; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

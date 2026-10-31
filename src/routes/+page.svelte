@@ -68,7 +68,7 @@
   .geste :global(.icone) { color: var(--terracotta); width: 36px; height: 36px; }
   .geste h3 { margin-bottom: 6px; }
   .geste p { margin: 0; }
-  .carte-modele { display: grid; gap: 6px; text-align: center; border: 1px solid var(--bord); border-radius: var(--rayon); padding: 20px 16px; color: inherit; text-decoration: none; font-size: 20px; background: var(--papier); box-shadow: var(--ombre-petite); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .carte-modele { display: grid; gap: 6px; text-align: center; border: 1px solid var(--bord); border-radius: var(--rayon-carte); padding: 20px 16px; color: inherit; text-decoration: none; font-size: 20px; background: var(--carte); box-shadow: var(--ombre-petite); transition: transform var(--transition), box-shadow var(--transition); }
   .carte-modele:hover { transform: translateY(-2px); box-shadow: var(--ombre); }
   .carte-modele span { font-size: 16px; }
 </style>

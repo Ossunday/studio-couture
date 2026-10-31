@@ -22,13 +22,23 @@ describe('géométrie 3D du pantalon (mêmes cotes que le patron 2D)', () => {
       const anneauHanches = s.tronc.reduce((p, a) => (Math.abs(a.y - yHanches) < Math.abs(p.y - yHanches) ? a : p), s.tronc[0]!);
       expect(Math.abs(circonferenceEllipse(anneauHanches.rayonX, anneauHanches.rayonZ) - (jeu.mesures.tourHanchesCm + 6))).toBeLessThanOrEqual(0.5);
       expect(Math.abs(s.circonferenceHanchesCm - (jeu.mesures.tourHanchesCm + 6))).toBeLessThanOrEqual(0.5);
-      // Genou et bas = 2 × (devant + dos) de l'analyse ± 0,5 cm
-      const attenduGenou = 2 * (analyse.devant.largeurGenouCm + analyse.dos.largeurGenouCm);
-      const attenduBas = 2 * (analyse.devant.largeurBasCm + analyse.dos.largeurBasCm);
+      // Genou et bas par jambe = devant + dos de l'analyse ± 0,5 cm
+      // (une pièce devant + une pièce dos cousues forment le tube de la jambe)
+      const attenduGenou = analyse.devant.largeurGenouCm + analyse.dos.largeurGenouCm;
+      const attenduBas = analyse.devant.largeurBasCm + analyse.dos.largeurBasCm;
+      expect(Math.abs(s.circonferenceGenouCm - attenduGenou)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(s.circonferenceBasCm - attenduBas)).toBeLessThanOrEqual(0.5);
+      // Haut de jambe à la fourche = devant + dos aux hanches (moitié du tronc)
+      const attenduHaut = analyse.devant.largeurHanchesCm + analyse.dos.largeurHanchesCm;
+      expect(Math.abs(s.circonferenceHautJambeCm - attenduHaut)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(2 * s.circonferenceHautJambeCm - s.circonferenceHanchesCm)).toBeLessThanOrEqual(1);
       expect(Math.abs(s.circonferenceGenouCm - attenduGenou)).toBeLessThanOrEqual(0.5);
       expect(Math.abs(s.circonferenceBasCm - attenduBas)).toBeLessThanOrEqual(0.5);
       const anneauBas = s.jambeGauche[s.jambeGauche.length - 1]!;
       expect(Math.abs(circonferenceEllipse(anneauBas.rayonX, anneauBas.rayonZ) - attenduBas)).toBeLessThanOrEqual(0.5);
+      // Pas d'interpénétration au bas : écart des centres ≥ somme des rayons − 0,5 cm
+      const basDroit = s.jambeDroite[s.jambeDroite.length - 1]!;
+      expect(Math.abs(basDroit.centreX - anneauBas.centreX)).toBeGreaterThanOrEqual(anneauBas.rayonX + basDroit.rayonX - 0.5);
       // Taille = tour de taille + aisance
       expect(s.circonferenceTailleCm).toBeCloseTo(jeu.mesures.tourTailleCm + 4, 5);
     });

@@ -19,6 +19,7 @@ export interface SectionsPantalon {
   jambeGauche: Anneau[];
   jambeDroite: Anneau[];
   circonferenceHanchesCm: number;
+  circonferenceHautJambeCm: number;
   circonferenceGenouCm: number;
   circonferenceBasCm: number;
   circonferenceTailleCm: number;
@@ -74,22 +75,32 @@ export function interpolerAnneaux(controles: Anneau[], pasCm = 4): Anneau[] {
 }
 
 /**
- * Sections du pantalon 3D, dérivées des mêmes cotes que le patron 2D :
- * circonférence d'une jambe = 2 × (largeur devant + largeur dos) de l'analyse.
+ * Sections du pantalon 3D, dérivées des mêmes cotes que le patron 2D.
+ * Circonférence d'UNE jambe = largeur devant + largeur dos de l'analyse :
+ * une pièce devant et une pièce dos cousues au côté et à l'entrejambe forment
+ * le tube de la jambe (les « ×2 » des pièces désignent la jambe gauche et la
+ * jambe droite, pas un doublement du tour). Ex. jeu moyenne : bas ≈ 71,6 cm.
+ * Le tronc, lui, vaut bien 2 × (devant + dos aux hanches) = hanches + aisance.
  */
 export function construireSectionsPantalon(m: MesuresPantalonLarge, analyse: AnalysePantalon): SectionsPantalon {
   const c = BROUILLON_PANTALON_LARGE;
   const L = m.longueurPantalonCm;
   const circonferenceTailleCm = m.tourTailleCm + c.aisanceTailleCm;
   const circonferenceHanchesCm = m.tourHanchesCm + c.aisanceHanchesCm;
-  const circonferenceGenouCm = 2 * (analyse.devant.largeurGenouCm + analyse.dos.largeurGenouCm);
-  const circonferenceBasCm = 2 * (analyse.devant.largeurBasCm + analyse.dos.largeurBasCm);
+  const circonferenceGenouCm = analyse.devant.largeurGenouCm + analyse.dos.largeurGenouCm;
+  const circonferenceBasCm = analyse.devant.largeurBasCm + analyse.dos.largeurBasCm;
+  /**
+   * Haut de jambe à la fourche : largeur devant + dos AUX HANCHES de l'analyse
+   * (≈ 53 cm en moyenne, soit la moitié du tour de hanches du tronc). C'est la
+   * valeur cohérente avec le tube devant + dos au niveau où la jambe sort du
+   * tronc ; elle rejoint ensuite le genou par interpolation lissée.
+   */
+  const circonferenceHautJambeCm = analyse.devant.largeurHanchesCm + analyse.dos.largeurHanchesCm;
   const yTaille = L;
   const yHanches = L - Math.min(c.hauteurHanchesCm, m.hauteurFourcheCm * 0.7);
   const yFourche = L - m.hauteurFourcheCm;
   // Genou à mi-chemin fourche → bas (même construction que le patron 2D).
   const genouY = yFourche / 2;
-  const ecartJambe = rayonsDepuisCirconference(circonferenceHanchesCm).rayonX / 2;
 
   const tronc = interpolerAnneaux([
     anneau(yTaille, 0, circonferenceTailleCm),
@@ -97,13 +108,18 @@ export function construireSectionsPantalon(m: MesuresPantalonLarge, analyse: Ana
     anneau(yFourche, 0, circonferenceHanchesCm * 0.99)
   ]);
   const jambe = (signe: 1 | -1): Anneau[] => {
-    // Centres écartés vers le bas pour que les deux jambes restent lisibles
-    // (leurs coupes se recouvrent à la fourche, puis se séparent au genou).
-    const centreBas = rayonsDepuisCirconference(circonferenceGenouCm).rayonX * 0.82;
+    // Centres séparés d'au moins un rayon (au genou et au bas) dès quelques cm
+    // sous la fourche : les tubes se touchent sans s'interpénétrer, et le
+    // passage tronc → deux jambes reste continu (anneau de transition à −6 cm).
+    const centreJambe = Math.max(
+      rayonsDepuisCirconference(circonferenceGenouCm).rayonX,
+      rayonsDepuisCirconference(circonferenceBasCm).rayonX
+    );
     return interpolerAnneaux([
-      anneau(yFourche, signe * ecartJambe * 0.55, circonferenceGenouCm * 0.82),
-      anneau(genouY, signe * centreBas, circonferenceGenouCm),
-      anneau(0, signe * centreBas, circonferenceBasCm)
+      anneau(yFourche, signe * centreJambe * 0.55, circonferenceHautJambeCm),
+      anneau(yFourche - 6, signe * centreJambe, circonferenceHautJambeCm + (circonferenceGenouCm - circonferenceHautJambeCm) * 0.25),
+      anneau(genouY, signe * centreJambe, circonferenceGenouCm),
+      anneau(0, signe * centreJambe, circonferenceBasCm)
     ]);
   };
   return {
@@ -112,6 +128,7 @@ export function construireSectionsPantalon(m: MesuresPantalonLarge, analyse: Ana
     jambeGauche: jambe(-1),
     jambeDroite: jambe(1),
     circonferenceHanchesCm,
+    circonferenceHautJambeCm,
     circonferenceGenouCm,
     circonferenceBasCm,
     circonferenceTailleCm

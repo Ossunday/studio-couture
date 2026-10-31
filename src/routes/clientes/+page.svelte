@@ -2,6 +2,7 @@
   import Avatar from '$lib/design/Avatar.svelte';
   import Bouton from '$lib/design/Bouton.svelte';
   import EtatVide from '$lib/design/EtatVide.svelte';
+  import Puce from '$lib/design/Puce.svelte';
   let { data } = $props();
 
   const dateFr = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -36,8 +37,9 @@
             <span class="infos">
               <strong>{cliente.nom}</strong>
               <span class="meta">{cliente.telephone ?? 'Téléphone non renseigné'} · fiche créée le {dateFr(cliente.creeeLe)}</span>
+              {#if cliente.dernierPatronLe}<span class="meta">dernier patron le {dateFr(cliente.dernierPatronLe)}</span>{/if}
             </span>
-            <span class="fleche" aria-hidden="true">→</span>
+            <Puce ton={cliente.nbPatrons > 0 ? 'vert' : 'neutre'}>{cliente.nbPatrons} patron{cliente.nbPatrons > 1 ? 's' : ''}</Puce>
           </a>
         </li>
       {/each}
@@ -57,5 +59,4 @@
   .infos { display: grid; gap: 2px; flex: 1; min-width: 0; }
   .infos strong { font-size: 1.1rem; overflow-wrap: anywhere; }
   .meta { color: var(--encre-douce); font-size: 0.92rem; }
-  .fleche { color: var(--terracotta); font-weight: 700; font-size: 1.2rem; }
 </style>

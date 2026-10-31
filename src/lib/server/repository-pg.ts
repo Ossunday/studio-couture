@@ -1,10 +1,10 @@
 import type { Pool } from 'pg';
-import type { Cliente, Consentement, Mensuration, PhotoCliente } from '../domain/types';
+import type { Cliente, Consentement, Mensuration, PatronCliente, PhotoCliente } from '../domain/types';
 import type { CompteUtilisatrice, Repository } from './repository';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** Implémentation PostgreSQL — suppose les migrations 0001, 0002 et 0003 appliquées. */
+/** Implémentation PostgreSQL — suppose les migrations 0001, 0002, 0003 et 0004 appliquées. */
 export class RepositoryPg implements Repository {
   constructor(private readonly pool: Pool) {}
 
@@ -230,5 +230,89 @@ export class RepositoryPg implements Repository {
        on conflict (cliente_id, code) do update set valeur_cm = excluded.valeur_cm, validee_par = excluded.validee_par, validee_le = now()`,
       [e.clienteId, e.code, e.valeurCm, e.saisiePar]
     );
+  }
+
+  private patron(row: any): PatronCliente {
+    return {
+      id: row.id,
+      clienteId: row.cliente_id,
+      modele: row.modele,
+      nom: row.nom,
+      mesures: row.mesures ?? {},
+      options: row.options ?? {},
+      tissu: row.tissu ?? { couleurId: 'bleu-denim', matiereId: 'denim' },
+      statut: 'brouillon',
+      creePar: row.cree_par ?? undefined,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at)
+    };
+  }
+
+  async listerPatrons(atelierId: string, clienteId: string) {
+    const r = await this.pool.query(
+      `select p.* from patrons_clientes p
+       join clientes c on c.id = p.cliente_id
+       where c.atelier_id = $1 and p.cliente_id = $2
+       order by p.created_at desc`,
+      [atelierId, clienteId]
+    );
+    return r.rows.map((row) => this.patron(row));
+  }
+
+  async creerPatron(atelierId: string, e: Parameters<Repository['creerPatron']>[1]) {
+    // Insertion conditionnée par l'appartenance de la cliente à l'atelier :
+    // impossible d'attacher un patron à la cliente d'un autre atelier.
+    const r = await this.pool.query(
+      `insert into patrons_clientes (cliente_id, modele, nom, mesures, options, tissu, cree_par)
+       select c.id, $3, $4, $5, $6, $7, $8 from clientes c
+       where c.id = $1 and c.atelier_id = $2
+       returning *`,
+      [e.clienteId, atelierId, e.modele, e.nom, e.mesures, e.options, e.tissu, e.creePar]
+    );
+    if (!r.rows[0]) throw new Error('Cliente introuvable pour cet atelier.');
+    return this.patron(r.rows[0]);
+  }
+
+  async trouverPatron(atelierId: string, patronId: string) {
+    const r = await this.pool.query(
+      `select p.* from patrons_clientes p
+       join clientes c on c.id = p.cliente_id
+       where c.atelier_id = $1 and p.id = $2`,
+      [atelierId, patronId]
+    );
+    return r.rows[0] ? this.patron(r.rows[0]) : undefined;
+  }
+
+  async modifierPatron(atelierId: string, patronId: string, maj: Parameters<Repository['modifierPatron']>[2]) {
+    await this.pool.query(
+      `update patrons_clientes p set nom = $3, mesures = $4, options = $5, tissu = $6, updated_at = now()
+       from clientes c
+       where c.id = p.cliente_id and c.atelier_id = $1 and p.id = $2`,
+      [atelierId, patronId, maj.nom, maj.mesures, maj.options, maj.tissu]
+    );
+  }
+
+  async supprimerPatron(atelierId: string, patronId: string) {
+    await this.pool.query(
+      `delete from patrons_clientes p using clientes c
+       where c.id = p.cliente_id and c.atelier_id = $1 and p.id = $2`,
+      [atelierId, patronId]
+    );
+  }
+
+  async resumerPatronsParCliente(atelierId: string) {
+    const r = await this.pool.query(
+      `select p.cliente_id, count(*)::int as nombre, max(p.created_at) as dernier_le
+       from patrons_clientes p
+       join clientes c on c.id = p.cliente_id
+       where c.atelier_id = $1
+       group by p.cliente_id`,
+      [atelierId]
+    );
+    const resume: Record<string, { nombre: number; dernierLe: Date | null }> = {};
+    for (const row of r.rows) {
+      resume[row.cliente_id] = { nombre: row.nombre, dernierLe: row.dernier_le ? new Date(row.dernier_le) : null };
+    }
+    return resume;
   }
 }

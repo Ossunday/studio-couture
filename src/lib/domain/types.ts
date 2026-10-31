@@ -64,8 +64,30 @@ export interface PhotoCliente {
   supprimeeLe?: Date;
 }
 
-export type EtapeProjet =
-  | 'modele'
+/**
+ * Patron enregistré sur une fiche cliente (salle d'essayage connectée).
+ * Instantané autonome : mesures, options et tissu sont copiés au moment de
+ * l'enregistrement — modifier la fiche ensuite ne réécrit pas le patron.
+ * Statut toujours « brouillon » : les formules restent a_valider.
+ */
+export interface PatronCliente {
+  id: string;
+  clienteId: string;
+  /** Modèle de patron : 'pantalon_large' | 'jupe_droite' (voir MODELES). */
+  modele: string;
+  nom: string;
+  /** Instantané des mesures du patron, ex. { tour_taille_cm: 82 }. */
+  mesures: Record<string, number>;
+  /** Options du modèle, ex. { largeurBasPieceCm: 24 } — {} si aucune. */
+  options: Record<string, number>;
+  tissu: { couleurId: string; matiereId: string };
+  statut: 'brouillon';
+  creePar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type EtapeProjet =  | 'modele'
   | 'cliente'
   | 'tissu'
   | 'rendu'

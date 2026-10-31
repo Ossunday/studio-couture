@@ -1,4 +1,4 @@
-import type { Cliente, Consentement, Mensuration, PhotoCliente, RoleAtelier } from '../domain/types';
+import type { Cliente, Consentement, Mensuration, PatronCliente, PhotoCliente, RoleAtelier } from '../domain/types';
 import { getPool } from './db';
 import { RepositoryMemoire } from './repository-memory';
 import { RepositoryPg } from './repository-pg';
@@ -84,6 +84,38 @@ export interface Repository {
     valeurCm: number;
     saisiePar: string;
   }): Promise<void>;
+
+  /**
+   * Patrons enregistrés d'une cliente. Toujours filtrés par atelier via la
+   * cliente propriétaire : un atelier ne voit jamais les patrons d'un autre.
+   */
+  listerPatrons(atelierId: string, clienteId: string): Promise<PatronCliente[]>;
+  creerPatron(
+    atelierId: string,
+    entree: {
+      clienteId: string;
+      modele: string;
+      nom: string;
+      mesures: Record<string, number>;
+      options: Record<string, number>;
+      tissu: { couleurId: string; matiereId: string };
+      creePar: string;
+    }
+  ): Promise<PatronCliente>;
+  trouverPatron(atelierId: string, patronId: string): Promise<PatronCliente | undefined>;
+  modifierPatron(
+    atelierId: string,
+    patronId: string,
+    maj: {
+      nom: string;
+      mesures: Record<string, number>;
+      options: Record<string, number>;
+      tissu: { couleurId: string; matiereId: string };
+    }
+  ): Promise<void>;
+  supprimerPatron(atelierId: string, patronId: string): Promise<void>;
+  /** Nombre de patrons et dernier patron par cliente de l'atelier (liste des clientes). */
+  resumerPatronsParCliente(atelierId: string): Promise<Record<string, { nombre: number; dernierLe: Date | null }>>;
 }
 
 let instance: Repository | undefined;

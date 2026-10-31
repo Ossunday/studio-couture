@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Cliente, Consentement, Mensuration, PhotoCliente } from '../domain/types';
+import type { Cliente, Consentement, Mensuration, PatronCliente, PhotoCliente } from '../domain/types';
 import type { CompteUtilisatrice, PhotoAvecDonnees, Repository, SessionTrouvee } from './repository';
 
 /** Implémentation mémoire — tests unitaires et Playwright uniquement (aucune persistance). */
@@ -10,6 +10,7 @@ export class RepositoryMemoire implements Repository {
   private consentements: Consentement[] = [];
   private photos: PhotoAvecDonnees[] = [];
   private mensurations: Mensuration[] = [];
+  private patrons: PatronCliente[] = [];
 
   async compterUtilisatrices() {
     return this.comptes.length;
@@ -85,6 +86,7 @@ export class RepositoryMemoire implements Repository {
     this.consentements = this.consentements.filter((c) => ids.has(c.clienteId));
     this.photos = this.photos.filter((p) => ids.has(p.clienteId));
     this.mensurations = this.mensurations.filter((m) => ids.has(m.clienteId));
+    this.patrons = this.patrons.filter((p) => ids.has(p.clienteId));
   }
 
   async consentementActif(clienteId: string) {
@@ -169,5 +171,71 @@ export class RepositoryMemoire implements Repository {
       valideePar: e.saisiePar,
       valideeLe: new Date()
     });
+  }
+
+  /** Les patrons n'existent que par leur cliente : l'atelier est celui de la cliente. */
+  private patronDeLAtelier(atelierId: string, patron: PatronCliente): boolean {
+    const cliente = this.clientes.find((c) => c.id === patron.clienteId);
+    return cliente?.atelierId === atelierId;
+  }
+
+  async listerPatrons(atelierId: string, clienteId: string) {
+    const cliente = await this.trouverCliente(atelierId, clienteId);
+    if (!cliente) return [];
+    return this.patrons
+      .filter((p) => p.clienteId === clienteId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async creerPatron(atelierId: string, e: Parameters<Repository['creerPatron']>[1]) {
+    const cliente = await this.trouverCliente(atelierId, e.clienteId);
+    if (!cliente) throw new Error('Cliente introuvable pour cet atelier.');
+    const patron: PatronCliente = {
+      id: randomUUID(),
+      clienteId: e.clienteId,
+      modele: e.modele,
+      nom: e.nom,
+      mesures: { ...e.mesures },
+      options: { ...e.options },
+      tissu: { ...e.tissu },
+      statut: 'brouillon',
+      creePar: e.creePar,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.patrons.push(patron);
+    return patron;
+  }
+
+  async trouverPatron(atelierId: string, patronId: string) {
+    const patron = this.patrons.find((p) => p.id === patronId);
+    return patron && this.patronDeLAtelier(atelierId, patron) ? patron : undefined;
+  }
+
+  async modifierPatron(atelierId: string, patronId: string, maj: Parameters<Repository['modifierPatron']>[2]) {
+    const patron = await this.trouverPatron(atelierId, patronId);
+    if (!patron) return;
+    patron.nom = maj.nom;
+    patron.mesures = { ...maj.mesures };
+    patron.options = { ...maj.options };
+    patron.tissu = { ...maj.tissu };
+    patron.updatedAt = new Date();
+  }
+
+  async supprimerPatron(atelierId: string, patronId: string) {
+    const patron = await this.trouverPatron(atelierId, patronId);
+    if (!patron) return;
+    this.patrons = this.patrons.filter((p) => p.id !== patronId);
+  }
+
+  async resumerPatronsParCliente(atelierId: string) {
+    const resume: Record<string, { nombre: number; dernierLe: Date | null }> = {};
+    for (const patron of this.patrons) {
+      if (!this.patronDeLAtelier(atelierId, patron)) continue;
+      const entree = (resume[patron.clienteId] ??= { nombre: 0, dernierLe: null });
+      entree.nombre++;
+      if (!entree.dernierLe || patron.createdAt > entree.dernierLe) entree.dernierLe = patron.createdAt;
+    }
+    return resume;
   }
 }

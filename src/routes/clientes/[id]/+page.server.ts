@@ -2,12 +2,18 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { peut } from '$lib/domain/permissions';
 import { DEFINITIONS_MENSURATIONS, validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
+import { preparerPiece } from '$lib/patterns/apercu-rendu';
+import { estModelePatron, genererPiecesPlacees, MODELES } from '$lib/patterns/saisie-patron';
+import { couleurTissu } from '$lib/demo/tissus';
 import { assertConsentementPhoto, calculerExpiration } from '$lib/privacy/retention';
 import { chiffrer, clePhotoDepuisEnv, validerPhoto } from '$lib/server/crypto';
 import { assertCsrf, exigerConnexion } from '$lib/server/garde';
+import { parametresDepuisPatron } from '$lib/server/patron-cliente';
 import { getRepository } from '$lib/server/repository';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+const ONGLETS = ['resume', 'mesures', 'photos', 'patrons'] as const;
+
+export const load: PageServerLoad = async ({ locals, params, url }) => {
   const u = exigerConnexion(locals.utilisatrice);
   const repo = getRepository();
   const cliente = await repo.trouverCliente(u.atelierId, params.id);
@@ -18,8 +24,51 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   const photos = await repo.listerPhotos(cliente.id);
   const mensurations = await repo.listerMensurations(cliente.id);
   const valeurs = new Map(mensurations.map((m) => [m.code, m.valeurCm]));
+  const patronsBruts = await repo.listerPatrons(u.atelierId, cliente.id);
+  // Miniatures SVG générées à la volée depuis l'instantané (aucune image stockée).
+  const patrons = patronsBruts.map((p) => {
+    let miniature: { pieces: ReturnType<typeof preparerPiece>[]; largeur: number; hauteur: number } | null = null;
+    if (estModelePatron(p.modele)) {
+      try {
+        const placees = genererPiecesPlacees(p.modele, p.mesures, p.modele === 'pantalon_large' ? p.options : {});
+        miniature = {
+          pieces: placees.pieces.map(preparerPiece),
+          largeur: Math.ceil(placees.largeur),
+          hauteur: Math.ceil(placees.hauteur)
+        };
+      } catch {
+        miniature = null;
+      }
+    }
+    const hrefPdf = estModelePatron(p.modele)
+      ? `/patron/pdf?${parametresDepuisPatron(p.modele, p.nom, p.mesures, p.options).toString()}`
+      : '#';
+    return {
+      id: p.id,
+      modele: p.modele,
+      titreModele: estModelePatron(p.modele) ? MODELES[p.modele].titre : p.modele,
+      nom: p.nom,
+      creeLe: p.createdAt.toISOString(),
+      modifieLe: p.updatedAt.toISOString(),
+      mesuresTexte: estModelePatron(p.modele)
+        ? MODELES[p.modele].champs
+            .filter((code) => p.mesures[code] !== undefined)
+            .map((code) => `${code.replaceAll('_cm', '').replaceAll('_', ' ')} : ${String(p.mesures[code]).replace('.', ',')} cm`)
+            .join(' · ')
+        : '',
+      tissuHex: couleurTissu(p.tissu.couleurId).hex,
+      miniature,
+      hrefPdf
+    };
+  });
+  const ongletBrut = url.searchParams.get('onglet') ?? 'resume';
+  const onglet = (ONGLETS as readonly string[]).includes(ongletBrut) ? ongletBrut : 'resume';
   return {
     cliente: { id: cliente.id, nom: cliente.nom, telephone: cliente.telephone ?? null },
+    prenom: cliente.nom.trim().split(/\s+/)[0] ?? cliente.nom,
+    onglet,
+    messagePatron: url.searchParams.get('patron'),
+    patrons,
     photos: photos.map((p) => ({
       id: p.id,
       type: p.type,
@@ -136,7 +185,67 @@ export const actions: Actions = {
     if (!peut(u.role, 'cliente.supprimer')) throw error(403, 'Seule l’administratrice peut supprimer une cliente.');
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
+    if (data.get('confirme_suppression') !== 'on') {
+      return fail(400, { erreur: 'Cochez la confirmation avant de supprimer définitivement cette cliente.' });
+    }
+    // Cascade : patrons, mensurations, photos et consentements partent avec la cliente.
     await getRepository().supprimerCliente(u.atelierId, params.id);
     throw redirect(303, '/clientes');
+  },
+  dupliquerPatron: async ({ request, locals, params }) => {
+    const u = exigerConnexion(locals.utilisatrice);
+    const data = await request.formData();
+    assertCsrf(locals.csrfToken, data.get('_csrf'));
+    const repo = getRepository();
+    const cliente = await repo.trouverCliente(u.atelierId, params.id);
+    if (!cliente) throw error(404, 'Cliente introuvable.');
+    const patron = await repo.trouverPatron(u.atelierId, String(data.get('patron_id') ?? ''));
+    if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
+    await repo.creerPatron(u.atelierId, {
+      clienteId: cliente.id,
+      modele: patron.modele,
+      nom: `${patron.nom} (copie)`.slice(0, 80),
+      mesures: patron.mesures,
+      options: patron.options,
+      tissu: patron.tissu,
+      creePar: u.id
+    });
+    throw redirect(303, `/clientes/${cliente.id}?onglet=patrons&patron=duplique`);
+  },
+  renommerPatron: async ({ request, locals, params }) => {
+    const u = exigerConnexion(locals.utilisatrice);
+    const data = await request.formData();
+    assertCsrf(locals.csrfToken, data.get('_csrf'));
+    const repo = getRepository();
+    const cliente = await repo.trouverCliente(u.atelierId, params.id);
+    if (!cliente) throw error(404, 'Cliente introuvable.');
+    const patron = await repo.trouverPatron(u.atelierId, String(data.get('patron_id') ?? ''));
+    if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
+    const nouveauNom = String(data.get('nouveau_nom') ?? '').trim().replace(/\s+/g, ' ');
+    if (nouveauNom.length < 2 || nouveauNom.length > 80) {
+      return fail(400, { erreur: 'Vérifiez : le nom du patron doit faire entre 2 et 80 caractères.' });
+    }
+    await repo.modifierPatron(u.atelierId, patron.id, {
+      nom: nouveauNom,
+      mesures: patron.mesures,
+      options: patron.options,
+      tissu: patron.tissu
+    });
+    throw redirect(303, `/clientes/${cliente.id}?onglet=patrons&patron=renomme`);
+  },
+  supprimerPatron: async ({ request, locals, params }) => {
+    const u = exigerConnexion(locals.utilisatrice);
+    const data = await request.formData();
+    assertCsrf(locals.csrfToken, data.get('_csrf'));
+    const repo = getRepository();
+    const cliente = await repo.trouverCliente(u.atelierId, params.id);
+    if (!cliente) throw error(404, 'Cliente introuvable.');
+    const patron = await repo.trouverPatron(u.atelierId, String(data.get('patron_id') ?? ''));
+    if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
+    if (data.get('confirme_suppression_patron') !== 'on') {
+      return fail(400, { erreur: 'Cochez la confirmation avant de supprimer ce patron.' });
+    }
+    await repo.supprimerPatron(u.atelierId, patron.id);
+    throw redirect(303, `/clientes/${cliente.id}?onglet=patrons&patron=supprime`);
   }
 };

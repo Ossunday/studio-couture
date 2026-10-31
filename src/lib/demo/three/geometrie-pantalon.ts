@@ -31,8 +31,8 @@ export function circonferenceEllipse(rayonX: number, rayonZ: number): number {
   return Math.PI * (rayonX + rayonZ) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
 }
 
-/** Rayons elliptiques (profondeur/largeur = ratio) donnant la circonférence visée. */
-export function rayonsDepuisCirconference(circonferenceCm: number, ratio = 0.72): { rayonX: number; rayonZ: number } {
+/** Rayons elliptiques (profondeur/largeur = ratio ≈ 0,7 aux hanches et cuisses) donnant la circonférence visée. */
+export function rayonsDepuisCirconference(circonferenceCm: number, ratio = 0.7): { rayonX: number; rayonZ: number } {
   let bas = 0.1;
   let haut = circonferenceCm;
   for (let i = 0; i < 48; i++) {
@@ -102,22 +102,27 @@ export function construireSectionsPantalon(m: MesuresPantalonLarge, analyse: Ana
   // Genou à mi-chemin fourche → bas (même construction que le patron 2D).
   const genouY = yFourche / 2;
 
+  // Tronc terminé par un fond arrondi : sous la fourche, deux anneaux qui se
+  // resserrent vite (arche de fourche) — aucune arête plate ni plateau.
   const tronc = interpolerAnneaux([
     anneau(yTaille, 0, circonferenceTailleCm),
     anneau(yHanches, 0, circonferenceHanchesCm),
-    anneau(yFourche, 0, circonferenceHanchesCm * 0.99)
+    anneau(yFourche, 0, circonferenceHanchesCm * 0.97),
+    anneau(yFourche - 3.5, 0, circonferenceHanchesCm * 0.78),
+    anneau(yFourche - 6.5, 0, circonferenceHanchesCm * 0.48)
   ]);
   const jambe = (signe: 1 | -1): Anneau[] => {
-    // Centres séparés d'au moins un rayon (au genou et au bas) dès quelques cm
-    // sous la fourche : les tubes se touchent sans s'interpénétrer, et le
-    // passage tronc → deux jambes reste continu (anneau de transition à −6 cm).
+    // La jambe monte jusqu'à la ligne de hanches, cachée dans le tronc (même
+    // matériau) : elle en sort progressivement sous la fourche, sans vide.
+    // Centres séparés d'au moins un rayon au genou et au bas : pas d'interpénétration.
     const centreJambe = Math.max(
       rayonsDepuisCirconference(circonferenceGenouCm).rayonX,
       rayonsDepuisCirconference(circonferenceBasCm).rayonX
     );
     return interpolerAnneaux([
-      anneau(yFourche, signe * centreJambe * 0.55, circonferenceHautJambeCm),
-      anneau(yFourche - 6, signe * centreJambe, circonferenceHautJambeCm + (circonferenceGenouCm - circonferenceHautJambeCm) * 0.25),
+      anneau(yHanches, signe * centreJambe * 0.45, circonferenceHautJambeCm),
+      anneau(yFourche + 3, signe * centreJambe * 0.72, circonferenceHautJambeCm),
+      anneau(yFourche - 5, signe * centreJambe, circonferenceHautJambeCm + (circonferenceGenouCm - circonferenceHautJambeCm) * 0.3),
       anneau(genouY, signe * centreJambe, circonferenceGenouCm),
       anneau(0, signe * centreJambe, circonferenceBasCm)
     ]);

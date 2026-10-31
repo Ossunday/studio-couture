@@ -142,10 +142,17 @@ test('3D : canvas présent et non vide, étiquette honnête, captures 360/768/12
       contexte.drawImage(c, 0, 0, 64, 64);
       const donnees = contexte.getImageData(0, 0, 64, 64).data;
       let nonTransparents = 0;
-      for (let i = 3; i < donnees.length; i += 4) if (donnees[i]! > 0) nonTransparents++;
-      return { nonTransparents, url: c.toDataURL().length };
+      const couleurs = new Set<string>();
+      for (let i = 0; i < donnees.length; i += 4) {
+        if (donnees[i + 3]! > 0) {
+          nonTransparents++;
+          couleurs.add(`${donnees[i]! >> 4},${donnees[i + 1]! >> 4},${donnees[i + 2]! >> 4}`);
+        }
+      }
+      return { nonTransparents, url: c.toDataURL().length, couleurs: couleurs.size };
     });
     expect(pixels.nonTransparents, `canvas 3D vide à ${largeur} px`).toBeGreaterThan(100);
+    expect(pixels.couleurs, `capture 3D trop pauvre en couleurs à ${largeur} px`).toBeGreaterThanOrEqual(12);
     expect(pixels.url).toBeGreaterThan(1000);
     await verifierLargeur(page, `3D ${largeur}`);
     await page.screenshot({ path: `test-results/demo-3-3d-${largeur}.png`, fullPage: true });

@@ -48,20 +48,31 @@
       ]);
       if (!conteneur) return;
       const scene = new three.Scene();
-      const camera = new three.PerspectiveCamera(38, 1, 0.5, 1000);
-      const positionInitiale = new three.Vector3(105, 98, 185);
+      const camera = new three.PerspectiveCamera(38, 1, 0.5, 1200);
+      // Cadrage plein pied : hauteur du mannequin ≈ longueur pantalon / 0,6.
+      let hauteurCorps = mesures.longueurPantalonCm / 0.6;
+      const positionInitiale = new three.Vector3(hauteurCorps * 0.52, hauteurCorps * 0.58, hauteurCorps * 1.32);
       camera.position.copy(positionInitiale);
       const renderer = new three.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = three.PCFSoftShadowMap;
       renderer.domElement.dataset.testid = 'scene-3d-canvas';
       renderer.domElement.setAttribute('aria-label', 'Pantalon en 3D, généré à partir des cotes du patron');
       conteneur.appendChild(renderer.domElement);
 
-      // Éclairage doux 3 points, fond transparent sur la scène.
-      scene.add(new three.AmbientLight(0xfff6e8, 1.1));
-      const cle = new three.DirectionalLight(0xffffff, 1.6); cle.position.set(60, 120, 80); scene.add(cle);
-      const remplissage = new three.DirectionalLight(0xdfe8ff, 0.6); remplissage.position.set(-70, 40, -30); scene.add(remplissage);
-      const rim = new three.DirectionalLight(0xffe2b0, 0.5); rim.position.set(0, 60, -90); scene.add(rim);
+      // Lumière de studio douce : clé + remplissage + contour, fond transparent.
+      scene.add(new three.AmbientLight(0xfff6e8, 0.95));
+      const cle = new three.DirectionalLight(0xffffff, 1.7);
+      cle.position.set(70, 150, 90);
+      cle.castShadow = true;
+      cle.shadow.mapSize.set(1024, 1024);
+      cle.shadow.camera.left = -90; cle.shadow.camera.right = 90;
+      cle.shadow.camera.top = 190; cle.shadow.camera.bottom = -20;
+      cle.shadow.radius = 6;
+      scene.add(cle);
+      const remplissage = new three.DirectionalLight(0xdfe8ff, 0.55); remplissage.position.set(-80, 50, 40); scene.add(remplissage);
+      const rim = new three.DirectionalLight(0xffe2b0, 0.65); rim.position.set(-20, 90, -100); scene.add(rim);
 
       const controls = new orbit.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = false;
@@ -69,15 +80,16 @@
       controls.maxDistance = 380;
       controls.maxPolarAngle = Math.PI * 0.62;
       controls.minPolarAngle = Math.PI * 0.15;
-      controls.target.set(0, 52, 0);
-      camera.lookAt(0, 52, 0);
+      controls.target.set(0, hauteurCorps * 0.47, 0);
+      camera.lookAt(0, hauteurCorps * 0.47, 0);
       controls.update();
 
       const groupe = new three.Group();
       scene.add(groupe);
+      scene.add(modele.construireOmbreSol(62));
       let pantalon: THREE.Group | null = null;
-      let materiauActuel: THREE.Material | null = null;
-      let texturesActuelles: { map: THREE.Texture; roughnessMap: THREE.Texture; bumpMap: THREE.Texture } | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let materiauxActuels: any = null;
       let mannequin: THREE.Group | null = null;
 
       const mouvementReduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -110,24 +122,28 @@
         three, modele, scene, camera, renderer, controls, groupe, rendre, boucle, observer,
         setPantalon(m: MesuresPantalonLarge, coul: string, mat: MatiereId) {
           const sections = construireSectionsPantalon(m, analyserPantalonLarge(m));
-          const { materiau, textures } = modele.creerMateriauTissu(coul, mat);
-          const nouveau = modele.construireGroupePantalon(sections, materiau);
+          const materiaux = modele.creerMateriauxTissu(coul, mat);
+          const nouveau = modele.construireGroupePantalon(sections, materiaux);
           if (pantalon) { groupe.remove(pantalon); modele.disposerGroupe(pantalon); }
-          if (materiauActuel) materiauActuel.dispose();
-          if (texturesActuelles) Object.values(texturesActuelles).forEach((t) => t.dispose());
-          pantalon = nouveau; materiauActuel = materiau; texturesActuelles = textures;
-          groupe.add(pantalon);
-          if (!mannequin) {
-            mannequin = modele.construireMannequin(m.longueurPantalonCm);
-            groupe.add(mannequin);
+          if (materiauxActuels) {
+            materiauxActuels.principal.dispose(); materiauxActuels.fonce.dispose(); materiauxActuels.fil.dispose();
+            Object.values(materiauxActuels.textures).forEach((t: unknown) => (t as THREE.Texture).dispose());
           }
+          pantalon = nouveau; materiauxActuels = materiaux;
+          groupe.add(pantalon);
+          // Mannequin reconstruit aux mesures saisies (sans aisance) à chaque changement.
+          if (mannequin) { groupe.remove(mannequin); modele.disposerGroupe(mannequin); }
+          const construit = modele.construireMannequin(m);
+          mannequin = construit.groupe;
+          hauteurCorps = construit.hauteurTotaleCm;
+          groupe.add(mannequin);
           rendre();
         },
         tourner(delta: number) { groupe.rotation.y += delta; rendre(); },
         reinitialiserVue() {
           groupe.rotation.y = 0;
-          camera.position.copy(positionInitiale);
-          controls.target.set(0, 52, 0);
+          camera.position.set(hauteurCorps * 0.52, hauteurCorps * 0.58, hauteurCorps * 1.32);
+          controls.target.set(0, hauteurCorps * 0.47, 0);
           controls.update();
           rendre();
         },
@@ -137,8 +153,10 @@
           controls.dispose();
           if (pantalon) modele.disposerGroupe(pantalon);
           if (mannequin) modele.disposerGroupe(mannequin);
-          if (materiauActuel) materiauActuel.dispose();
-          if (texturesActuelles) Object.values(texturesActuelles).forEach((t) => t.dispose());
+          if (materiauxActuels) {
+            materiauxActuels.principal.dispose(); materiauxActuels.fonce.dispose(); materiauxActuels.fil.dispose();
+            Object.values(materiauxActuels.textures).forEach((t: unknown) => (t as THREE.Texture).dispose());
+          }
           renderer.dispose();
           renderer.domElement.remove();
         }
@@ -184,7 +202,7 @@
 
 <style>
   .scene-3d-wrap { display: grid; gap: 8px; }
-  .scene-3d { position: relative; height: min(58vh, 540px); min-height: 300px; border-radius: 14px; overflow: hidden; }
+  .scene-3d { position: relative; height: min(58vh, 540px); min-height: 300px; border-radius: 14px; overflow: hidden; background: linear-gradient(165deg, #fbf6ee, #efe7d7 58%, #e3dac7); }
   .scene-3d :global(canvas) { display: block; width: 100%; height: 100%; touch-action: none; }
   .chargement { padding: 18px; font-weight: 600; }
   .commandes-3d { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

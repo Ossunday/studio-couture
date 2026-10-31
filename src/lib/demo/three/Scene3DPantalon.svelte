@@ -9,12 +9,14 @@
     mesures,
     couleurId,
     matiere,
-    onIndisponible
+    onIndisponible,
+    onVues
   }: {
     mesures: MesuresPantalonLarge;
     couleurId: string;
     matiere: MatiereId;
     onIndisponible: (message: string) => void;
+    onVues?: (vues: { face: string; perspective: string; dos: string }) => void;
   } = $props();
 
   let conteneur = $state<HTMLDivElement | null>(null);
@@ -118,6 +120,47 @@
       observer.observe(conteneur);
       majTaille();
 
+      // --- Aperçu en 3 images : même scène rendue à 800×1000, fond ivoire opaque ---
+      let minuteurVues: ReturnType<typeof setTimeout> | undefined;
+      const capturerVues = () => {
+        if (!onVues) return;
+        const rotation = groupe.rotation.y;
+        const posCam = camera.position.clone();
+        const cible = controls.target.clone();
+        const fond = scene.background;
+        try {
+          scene.background = new three.Color(0xfbf6ee);
+          renderer.setPixelRatio(1);
+          renderer.setSize(800, 1000, false);
+          camera.aspect = 800 / 1000;
+          camera.updateProjectionMatrix();
+          groupe.rotation.y = 0;
+          const distance = hauteurCorps * 1.34;
+          const cibleVues = new three.Vector3(0, hauteurCorps * 0.47, 0);
+          const rendreVue = (angleDegres: number) => {
+            const a = (angleDegres * Math.PI) / 180;
+            camera.position.set(Math.sin(a) * distance, hauteurCorps * 0.54, Math.cos(a) * distance);
+            camera.lookAt(cibleVues);
+            renderer.render(scene, camera);
+            return renderer.domElement.toDataURL('image/png');
+          };
+          onVues({ face: rendreVue(0), perspective: rendreVue(35), dos: rendreVue(180) });
+        } finally {
+          scene.background = fond;
+          groupe.rotation.y = rotation;
+          camera.position.copy(posCam);
+          controls.target.copy(cible);
+          camera.lookAt(cible);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          majTaille();
+        }
+      };
+      const planifierVues = () => {
+        if (!onVues) return;
+        if (minuteurVues) clearTimeout(minuteurVues);
+        minuteurVues = setTimeout(capturerVues, 400);
+      };
+
       ctx3d = {
         three, modele, scene, camera, renderer, controls, groupe, rendre, boucle, observer,
         setPantalon(m: MesuresPantalonLarge, coul: string, mat: MatiereId) {
@@ -138,6 +181,7 @@
           hauteurCorps = construit.hauteurTotaleCm;
           groupe.add(mannequin);
           rendre();
+          planifierVues();
         },
         tourner(delta: number) { groupe.rotation.y += delta; rendre(); },
         reinitialiserVue() {
@@ -149,6 +193,7 @@
         },
         detruire() {
           cancelAnimationFrame(raf);
+          if (minuteurVues) clearTimeout(minuteurVues);
           observer.disconnect();
           controls.dispose();
           if (pantalon) modele.disposerGroupe(pantalon);

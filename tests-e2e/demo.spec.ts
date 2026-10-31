@@ -175,7 +175,68 @@ test('3D : repli propre sur le patron à plat quand WebGL est désactivé', asyn
   await page.getByRole('button', { name: 'Vue 3D' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'WebGL absent' })).toBeVisible({ timeout: 20000 });
   await expect(page.getByRole('img', { name: /Aperçu du patron brouillon/ })).toBeVisible();
+  await expect(page.locator('img[data-vue]')).toHaveCount(0);
+  await expect(page.getByText(/Aperçu en 3 images indisponible/)).toBeVisible();
   await verifierLargeur(page, 'repli 3D 360');
+});
+
+test('aperçu en 3 images : vignettes non uniformes, dialogue, PNG signé, régénération aux mesures, planche étape 4', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await allerSalle(page);
+  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  await expect(page.getByTestId('scene-3d-canvas')).toBeVisible({ timeout: 20000 });
+  const vignettes = page.locator('img[data-vue]');
+  await expect(vignettes).toHaveCount(3, { timeout: 20000 });
+  for (const cle of ['face', 'perspective', 'dos']) {
+    const infos = await page.locator(`img[data-vue="${cle}"]`).evaluate(async (img: HTMLImageElement) => {
+      await img.decode();
+      const copie = document.createElement('canvas');
+      copie.width = 32; copie.height = 40;
+      const contexte = copie.getContext('2d')!;
+      contexte.drawImage(img, 0, 0, 32, 40);
+      const donnees = contexte.getImageData(0, 0, 32, 40).data;
+      const couleurs = new Set<string>();
+      for (let i = 0; i < donnees.length; i += 4) couleurs.add(`${donnees[i]! >> 4},${donnees[i + 1]! >> 4},${donnees[i + 2]! >> 4}`);
+      return { largeur: img.naturalWidth, couleurs: couleurs.size };
+    });
+    expect(infos.largeur, `vignette ${cle} non décodée`).toBeGreaterThan(0);
+    expect(infos.couleurs, `vignette ${cle} uniforme`).toBeGreaterThan(4);
+  }
+  // Dialogue accessible : ouverture, flèche droite, Échap
+  const faceAvant = await page.locator('img[data-vue="face"]').getAttribute('src');
+  await page.getByRole('button', { name: 'Agrandir la vue Face' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Vue suivante' }).click();
+  await expect(page.locator('#titre-vue-agrandie')).toHaveText('Perspective');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  // PNG téléchargé : signature PNG
+  const telechargement = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Télécharger l’aperçu (PNG)' }).first().click();
+  const fichier = await telechargement;
+  const chemin = await fichier.path();
+  const octets = await readFile(chemin!);
+  expect([...octets.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+  // Changer une mesure régénère les images (débattement inclus)
+  await page.locator('input[name="live-tour_taille_cm"]').fill('96');
+  await expect.poll(async () => page.locator('img[data-vue="face"]').getAttribute('src'), { timeout: 15000 }).not.toBe(faceAvant);
+  // Étape 4 : la planche en tête, capture dans test-results/
+  await page.getByRole('button', { name: 'Voir le résultat et le PDF' }).click();
+  await expect(page.getByRole('heading', { name: '4. Résultat' })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Planche de l’aperçu/ })).toBeVisible({ timeout: 10000 });
+  await verifierLargeur(page, 'planche étape 4 1280');
+  await page.screenshot({ path: 'test-results/demo-4-planche-1280.png', fullPage: true });
+});
+
+test('aperçu en 3 images : vignettes en défilement interne à 360 px, document sans débordement', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 360, height: 900 });
+  await allerSalle(page);
+  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  await expect(page.locator('img[data-vue]')).toHaveCount(3, { timeout: 20000 });
+  await verifierLargeur(page, 'vignettes 360');
+  await page.screenshot({ path: 'test-results/demo-3-vignettes-360.png', fullPage: true });
 });
 
 test('captures démo 360 px et 768 px : accueil et chaque étape (test-results/, non commitées)', async ({ page }) => {

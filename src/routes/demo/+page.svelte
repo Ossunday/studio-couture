@@ -3,6 +3,8 @@
   import IllustrationModele from '$lib/illustrations/IllustrationModele.svelte';
   import VisionneusePatron from '$lib/design/VisionneusePatron.svelte';
   import LoupeTissu from '$lib/demo/LoupeTissu.svelte';
+  import ApercuTroisVues from '$lib/demo/ApercuTroisVues.svelte';
+  import type { VuesApercu } from '$lib/demo/planche';
   import { COULEURS_TISSU, MATIERES, couleurTissu, type MatiereId } from '$lib/demo/tissus';
   import Epingle from '$lib/design/icones/Epingle.svelte';
   import { definitionMensuration, validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
@@ -45,6 +47,8 @@
   let matiere = $state<MatiereId>('denim');
   let vue = $state<'3d' | 'plat'>('plat');
   let message3d = $state('');
+  let vues3d = $state<VuesApercu | null>(null);
+  const tissuTexte = $derived(`${couleurTissu(couleurId).libelle} · ${MATIERES.find((m) => m.id === matiere)?.libelle ?? matiere}`);
   // Chargé dynamiquement seulement quand la vue 3D est demandée (étape 3).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let Scene3D = $state<any>(null);
@@ -270,9 +274,14 @@
           <div class="ombre-sol" aria-hidden="true"></div>
           {#if message3d}<p class="erreur-mesure" role="alert">{message3d}</p>{/if}
           {#if vue === '3d' && Scene3D && mesures3d}
-            <Scene3D mesures={mesures3d} couleurId={couleurId} matiere={matiere} onIndisponible={repli3d} />
+            <Scene3D mesures={mesures3d} couleurId={couleurId} matiere={matiere} onIndisponible={repli3d} onVues={(v: VuesApercu) => (vues3d = v)} />
           {:else}
             <VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />
+          {/if}
+          {#if vues3d && vue === '3d'}
+            <ApercuTroisVues vues={vues3d} mesuresTexte={resume.join(' · ')} tissuTexte={tissuTexte} />
+          {:else if message3d}
+            <p>Aperçu en 3 images indisponible ici : le patron à plat ci-dessus reste consultable et téléchargeable en PDF.</p>
           {/if}
         </div>
 
@@ -343,6 +352,15 @@
     <section aria-labelledby="titre-etape-4">
       <h2 id="titre-etape-4">4. Résultat</h2>
       <p class="resume">{resume.join(' · ')}</p>
+      {#if vues3d}
+        <ApercuTroisVues vues={vues3d} mesuresTexte={resume.join(' · ')} tissuTexte={tissuTexte} afficherPlanche />
+      {:else}
+        <section class="carte">
+          <h3>Aperçu en 3 images</h3>
+          <p>Ouvrez la « Vue 3D » à l’étape 3 pour générer l’aperçu en 3 images. En attendant, voici le patron à plat.</p>
+          {#if rendu}<VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />{/if}
+        </section>
+      {/if}
       <p><a class="bouton bouton-action" href={hrefPdf} download>Télécharger le PDF A4 1:1</a></p>
       <section class="carte">
         <h3>Avant de couper</h3>

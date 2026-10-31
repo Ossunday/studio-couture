@@ -35,7 +35,7 @@ test('démo guidée publique : 4 étapes sans compte, patron zoomable et PDF %PD
   await page.getByRole('button', { name: 'Voir mon patron' }).click();
 
   // Étape 3 — patron, onglets et zoom
-  await expect(page.getByRole('heading', { name: '3. Patron brouillon coté' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /3\. Salle d.essayage/ })).toBeVisible();
   await expect(page.getByRole('img', { name: /Aperçu du patron brouillon/ })).toBeVisible();
   await page.getByRole('tab', { name: 'Dos' }).click();
   await expect(page.getByRole('tab', { name: 'Dos' })).toHaveAttribute('aria-selected', 'true');
@@ -71,6 +71,60 @@ test('démo : mesures hors bornes refusées avec un message en français', async
   await expect(page.getByRole('heading', { name: '2. Mesures' })).toBeVisible();
 });
 
+async function allerSalle(page: import('@playwright/test').Page) {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Choisir le pantalon large' }).click();
+  await page.getByRole('button', { name: 'Moyenne', exact: true }).click();
+  await page.getByRole('button', { name: 'Voir mon patron' }).click();
+  await expect(page.getByRole('heading', { name: /3\. Salle d.essayage/ })).toBeVisible();
+}
+
+test('salle d’essayage : changer une mesure met à jour le patron en direct', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await allerSalle(page);
+  const patron = page.locator('section[aria-label="Votre patron"]');
+  await expect(patron.getByText('20,5 cm').first()).toBeVisible();
+  await page.locator('input[name="live-tour_taille_cm"]').fill('90');
+  await expect(patron.getByText('22,5 cm').first()).toBeVisible({ timeout: 5000 });
+  // Curseur synchronisé avec le champ
+  await expect(page.getByLabel('Curseur Tour de taille (cm)')).toHaveValue('90');
+  await verifierLargeur(page, 'salle 1280');
+});
+
+test('salle d’essayage : mesure hors plage, message français et dernier patron conservé', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await allerSalle(page);
+  await page.locator('input[name="live-tour_taille_cm"]').fill('90');
+  const patron = page.locator('section[aria-label="Votre patron"]');
+  await expect(patron.getByText('22,5 cm').first()).toBeVisible({ timeout: 5000 });
+  await page.locator('input[name="live-tour_taille_cm"]').fill('300');
+  await expect(page.locator('#err-tour_taille_cm')).toContainText('entre 40 et 200 cm', { timeout: 5000 });
+  await expect(patron.getByText('22,5 cm').first()).toBeVisible();
+});
+
+test('salle d’essayage : changer de tissu change le remplissage des pièces', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await allerSalle(page);
+  const svg = page.locator('svg.patron');
+  await expect(svg).toHaveAttribute('data-tissu-couleur', '#33536e');
+  const avant = await svg.locator('polygon').first().getAttribute('fill');
+  await page.getByRole('button', { name: 'Couleur Noir' }).click();
+  await page.getByRole('button', { name: 'Satin', exact: true }).click();
+  await expect(svg).toHaveAttribute('data-tissu-couleur', '#23201d');
+  await expect(svg).toHaveAttribute('data-tissu-matiere', 'satin');
+  expect(await svg.locator('polygon').first().getAttribute('fill')).toBe(avant); // motif svg (url), couleur portée par le motif
+  await expect(svg.locator('#motif-tissu rect')).toHaveAttribute('fill', '#23201d');
+});
+
+test('salle d’essayage : aucun débordement à 360, 768 et 1280 px, captures étape 3', async ({ page }) => {
+  for (const largeur of [360, 768, 1280]) {
+    await page.setViewportSize({ width: largeur, height: 900 });
+    await allerSalle(page);
+    await verifierLargeur(page, `salle ${largeur}`);
+    await page.screenshot({ path: `test-results/demo-3-salle-${largeur}.png`, fullPage: true });
+  }
+});
+
 test('captures démo 360 px et 768 px : accueil et chaque étape (test-results/, non commitées)', async ({ page }) => {
   for (const largeur of [360, 768]) {
     await page.setViewportSize({ width: largeur, height: 900 });
@@ -87,7 +141,7 @@ test('captures démo 360 px et 768 px : accueil et chaque étape (test-results/,
     await page.screenshot({ path: `test-results/demo-2-mesures-${largeur}.png`, fullPage: true });
     await verifierLargeur(page, `démo 2 ${largeur}`);
     await page.getByRole('button', { name: 'Voir mon patron' }).click();
-    await expect(page.getByRole('heading', { name: '3. Patron brouillon coté' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /3\. Salle d.essayage/ })).toBeVisible();
     await page.screenshot({ path: `test-results/demo-3-patron-${largeur}.png`, fullPage: true });
     await verifierLargeur(page, `démo 3 ${largeur}`);
     await page.getByRole('button', { name: 'Voir le résultat et le PDF' }).click();

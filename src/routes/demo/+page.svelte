@@ -124,8 +124,15 @@
   };
 
   let etape = $state(1);
-  let valeurs = $state<Record<string, string>>({ tour_taille_cm: '', tour_hanches_cm: '', hauteur_fourche_cm: '', longueur_pantalon_cm: '' });
-  let presetActif = $state<ClePreset | ''>('');
+  // « Moyenne » sélectionnée par défaut dès l'ouverture, mesures préremplies :
+  // « Voir mon patron » affiche le plan sans autre clic. Petite/Forte restent choisissables.
+  let valeurs = $state<Record<string, string>>({
+    tour_taille_cm: PRESETS.moyenne.tour_taille_cm,
+    tour_hanches_cm: PRESETS.moyenne.tour_hanches_cm,
+    hauteur_fourche_cm: PRESETS.moyenne.hauteur_fourche_cm,
+    longueur_pantalon_cm: PRESETS.moyenne.longueur_pantalon_cm
+  });
+  let presetActif = $state<ClePreset | ''>('moyenne');
   let erreur = $state('');
   let aideOuverte = $state(true);
 

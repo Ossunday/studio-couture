@@ -1,6 +1,11 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-11-03 (Design v3 phases 1 à 6, puis phase 8 assistant IA).
+Dernière mise à jour : 2026-11-03 (Design v3 phases 1 à 6, phase 8 assistant IA, corrections démo + favicon).
+
+## Corrections démo guidée et favicon (2026-11-03)
+
+- **Démo `/demo` : « Moyenne » par défaut** — l’étape 2 s’ouvre avec la morphologie Moyenne sélectionnée (bouton actif) et ses mesures préremplies (82/100/27/105) : « Voir mon patron » affiche directement le plan, sans clic sur une morphologie. Petite et Forte restent choisissables comme avant et préremplissent leurs mesures au clic. Nouveau test e2e dédié (Moyenne active par défaut, champs remplis, plan affiché dès « Voir mon patron »). Aucun changement au moteur ni aux plages.
+- **Favicon** — `static/favicon.svg` existait avec l’ancienne palette ; il est passé aux couleurs de la marque actuelles (jetons v3 : fond nuit `#23223A`, doré `#C9A77C`, crème `#F7F4EF`), monogramme « SC » et graduations de mètre ruban, dessin original 100 % local sans aucune référence externe. Le lien `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />` était déjà présent dans `src/app.html` (vérifié, conservé) ; aucun CDN, compatible avec la CSP (`img-src 'self' data: blob:`).
 
 ## Phase 8 — Assistant de modèle par IA (2026-11-03)
 

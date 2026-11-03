@@ -60,6 +60,21 @@ test('démo guidée publique : 4 étapes sans compte, patron zoomable et PDF %PD
   expect(octets.subarray(0, 4).toString('latin1')).toBe('%PDF');
 });
 
+test('démo : « Moyenne » par défaut — « Voir mon patron » affiche le plan sans choisir de morphologie', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Choisir le pantalon large' }).click();
+  // Aucun clic sur Petite / Moyenne / Forte : Moyenne est déjà sélectionnée, mesures remplies.
+  await expect(page.getByRole('button', { name: 'Moyenne', exact: true })).toHaveClass(/actif/);
+  await expect(page.locator('input[name="tour_taille_cm"]')).toHaveValue('82');
+  await expect(page.locator('input[name="tour_hanches_cm"]')).toHaveValue('100');
+  await expect(page.locator('input[name="hauteur_fourche_cm"]')).toHaveValue('27');
+  await expect(page.locator('input[name="longueur_pantalon_cm"]')).toHaveValue('105');
+  await page.getByRole('button', { name: 'Voir mon patron' }).click();
+  await expect(page.getByRole('heading', { name: /3\. Salle d.essayage/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Aperçu du patron brouillon/ })).toBeVisible();
+});
+
 test('démo : mesures hors bornes refusées avec un message en français', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await page.goto('/demo');

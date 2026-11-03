@@ -42,7 +42,7 @@
   const GROUPES_MESURES = [
     { titre: 'Haut du corps', codes: ['tour_poitrine_cm', 'longueur_dos_cm', 'largeur_epaules_cm', 'longueur_manche_cm'] },
     { titre: 'Taille et bassin', codes: ['tour_taille_cm', 'tour_hanches_cm', 'hauteur_fourche_cm'] },
-    { titre: 'Jambes', codes: ['longueur_pantalon_cm', 'longueur_jupe_cm'] }
+    { titre: 'Jambes', codes: ['longueur_pantalon_cm', 'longueur_jupe_cm', 'longueur_robe_cm'] }
   ];
   const mesuresParCode = $derived(new Map(data.mensurations.map((m) => [m.code, m])));
   const mesuresRenseignees = $derived(data.mensurations.filter((m) => m.valeurCm !== null));

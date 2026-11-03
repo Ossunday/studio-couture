@@ -22,6 +22,22 @@
     longueur_jupe_cm: {
       aide: 'Mesurez de la taille jusqu’à la longueur de jupe souhaitée (genou, mollet…).',
       exemple: 'Exemple courant : 60 cm.'
+    },
+    tour_poitrine_cm: {
+      aide: 'Faites le tour à l’endroit le plus fort de la poitrine, ruban à plat.',
+      exemple: 'Exemple courant : 92 cm.'
+    },
+    longueur_dos_cm: {
+      aide: 'Mesurez de la nuque jusqu’au creux naturel de la taille, dans le dos.',
+      exemple: 'Exemple courant : 40 cm.'
+    },
+    largeur_epaules_cm: {
+      aide: 'Mesurez d’une pointe d’épaule à l’autre, dans le dos.',
+      exemple: 'Exemple courant : 38 cm.'
+    },
+    longueur_robe_cm: {
+      aide: 'Mesurez depuis la nuque, le long du dos, jusqu’à la longueur de robe souhaitée.',
+      exemple: 'Exemple courant : 100 cm.'
     }
   };
 </script>

@@ -5,6 +5,8 @@ import { genererPatronPantalonLarge, type OptionsPantalonLarge } from './pantalo
 import { FORMULES_PANTALON_LARGE } from './pantalon-large/formulas';
 import { genererPatronJupeDroite } from './jupe-droite/geometry';
 import { FORMULES_JUPE_DROITE } from './jupe-droite/formulas';
+import { genererPatronRobeFourreau } from './robe-fourreau/geometry';
+import { FORMULES_ROBE_FOURREAU } from './robe-fourreau/formulas';
 
 /**
  * REGISTRE UNIQUE DES MODÈLES — source de vérité des écrans.
@@ -20,7 +22,7 @@ import { FORMULES_JUPE_DROITE } from './jupe-droite/formulas';
  * départ, arrivée, valeur, libellé) : la cotation générique les dessine sans
  * aucun libellé propre à un vêtement.
  */
-export type ModelePatron = 'pantalon_large' | 'jupe_droite';
+export type ModelePatron = 'pantalon_large' | 'jupe_droite' | 'robe_fourreau';
 
 export type ValeurOption = number | string;
 export type OptionsModele = Record<string, ValeurOption>;
@@ -144,6 +146,32 @@ function optionsPantalonNumeriques(options: OptionsModele): OptionsPantalonLarge
   };
 }
 
+const OPTIONS_ROBE: readonly OptionModeleDef[] = [
+  {
+    cle: 'encolure',
+    code: 'encolure',
+    libelle: 'Encolure',
+    type: 'choix',
+    defaut: 'ronde',
+    choix: [
+      { valeur: 'ronde', libelle: 'Ronde' },
+      { valeur: 'fendue_v', libelle: 'Ronde fendue en V' }
+    ]
+  },
+  {
+    cle: 'manches',
+    code: 'manches',
+    libelle: 'Manches',
+    type: 'choix',
+    defaut: 'sans_manches',
+    choix: [
+      { valeur: 'sans_manches', libelle: 'Sans manches' },
+      { valeur: 'manche_courte', libelle: 'Petite manche courte' }
+    ]
+  },
+  { cle: 'fermetureDos', code: 'fermeture_dos', libelle: 'Fermeture dos à glissière', type: 'case', defaut: 'glissiere' }
+];
+
 const PRESETS_PANTALON: readonly PresetModele[] = [
   { id: 'petite', libelle: 'Petite', valeurs: { tour_taille_cm: 64, tour_hanches_cm: 88, hauteur_fourche_cm: 24, longueur_pantalon_cm: 96 } },
   { id: 'moyenne', libelle: 'Moyenne', valeurs: { tour_taille_cm: 82, tour_hanches_cm: 100, hauteur_fourche_cm: 27, longueur_pantalon_cm: 105 } },
@@ -206,13 +234,58 @@ export const REGISTRE_MODELES: Record<ModelePatron, EntreeModele> = {
         longueurJupeCm: mesures['longueur_jupe_cm']!
       }),
     lireOptions: () => ({})
+  },
+  robe_fourreau: {
+    id: 'robe_fourreau',
+    titre: 'Robe fourreau',
+    actionChoix: 'Choisir la robe fourreau',
+    accroche: '6 mesures, patron à plat, devant et dos',
+    champs: ['tour_poitrine_cm', 'tour_taille_cm', 'tour_hanches_cm', 'longueur_dos_cm', 'longueur_robe_cm', 'largeur_epaules_cm'],
+    mesures: mesuresDef(
+      ['tour_poitrine_cm', 'tour_taille_cm', 'tour_hanches_cm', 'longueur_dos_cm', 'longueur_robe_cm', 'largeur_epaules_cm'],
+      { longueur_dos_cm: 'Longueur nuque-taille', longueur_robe_cm: 'Longueur de robe' },
+      {
+        tour_poitrine_cm: 'Poitrine',
+        tour_taille_cm: 'Taille',
+        tour_hanches_cm: 'Hanches',
+        longueur_dos_cm: 'Nuque-taille',
+        longueur_robe_cm: 'Long.',
+        largeur_epaules_cm: 'Épaules'
+      }
+    ),
+    options: OPTIONS_ROBE,
+    aVue3d: false,
+    assistantIa: false,
+    presets: [
+      { id: 'petite', libelle: 'Petite', valeurs: { tour_poitrine_cm: 80, tour_taille_cm: 64, tour_hanches_cm: 88, longueur_dos_cm: 38, longueur_robe_cm: 95, largeur_epaules_cm: 36 } },
+      { id: 'moyenne', libelle: 'Moyenne', valeurs: { tour_poitrine_cm: 92, tour_taille_cm: 76, tour_hanches_cm: 100, longueur_dos_cm: 40, longueur_robe_cm: 100, largeur_epaules_cm: 38 } },
+      { id: 'forte', libelle: 'Forte', valeurs: { tour_poitrine_cm: 116, tour_taille_cm: 96, tour_hanches_cm: 124, longueur_dos_cm: 43, longueur_robe_cm: 105, largeur_epaules_cm: 42 } }
+    ],
+    formules: FORMULES_ROBE_FOURREAU,
+    genererPieces: (mesures, options) =>
+      genererPatronRobeFourreau(
+        {
+          tourPoitrineCm: mesures['tour_poitrine_cm']!,
+          tourTailleCm: mesures['tour_taille_cm']!,
+          tourHanchesCm: mesures['tour_hanches_cm']!,
+          longueurDosCm: mesures['longueur_dos_cm']!,
+          longueurRobeCm: mesures['longueur_robe_cm']!,
+          largeurEpaulesCm: mesures['largeur_epaules_cm']!
+        },
+        {
+          encolure: typeof options['encolure'] === 'string' ? options['encolure'] : undefined,
+          manches: typeof options['manches'] === 'string' ? options['manches'] : undefined,
+          fermetureDos: typeof options['fermetureDos'] === 'string' ? options['fermetureDos'] : undefined
+        }
+      ),
+    lireOptions: (lire) => lireOptionsDepuisDefs(OPTIONS_ROBE, lire)
   }
 };
 
-export const LISTE_MODELES: readonly EntreeModele[] = [REGISTRE_MODELES.pantalon_large, REGISTRE_MODELES.jupe_droite];
+export const LISTE_MODELES: readonly EntreeModele[] = [REGISTRE_MODELES.pantalon_large, REGISTRE_MODELES.jupe_droite, REGISTRE_MODELES.robe_fourreau];
 
 export function estModelePatron(valeur: string | null | undefined): valeur is ModelePatron {
-  return valeur === 'pantalon_large' || valeur === 'jupe_droite';
+  return valeur === 'pantalon_large' || valeur === 'jupe_droite' || valeur === 'robe_fourreau';
 }
 
 /** Entrée du registre ou erreur explicite — jamais de modèle de substitution. */

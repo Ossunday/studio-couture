@@ -198,6 +198,7 @@ export function preparerCartePatron(entree: EntreeModele, mesures: Record<string
       };
     }
     case 'jupe_droite':
+    case 'robe_fourreau':
       return {
         mesuresPantalon: null,
         generique: preparerPatronGenerique(entree, mesures, options),

@@ -1,6 +1,14 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-11-03 (routage des modèles par registre — partie A ; robe fourreau parties B et C à suivre).
+Dernière mise à jour : 2026-11-03 (partie A registre des modèles, partie B robe fourreau ; partie C accueil robe à suivre).
+
+## Partie B — Robe fourreau, troisième modèle du registre (2026-11-03)
+
+- **Modèle ajouté** `robe_fourreau` dans le registre (la démo, la salle, la fiche, le tableau de bord, les PDF le voient automatiquement ; le switch exhaustif de `preparerCartePatron` a exigé son cas) : 6 mesures (tour de poitrine, tour de taille, tour de hanches, longueur nuque-taille, longueur de robe — nouvelle mensuration `longueur_robe_cm` 40–180, largeur d'épaules), options encolure ronde / ronde fendue en V, sans manches / petite manche courte, fermeture dos à glissière (case). Vue 3D et assistant IA non déclarés : la salle affiche le message « Vue 3D non disponible… ». Le compteur de fiche passe à « mesures sur 10 ».
+- **Moteur** `src/lib/patterns/robe-fourreau/` (`geometry.ts`, `formulas.ts`) : demi-devant au pli (×1), dos ×2 milieu dos, encolure et emmanchure en Bézier échantillonnées, pinces de taille, galbe de hanches, manche courte optionnelle ×2, marges 1 cm / ourlet 2 cm par `construirePiece`, fil droit, crans, cotes en données (poitrine, taille, hanches, nuque-taille, longueur de robe, épaule, encolure). Couture de côté et épaule **partagées devant/dos par construction** (égalité exacte). Méthode et séquence de construction : `docs/modeles/robe-fourreau.md` ; formules R1–R9 dans `docs/FORMULES_A_VALIDER.md`, toutes `a_valider`, `source: null`. **Brouillon non validé** partout, aucune promesse de coupe.
+- **Référence locale** `docs/references-locales/robe-fourreau.jpg` lue visuellement (silhouette et options seulement) ; ses valeurs écrites (exemples d'infographie incohérents) ne sont codées nulle part.
+- **Tests géométriques** (`robe-fourreau/geometry.test.ts`, valeurs attendues recalculées dans le test depuis les mensurations brutes) : côté et épaule devant = dos à 0,3 cm près (égalité par construction), angles des courbes > 100° (pas de coude), devant ≠ dos, aucun chevauchement agencé, refus hors bornes en nommant la mesure, 3 jeux petite/moyenne/forte. **Porte de sortie non franchie** : les tests passent dès la première série — la robe est publiée comme modèle disponible (toujours « brouillon non validé »), pas en « Bientôt ». E2E ajouté : parcours démo jupe et robe propres, sans libellé de pantalon.
+- **Vérifications réelles partie B** : `npm test` **133 réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement (906 fichiers)**, `npm run build` **réussi**, `npm run test:e2e` **27/27** avant l'ajout du test démo jupe/robe (13/13 sur la seule spec démo ensuite ; suite complète relancée en partie C).
 
 ## Partie A — Correction du routage des modèles par registre unique (2026-11-03)
 

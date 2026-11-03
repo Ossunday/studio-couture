@@ -244,6 +244,31 @@ test('aperçu en 3 images : vignettes non uniformes, dialogue, PNG signé, rég�
   await page.screenshot({ path: 'test-results/demo-4-planche-1280.png', fullPage: true });
 });
 
+test('démo : jupe droite et robe fourreau ont chacune leur propre parcours, sans libellé de pantalon', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  // Jupe droite : 3 mesures de jupe, patron à plat, pas de vue 3D proposée.
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Choisir la jupe droite' }).click();
+  await expect(page.getByRole('heading', { name: '2. Mesures' })).toBeVisible();
+  await expect(page.locator('input[name="longueur_jupe_cm"]')).toHaveValue('60');
+  await expect(page.locator('input[name="hauteur_fourche_cm"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Voir mon patron' }).click();
+  await expect(page.getByRole('heading', { name: /3\. Salle d.essayage/ })).toBeVisible();
+  await expect(page.getByText('Vue 3D non disponible pour ce modèle : voici le patron à plat, qui fait foi.')).toBeVisible();
+  await expect(page.getByText(/Fourche/)).toHaveCount(0);
+  // Robe fourreau : 6 mesures de robe, ses propres pièces.
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Choisir la robe fourreau' }).click();
+  await expect(page.locator('input[name="tour_poitrine_cm"]')).toHaveValue('92');
+  await expect(page.locator('input[name="longueur_robe_cm"]')).toHaveValue('100');
+  await expect(page.locator('input[name="longueur_pantalon_cm"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Voir mon patron' }).click();
+  await expect(page.getByRole('heading', { name: /3\. Salle d.essayage/ })).toBeVisible();
+  await expect(page.getByText('Vue 3D non disponible pour ce modèle : voici le patron à plat, qui fait foi.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Devant (×1 au pli)' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Dos \(×2/ })).toBeVisible();
+});
+
 test('aperçu en 3 images : vignettes en défilement interne à 360 px, document sans débordement', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 360, height: 900 });

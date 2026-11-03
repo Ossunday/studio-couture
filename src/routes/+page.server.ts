@@ -4,7 +4,7 @@ import { estModelePatron, REGISTRE_MODELES, texteResumeMesures } from '$lib/patt
 import { getRepository } from '$lib/server/repository';
 import { parametresDepuisPatron } from '$lib/server/patron-cliente';
 
-const NB_MESURES_FICHE = 9;
+const NB_MESURES_FICHE = 10;
 
 /** Accueil public (visiteur) / tableau de bord (utilisatrice connectée, maquette Atelier). */
 export const load: PageServerLoad = async ({ locals, url }) => {

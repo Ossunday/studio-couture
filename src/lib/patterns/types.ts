@@ -2,7 +2,7 @@ export type StatutFormule = 'a_valider' | 'valide_par_tailleur';
 
 export interface FormulePatron {
   id: string;
-  garmentId: 'jupe_droite' | 'pantalon_classique' | 'pantalon_large';
+  garmentId: 'jupe_droite' | 'pantalon_classique' | 'pantalon_large' | 'robe_fourreau';
   /** Ex. "tour_hanches", "pince_taille" — jamais un coefficient inventé ici. */
   element: string;
   /** Source traçable : ouvrage, école, maître tailleur nommé + date. Null tant qu'inconnue. */

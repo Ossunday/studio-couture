@@ -27,14 +27,14 @@ test('design v3 atelier et fiche : reproduction maquettes Atelier et Fiche à 12
   await page.setViewportSize({ width: 1280, height: 900 });
   await connecter(page);
 
-  // Cliente de capture : mesures du pantalon complètes (82/100/27/105), fiche à 4 mesures sur 9.
+  // Cliente de capture : mesures du pantalon complètes (82/100/27/105), fiche à 4 mesures sur 10.
   await page.getByRole('link', { name: 'Nouvelle cliente' }).click();
   await page.locator('input[name="nom"]').fill('Awa Design');
   await page.locator('input[name="telephone"]').fill('+225 07 10 50 49');
   await page.getByRole('button', { name: 'Créer la fiche cliente' }).click();
   await expect(page.getByRole('heading', { name: 'Awa Design' })).toBeVisible();
   await expect(page.getByText('cliente depuis', { exact: false })).toBeVisible();
-  await expect(page.getByText('4 mesures sur 9')).toHaveCount(0); // pas encore de mesures
+  await expect(page.getByText('4 mesures sur 10')).toHaveCount(0); // pas encore de mesures
 
   const navFiche = page.getByRole('navigation', { name: 'Sections de la fiche cliente' });
   await navFiche.getByRole('link', { name: 'Mesures' }).click();
@@ -44,7 +44,7 @@ test('design v3 atelier et fiche : reproduction maquettes Atelier et Fiche à 12
   await page.locator('input[name="longueur_pantalon_cm"]').fill('105');
   await page.getByRole('button', { name: 'Enregistrer les mensurations' }).click();
   await expect(page.getByText('Mensurations enregistrées et validées par la couturière.')).toBeVisible();
-  await expect(page.getByText('4 mesures sur 9')).toBeVisible();
+  await expect(page.getByText('4 mesures sur 10')).toBeVisible();
 
   // Patron enregistré depuis la fiche (mesures préremplies, rien à ressaisir).
   await page.getByRole('link', { name: 'Créer un patron pour Awa' }).first().click();
@@ -76,7 +76,7 @@ test('design v3 atelier et fiche : reproduction maquettes Atelier et Fiche à 12
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Bonjour,/ })).toBeVisible();
   await expect(page.getByText('À faire en priorité')).toBeVisible();
-  await expect(page.getByText('4 mesures sur 9').first()).toBeVisible();
+  await expect(page.getByText('4 mesures sur 10').first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Clientes récentes' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Derniers patrons' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Patrons à valider/ })).toBeVisible();

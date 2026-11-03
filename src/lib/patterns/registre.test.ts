@@ -23,7 +23,7 @@ describe('registre des modèles — paramétré par modèle', () => {
     expect(entree.mesures.length).toBe(entree.champs.length);
 
     const pieces = genererPieces(entree.id, mesures);
-    expect(pieces.length).toBeGreaterThanOrEqual(3);
+    expect(pieces.length).toBeGreaterThanOrEqual(2);
     for (const piece of pieces) {
       expect(piece.nom).toMatch(/×\d/); // nom + quantité de coupe affichés
       expect(piece.cotes?.length ?? 0).toBeGreaterThan(0);

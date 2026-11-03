@@ -38,6 +38,24 @@ Méthode complète : `docs/PATRON_PANTALON.md` (points A, B, B2, B3, C, O, X).
 | J5 | Ceinture : taille + aisance **+ 3 cm**, hauteur coupée **8 cm** | `croisureCeintureCm`, `hauteurCeintureCoupeeCm` | Même question que P7 (ceinture commune jupe/pantalon ?). |
 | J6 | Marges **1 cm**, ourlet **2 cm** | `brouillon.ts` | Même question que P8. Fermeture : longueur de fermeture éclair dos ? |
 
+## Robe fourreau (`src/lib/patterns/robe-fourreau/`) — ajoutée le 2026-11-03, brouillon non validé
+
+Méthode complète : `docs/modeles/robe-fourreau.md`. La référence locale
+(`docs/references-locales/robe-fourreau.jpg`) n'a servi qu'à la silhouette ;
+aucune de ses valeurs n'est codée.
+
+| # | Formule (hypothèse actuelle) | Code | Question pour le tailleur |
+|---|---|---|---|
+| R1 | Aisances totales : poitrine **+6 cm**, taille **+2 cm**, hanches **+4 cm**, réparties en quarts égaux devant/dos | `BROUILLON_ROBE_FOURREAU.aisance*` | Quelles aisances pour un fourreau selon tissu ? Répartition devant/dos ? |
+| R2 | Demi-encolure = largeur d'épaules **× 0,17** ; profondeur devant = demi-encolure **+ 2 cm**, dos **2 cm** | `ratioDemiEncolure`, `profondeurEncolureDosCm` | Largeur et profondeurs d'encolure ronde devant/dos ? Profondeur de la fente en V (5 cm tracés) ? |
+| R3 | Pente d'épaule **4 cm** ; épaule devant = dos par construction | `penteEpauleCm` | Pente d'épaule selon morphologie ? Pince d'épaule dos nécessaire ? |
+| R4 | Profondeur d'emmanchure = tour de poitrine **/ 6 + 7 cm** | `emmanchureDiviseur`, `emmanchureBaseCm` | Formule d'emmanchure correcte pour un fourreau sans manches et avec manche courte ? |
+| R5 | Pince de taille unique **3 cm**, centre à **55 % devant / 45 % dos**, jambes 10 cm haut / 11 cm bas | `largeurPinceCm`, `longueurPince*` | Nombre, largeur, longueur et position des pinces ? Pince poitrine nécessaire ? |
+| R6 | Hanches à **18 cm** sous la taille ; bas élargi de **+1 cm** ; longueur mesurée depuis la nuque | `hauteurHanchesCm`, `elargissementBasCm` | Hauteur de hanches ? Bas droit ou resserré ? Fente dos d'aisance à marcher ? |
+| R7 | Manche courte : tête = **60 %** de la profondeur d'emmanchure, longueur finie **18 cm** | `ratioTeteManche`, `longueurMancheCourteCm` | Hauteur de tête et largeur de manche par rapport à l'emmanchure calculée ? |
+| R8 | Fermeture à glissière milieu dos (option cochée par défaut), dos ×2 | `OptionsRobeFourreau.fermetureDos` | Longueur et type de glissière ? Fermeture visible ou invisible ? |
+| R9 | Marges **1 cm**, ourlet **2 cm** | `brouillon.ts` | Même question que P8. |
+
 ## Bornes de saisie (`src/lib/domain/mensurations-saisie.ts`)
 
 Les bornes actuelles (ex. tour de taille 40–200 cm, hauteur de fourche 15–45 cm) sont des

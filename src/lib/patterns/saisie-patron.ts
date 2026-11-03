@@ -1,27 +1,26 @@
 import { definitionMensuration, validerMensurationSaisie } from '../domain/mensurations-saisie';
-import { genererPatronJupeDroite, type MesuresJupeDroite } from './jupe-droite/geometry';
-import { genererPatronPantalonLarge, type MesuresPantalonLarge, type OptionsPantalonLarge } from './pantalon-large/geometry';
 import { agencerPieces, type PieceBrouillon, type PiecePlacee } from './brouillon';
+import type { OptionsPantalonLarge } from './pantalon-large/geometry';
+import {
+  exigerEntreeModele,
+  lireOptionsDepuisDefs,
+  parametresOptionsModele,
+  REGISTRE_MODELES,
+  type ModelePatron,
+  type OptionsModele
+} from './registre';
 
-export type ModelePatron = 'pantalon_large' | 'jupe_droite';
+export { estModelePatron, type ModelePatron } from './registre';
 
-export const MODELES: Record<
-  ModelePatron,
-  { titre: string; champs: readonly string[] }
-> = {
-  pantalon_large: {
-    titre: 'Pantalon large',
-    champs: ['tour_taille_cm', 'tour_hanches_cm', 'hauteur_fourche_cm', 'longueur_pantalon_cm']
-  },
-  jupe_droite: {
-    titre: 'Jupe droite',
-    champs: ['tour_taille_cm', 'tour_hanches_cm', 'longueur_jupe_cm']
-  }
-};
-
-export function estModelePatron(valeur: string | null | undefined): valeur is ModelePatron {
-  return valeur === 'pantalon_large' || valeur === 'jupe_droite';
-}
+/**
+ * Adaptateur historique au-dessus du REGISTRE des modèles (`registre.ts`) :
+ * ce fichier ne connaît plus aucun modèle en particulier. Il conserve les
+ * signatures utilisées par les écrans et les tests ; toute la connaissance
+ * (champs, bornes, options, générateur) vit dans le registre.
+ */
+export const MODELES: Record<ModelePatron, { titre: string; champs: readonly string[] }> = Object.fromEntries(
+  Object.values(REGISTRE_MODELES).map((e) => [e.id, { titre: e.titre, champs: e.champs }])
+) as Record<ModelePatron, { titre: string; champs: readonly string[] }>;
 
 /** Libellé court pour les messages « Vérifiez … » (sans le « (cm) » final). */
 export function libelleMesure(code: string): string {
@@ -31,13 +30,15 @@ export function libelleMesure(code: string): string {
 /**
  * Valide les mesures d'un modèle depuis des paramètres texte (formulaire ou URL).
  * Message en français nommant la mesure à vérifier (consigne produit n°5).
+ * Un modèle inconnu lève « Modèle indisponible » (registre), jamais de repli.
  */
 export function validerMesuresPatron(
   modele: ModelePatron,
   lire: (code: string) => string | null | undefined
 ): Record<string, number> {
+  const entree = exigerEntreeModele(modele);
   const mesures: Record<string, number> = {};
-  for (const code of MODELES[modele].champs) {
+  for (const code of entree.champs) {
     const brut = (lire(code) ?? '').toString().trim();
     if (!brut) throw new Error(`Vérifiez : ${libelleMesure(code).toLowerCase()} — mesure manquante.`);
     try {
@@ -50,63 +51,33 @@ export function validerMesuresPatron(
     }
   }
   // Contrôles de cohérence du moteur brouillon (messages nommant la mesure).
-  genererPieces(modele, mesures);
+  entree.genererPieces(mesures, {});
   return mesures;
 }
 
-function requis(mesures: Record<string, number>, code: string): number {
-  const valeur = mesures[code];
-  if (valeur === undefined) throw new Error(`Vérifiez : ${libelleMesure(code).toLowerCase()} — mesure manquante.`);
-  return valeur;
-}
-
-function versMesuresPantalon(mesures: Record<string, number>): MesuresPantalonLarge {
-  return {
-    tourTailleCm: requis(mesures, 'tour_taille_cm'),
-    tourHanchesCm: requis(mesures, 'tour_hanches_cm'),
-    hauteurFourcheCm: requis(mesures, 'hauteur_fourche_cm'),
-    longueurPantalonCm: requis(mesures, 'longueur_pantalon_cm')
-  };
-}
-
-function versMesuresJupe(mesures: Record<string, number>): MesuresJupeDroite {
-  return {
-    tourTailleCm: requis(mesures, 'tour_taille_cm'),
-    tourHanchesCm: requis(mesures, 'tour_hanches_cm'),
-    longueurJupeCm: requis(mesures, 'longueur_jupe_cm')
-  };
-}
-
-export function genererPieces(modele: ModelePatron, mesures: Record<string, number>, options: OptionsPantalonLarge = {}): PieceBrouillon[] {
-  return modele === 'pantalon_large' ? genererPatronPantalonLarge(versMesuresPantalon(mesures), options) : genererPatronJupeDroite(versMesuresJupe(mesures));
+export function genererPieces(modele: ModelePatron, mesures: Record<string, number>, options: OptionsModele = {}): PieceBrouillon[] {
+  return exigerEntreeModele(modele).genererPieces(mesures, options);
 }
 
 /** Options facultatives du pantalon (section repliée, jamais obligatoires). */
 export function lireOptionsPantalon(lire: (code: string) => string | null | undefined): OptionsPantalonLarge {
-  const num = (code: string, libelle: string, min: number, max: number): number | undefined => {
-    const brut = (lire(code) ?? '').toString().trim().replace(',', '.');
-    if (!brut) return undefined;
-    const v = Number(brut);
-    if (!Number.isFinite(v) || v < min || v > max) throw new Error(`Vérifiez : ${libelle} — entrez un nombre entre ${min} et ${max} cm.`);
-    return v;
-  };
+  const lues = lireOptionsDepuisDefs(REGISTRE_MODELES.pantalon_large.options, lire);
+  const num = (cle: string) => (typeof lues[cle] === 'number' ? (lues[cle] as number) : undefined);
   return {
-    largeurBasPieceCm: num('largeur_bas_cm', 'largeur du bas', 18, 40),
-    profondeurPliCm: num('profondeur_pli_cm', 'profondeur du pli', 0, 8),
-    hauteurCeintureFinieCm: num('hauteur_ceinture_cm', 'hauteur de ceinture', 3, 6)
+    largeurBasPieceCm: num('largeurBasPieceCm'),
+    profondeurPliCm: num('profondeurPliCm'),
+    hauteurCeintureFinieCm: num('hauteurCeintureFinieCm')
   };
 }
 
 export function parametresOptionsPantalon(params: URLSearchParams, options: OptionsPantalonLarge): void {
-  if (options.largeurBasPieceCm !== undefined) params.set('largeur_bas_cm', String(options.largeurBasPieceCm));
-  if (options.profondeurPliCm !== undefined) params.set('profondeur_pli_cm', String(options.profondeurPliCm));
-  if (options.hauteurCeintureFinieCm !== undefined) params.set('hauteur_ceinture_cm', String(options.hauteurCeintureFinieCm));
+  parametresOptionsModele(params, REGISTRE_MODELES.pantalon_large, options as OptionsModele);
 }
 
 export function genererPiecesPlacees(
   modele: ModelePatron,
   mesures: Record<string, number>,
-  options: OptionsPantalonLarge = {}
+  options: OptionsModele = {}
 ): { pieces: PiecePlacee[]; largeur: number; hauteur: number } {
   return agencerPieces(genererPieces(modele, mesures, options));
 }

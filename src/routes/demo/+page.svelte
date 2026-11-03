@@ -7,42 +7,58 @@
   import type { VuesApercu } from '$lib/demo/planche';
   import { COULEURS_TISSU, MATIERES, couleurTissu, type MatiereId } from '$lib/demo/tissus';
   import Epingle from '$lib/design/icones/Epingle.svelte';
-  import { definitionMensuration, validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
+  import { validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
   import { preparerPiece } from '$lib/patterns/apercu-rendu';
-  import { genererPiecesPlacees, MODELES, validerMesuresPatron } from '$lib/patterns/saisie-patron';
-
-  const PRESETS = {
-    petite: { libelle: 'Petite', tour_taille_cm: '64', tour_hanches_cm: '88', hauteur_fourche_cm: '24', longueur_pantalon_cm: '96' },
-    moyenne: { libelle: 'Moyenne', tour_taille_cm: '82', tour_hanches_cm: '100', hauteur_fourche_cm: '27', longueur_pantalon_cm: '105' },
-    forte: { libelle: 'Forte', tour_taille_cm: '110', tour_hanches_cm: '128', hauteur_fourche_cm: '31', longueur_pantalon_cm: '108' }
-  } as const;
-  type ClePreset = keyof typeof PRESETS;
+  import { genererPiecesPlacees, validerMesuresPatron, type ModelePatron } from '$lib/patterns/saisie-patron';
+  import { LISTE_MODELES, REGISTRE_MODELES } from '$lib/patterns/registre';
 
   const AIDES: Record<string, { aide: string; exemple: string }> = {
     tour_taille_cm: { aide: 'Faites le tour au creux naturel de la taille, ruban à plat, sans serrer.', exemple: 'Exemple courant : 82 cm.' },
     tour_hanches_cm: { aide: 'Faites le tour à l’endroit le plus fort des hanches et des fesses.', exemple: 'Exemple courant : 100 cm.' },
     hauteur_fourche_cm: { aide: 'Assise sur une chaise dure, mesurez le long du côté, de la taille jusqu’à la chaise.', exemple: 'Exemple courant : 27 cm.' },
-    longueur_pantalon_cm: { aide: 'Debout, mesurez le long du côté, de la taille jusqu’au sol (ou à la cheville souhaitée).', exemple: 'Exemple courant : 105 cm.' }
+    longueur_pantalon_cm: { aide: 'Debout, mesurez le long du côté, de la taille jusqu’au sol (ou à la cheville souhaitée).', exemple: 'Exemple courant : 105 cm.' },
+    longueur_jupe_cm: { aide: 'Mesurez de la taille jusqu’à la longueur de jupe souhaitée (genou, mollet…).', exemple: 'Exemple courant : 60 cm.' },
+    tour_poitrine_cm: { aide: 'Faites le tour à l’endroit le plus fort de la poitrine, ruban à plat.', exemple: 'Exemple courant : 92 cm.' },
+    longueur_dos_cm: { aide: 'Mesurez de la nuque jusqu’au creux de la taille.', exemple: 'Exemple courant : 40 cm.' },
+    largeur_epaules_cm: { aide: 'Mesurez d’une pointe d’épaule à l’autre, dans le dos.', exemple: 'Exemple courant : 38 cm.' }
   };
 
   const GUIDES: Record<number, string> = {
-    1: 'Commencez ici : choisissez le pantalon large. La jupe droite arrive bientôt, elle reste donc désactivée.',
+    1: 'Commencez ici : choisissez un modèle du catalogue. Chaque modèle a ses propres mesures et son propre patron.',
     2: 'Touchez Petite, Moyenne ou Forte pour remplir les mesures d’un coup, puis ajustez chaque champ si besoin avant de continuer.',
     3: 'Bienvenue dans la salle d’essayage : touchez une mesure, un tissu ou la vue — le patron brouillon se redessine en direct, sans rien enregistrer.',
     4: 'Dernière étape : téléchargez le PDF A4 à l’échelle 1:1, puis vérifiez le carré de contrôle de 10 cm à la règle avant toute coupe.'
   };
 
   const ETAPES = ['Choisir le modèle', 'Mesures', 'Patron', 'Résultat'] as const;
-  const champs = MODELES.pantalon_large.champs.map((code) => {
-    const def = definitionMensuration(code);
-    return { code, libelle: def.libelle, minCm: def.minCm, maxCm: def.maxCm, pasCm: 0.5, ...AIDES[code]! };
-  });
+
+  // Modèle choisi dans la démo : tout le parcours (champs, morphologies,
+  // génération, PDF, vue 3D) se lit dans le REGISTRE, jamais en dur.
+  let modeleChoisi = $state<ModelePatron>('pantalon_large');
+  const entreeDemo = $derived(REGISTRE_MODELES[modeleChoisi]);
+  const champs = $derived(
+    entreeDemo.mesures.map((m) => ({
+      code: m.code,
+      libelle: `${m.libelle} (cm)`,
+      minCm: m.minCm,
+      maxCm: m.maxCm,
+      pasCm: 0.5,
+      aide: AIDES[m.code]?.aide ?? 'Prenez la mesure au mètre ruban, en centimètres.',
+      exemple: AIDES[m.code]?.exemple ?? ''
+    }))
+  );
+  const PRESETS = $derived(entreeDemo.presets);
+  const fmtDemo = (v: number) => String(v).replace('.', ',');
+  function valeursPreset(id: string): Record<string, string> {
+    const p = entreeDemo.presets.find((x) => x.id === id) ?? entreeDemo.presets[0];
+    return Object.fromEntries(Object.entries(p?.valeurs ?? {}).map(([k, v]) => [k, fmtDemo(v)]));
+  }
 
   // --- Salle d'essayage (étape 3) : état en direct, dernier patron valide conservé ---
-  let valeursLive = $state<Record<string, string>>({ tour_taille_cm: '', tour_hanches_cm: '', hauteur_fourche_cm: '', longueur_pantalon_cm: '' });
+  let valeursLive = $state<Record<string, string>>(valeursPreset('moyenne'));
   let erreursLive = $state<Record<string, string>>({});
   let messageConfirme = $state('');
-  let presetLive = $state<ClePreset | ''>('');
+  let presetLive = $state<string>('moyenne');
   let couleurId = $state('bleu-denim');
   let matiere = $state<MatiereId>('denim');
   let vue = $state<'3d' | 'plat'>('plat');
@@ -88,7 +104,7 @@
       return false;
     }
     try {
-      mesuresValidees = validerMesuresPatron('pantalon_large', (code) => String(candidat[code]));
+      mesuresValidees = validerMesuresPatron(modeleChoisi, (code) => String(candidat[code]));
     } catch (e) {
       erreursLive = codeModifie ? { [codeModifie]: e instanceof Error ? e.message : 'Vérifiez vos mesures.' } : {};
       messageConfirme = '';
@@ -107,10 +123,11 @@
     valeursLive = { ...valeursLive, [code]: String(valeur).replace('.', ',') };
     planifierMaj(code);
   }
-  function choisirPresetLive(cle: ClePreset) {
-    const p = PRESETS[cle];
+  function choisirPresetLive(cle: string) {
+    const p = PRESETS.find((x) => x.id === cle);
+    if (!p) return;
     presetLive = cle;
-    valeursLive = { tour_taille_cm: p.tour_taille_cm, tour_hanches_cm: p.tour_hanches_cm, hauteur_fourche_cm: p.hauteur_fourche_cm, longueur_pantalon_cm: p.longueur_pantalon_cm };
+    valeursLive = Object.fromEntries(Object.entries(p.valeurs).map(([k, v]) => [k, fmtDemo(v)]));
     if (minuteur) clearTimeout(minuteur);
     tenterMajLive();
   }
@@ -126,13 +143,8 @@
   let etape = $state(1);
   // « Moyenne » sélectionnée par défaut dès l'ouverture, mesures préremplies :
   // « Voir mon patron » affiche le plan sans autre clic. Petite/Forte restent choisissables.
-  let valeurs = $state<Record<string, string>>({
-    tour_taille_cm: PRESETS.moyenne.tour_taille_cm,
-    tour_hanches_cm: PRESETS.moyenne.tour_hanches_cm,
-    hauteur_fourche_cm: PRESETS.moyenne.hauteur_fourche_cm,
-    longueur_pantalon_cm: PRESETS.moyenne.longueur_pantalon_cm
-  });
-  let presetActif = $state<ClePreset | ''>('moyenne');
+  let valeurs = $state<Record<string, string>>(valeursPreset('moyenne'));
+  let presetActif = $state<string>('moyenne');
   let erreur = $state('');
   let aideOuverte = $state(true);
 
@@ -141,17 +153,28 @@
     aideOuverte = true;
     erreur = '';
   }
-  function choisirPreset(cle: ClePreset) {
-    const p = PRESETS[cle];
+  function choisirModele(id: ModelePatron) {
+    modeleChoisi = id;
+    presetActif = 'moyenne';
+    presetLive = 'moyenne';
+    valeurs = valeursPreset('moyenne');
+    valeursLive = valeursPreset('moyenne');
+    mesuresValidees = null;
+    vues3d = null;
+    vue = 'plat';
+    message3d = '';
+    aller(2);
+  }
+  function choisirPreset(cle: string) {
     presetActif = cle;
-    valeurs = { tour_taille_cm: p.tour_taille_cm, tour_hanches_cm: p.tour_hanches_cm, hauteur_fourche_cm: p.hauteur_fourche_cm, longueur_pantalon_cm: p.longueur_pantalon_cm };
+    valeurs = valeursPreset(cle);
     erreur = '';
   }
 
   let mesuresValidees = $state<Record<string, number> | null>(null);
   function voirPatron() {
     try {
-      mesuresValidees = validerMesuresPatron('pantalon_large', (code) => valeurs[code]);
+      mesuresValidees = validerMesuresPatron(modeleChoisi, (code) => valeurs[code]);
       valeursLive = Object.fromEntries(Object.entries(mesuresValidees).map(([k, v]) => [k, String(v).replace('.', ',')]));
       erreursLive = {};
       messageConfirme = '';
@@ -163,11 +186,11 @@
 
   const rendu = $derived.by(() => {
     if (!mesuresValidees) return null;
-    const { pieces, largeur, hauteur } = genererPiecesPlacees('pantalon_large', mesuresValidees);
+    const { pieces, largeur, hauteur } = genererPiecesPlacees(modeleChoisi, mesuresValidees);
     return { pieces: pieces.map(preparerPiece), largeur: Math.ceil(largeur), hauteur: Math.ceil(hauteur) };
   });
   const mesures3d = $derived(
-    mesuresValidees
+    mesuresValidees && entreeDemo.aVue3d
       ? {
           tourTailleCm: mesuresValidees.tour_taille_cm!,
           tourHanchesCm: mesuresValidees.tour_hanches_cm!,
@@ -178,7 +201,7 @@
   );
   const hrefPdf = $derived.by(() => {
     if (!mesuresValidees) return '/demo';
-    const params = new URLSearchParams(Object.fromEntries(Object.entries(mesuresValidees).map(([k, v]) => [k, String(v)])));
+    const params = new URLSearchParams({ modele: modeleChoisi, ...Object.fromEntries(Object.entries(mesuresValidees).map(([k, v]) => [k, String(v)])) });
     return `/demo/pdf?${params.toString()}`;
   });
   const resume = $derived(
@@ -191,7 +214,7 @@
 <main>
   <p><a href="/">← Retour à l’accueil</a></p>
   <h1>Démo guidée</h1>
-  <p class="chapeau">Sans compte, sans photo : un modèle, quatre mesures, un patron brouillon. Rien n’est enregistré.</p>
+  <p class="chapeau">Sans compte, sans photo : choisissez un modèle, prenez vos mesures, obtenez un patron brouillon. Rien n’est enregistré.</p>
 
   <section class="alerte" role="alert">
     <strong>Brouillon non validé.</strong>
@@ -226,18 +249,14 @@
     <section aria-labelledby="titre-etape-1">
       <h2 id="titre-etape-1">1. Choisir le modèle</h2>
       <div class="modeles">
-        <article class="carte modele">
-          <IllustrationModele modele="pantalon_large" />
-          <h3>Pantalon large</h3>
-          <p>Taille haute, jambes amples, 4 mesures au mètre ruban.</p>
-          <button type="button" class="bouton-action" onclick={() => aller(2)}>Choisir le pantalon large</button>
-        </article>
-        <article class="carte modele bientot">
-          <IllustrationModele modele="jupe_droite" />
-          <h3>Jupe droite</h3>
-          <p>Bientôt dans la démo.</p>
-          <button type="button" disabled>Bientôt</button>
-        </article>
+        {#each LISTE_MODELES as entree}
+          <article class="carte modele">
+            <IllustrationModele modele={entree.id} />
+            <h3>{entree.titre}</h3>
+            <p>{entree.accroche}.</p>
+            <button type="button" class="bouton-action" onclick={() => choisirModele(entree.id)}>{entree.actionChoix}</button>
+          </article>
+        {/each}
       </div>
     </section>
   {:else if etape === 2}
@@ -245,8 +264,8 @@
       <h2 id="titre-etape-2">2. Mesures</h2>
       <p>Choisissez une silhouette pour préremplir, puis ajustez au mètre ruban, en centimètres.</p>
       <div class="presets" role="group" aria-label="Silhouettes prédéfinies">
-        {#each Object.entries(PRESETS) as [cle, p]}
-          <button type="button" class:actif={presetActif === cle} onclick={() => choisirPreset(cle as ClePreset)}>{p.libelle}</button>
+        {#each PRESETS as p}
+          <button type="button" class:actif={presetActif === p.id} onclick={() => choisirPreset(p.id)}>{p.libelle}</button>
         {/each}
       </div>
       {#if erreur}<p class="alerte" role="alert">{erreur}</p>{/if}
@@ -272,10 +291,14 @@
       <div class="essayage">
         <div class="scene-essayage carte-scene">
           <div class="scene-haut">
-            <div class="bascule" role="group" aria-label="Choix de la vue">
-              <button type="button" class:actif={vue === '3d'} aria-pressed={vue === '3d'} onclick={activerVue3d}>Vue 3D</button>
-              <button type="button" class:actif={vue === 'plat'} aria-pressed={vue === 'plat'} onclick={() => (vue = 'plat')}>Patron à plat</button>
-            </div>
+            {#if entreeDemo.aVue3d}
+              <div class="bascule" role="group" aria-label="Choix de la vue">
+                <button type="button" class:actif={vue === '3d'} aria-pressed={vue === '3d'} onclick={activerVue3d}>Vue 3D</button>
+                <button type="button" class:actif={vue === 'plat'} aria-pressed={vue === 'plat'} onclick={() => (vue = 'plat')}>Patron à plat</button>
+              </div>
+            {:else}
+              <p class="aide">Vue 3D non disponible pour ce modèle : voici le patron à plat, qui fait foi.</p>
+            {/if}
             <LoupeTissu couleurId={couleurId} matiere={matiere} />
           </div>
           <div class="ombre-sol" aria-hidden="true"></div>
@@ -302,8 +325,8 @@
           <section class="carte panneau" class:panneau-actif={panneauMobile === 'mesures'} aria-label="Vos mesures">
             <h3>Vos mesures</h3>
             <div class="presets" role="group" aria-label="Silhouettes prédéfinies">
-              {#each Object.entries(PRESETS) as [cle, p]}
-                <button type="button" class:actif={presetLive === cle} onclick={() => choisirPresetLive(cle as ClePreset)}>{p.libelle}</button>
+              {#each PRESETS as p}
+                <button type="button" class:actif={presetLive === p.id} onclick={() => choisirPresetLive(p.id)}>{p.libelle}</button>
               {/each}
             </div>
             {#each champs as champ}
@@ -363,8 +386,8 @@
         <ApercuTroisVues vues={vues3d} mesuresTexte={resume.join(' · ')} tissuTexte={tissuTexte} afficherPlanche />
       {:else}
         <section class="carte">
-          <h3>Aperçu en 3 images</h3>
-          <p>Ouvrez la « Vue 3D » à l’étape 3 pour générer l’aperçu en 3 images. En attendant, voici le patron à plat.</p>
+          <h3>{entreeDemo.aVue3d ? 'Aperçu en 3 images' : 'Patron à plat'}</h3>
+          <p>{entreeDemo.aVue3d ? 'Ouvrez la « Vue 3D » à l’étape 3 pour générer l’aperçu en 3 images. En attendant, voici le patron à plat.' : 'Ce modèle se consulte à plat : voici le patron coté, qui fait foi.'}</p>
           {#if rendu}<VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />{/if}
         </section>
       {/if}
@@ -378,7 +401,7 @@
         <ol>
           <li>Coupez une toile d’essayage dans un tissu bon marché.</li>
           <li>Faites valider les formules par votre maître tailleur avant un tissu précieux.</li>
-          <li>Revenez à l’étape 3 pour revoir le volume en 3D (généré des cotes, pas un drapé simulé), et bientôt : devis de tissu.</li>
+          <li>{#if entreeDemo.aVue3d}Revenez à l’étape 3 pour revoir le volume en 3D (généré des cotes, pas un drapé simulé), et bientôt : devis de tissu.{:else}Revenez à l’étape 3 pour ajuster les mesures et redessiner le patron à plat.{/if}</li>
         </ol>
       </section>
       <p>
@@ -406,7 +429,6 @@
   @media (min-width: 700px) { .modeles { grid-template-columns: 1fr 1fr; } }
   .modele { text-align: center; display: grid; gap: 8px; justify-items: center; margin: 0; }
   .modele p { margin: 0; }
-  .bientot { opacity: 0.72; }
   .presets { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
   .presets button { background: var(--carte); border-color: var(--bord-fort); color: var(--encre); }
   .presets button.actif { background: var(--encre); border-color: var(--encre); color: #fff; }

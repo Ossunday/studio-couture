@@ -1,16 +1,20 @@
 <script lang="ts">
-  import { preparerPatronCote, type MesuresPatronCote } from './patron-cote';
+  import { preparerPatronCote, type MesuresPatronCote, type PatronGeneriquePrepare } from './patron-cote';
   import type { OptionsPantalonLarge } from '$lib/patterns/pantalon-large/geometry';
 
   let {
     mesures,
+    generique = null,
     options = {},
     variante = 'complet',
     remplissage = '#ffffff',
     uid = 'pc',
     classe = ''
   }: {
-    mesures: MesuresPatronCote;
+    /** Mode spécialisé pantalon large (dessin historique des maquettes). */
+    mesures?: MesuresPatronCote;
+    /** Mode générique : pièces et cotes d'un modèle du registre, en données. */
+    generique?: PatronGeneriquePrepare | null;
     options?: OptionsPantalonLarge;
     variante?: 'complet' | 'mini';
     remplissage?: string;
@@ -18,11 +22,13 @@
     classe?: string;
   } = $props();
 
-  const d = $derived(preparerPatronCote(mesures, options));
+  const d = $derived(mesures ? preparerPatronCote(mesures, options) : null);
   const fleche = $derived(`${uid}-fleche`);
-  const pieces = $derived([d.devant, d.dos]);
+  const flecheGen = $derived(`${uid}-fleche-gen`);
+  const pieces = $derived(d ? [d.devant, d.dos] : []);
   // Mini : uniquement les contours des jambes, serrés (comme les vignettes de la maquette).
   const miniVb = $derived.by(() => {
+    if (!d) return '0 0 1 1';
     const minX = Math.min(d.devant.x, d.dos.x) - 2;
     const minY = d.yJambes - 2;
     const largeur = Math.max(d.devant.x + d.devant.largeur, d.dos.x + d.dos.largeur) - minX + 2;
@@ -31,7 +37,32 @@
   const largeurEtiquette = (texte: string) => texte.length * 1.72 + 3;
 </script>
 
-{#if variante === 'mini'}
+{#if generique}
+  <!-- Mode générique : contours, fil droit et cotes lus dans les données des
+       pièces du modèle (registre) — aucun libellé propre à un vêtement ici. -->
+  <svg viewBox="0 0 {generique.largeur} {generique.hauteur}" role="img" aria-label={generique.ariaLabel} class="patron-cote generique {classe}">
+    <title>{generique.titre}</title>
+    <defs>
+      <marker id={flecheGen} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0 1 L10 5 L0 9 z" fill="#c2410c" />
+      </marker>
+    </defs>
+    {#each generique.pieces as piece}
+      <polygon points={piece.coupe} fill={remplissage} stroke="#23223a" stroke-width="0.45" stroke-linejoin="round" />
+      <polygon points={piece.couture} fill="none" stroke="#23223a" stroke-width="0.28" stroke-dasharray="1.4 1" opacity="0.7" />
+      {#each piece.traits as trait}<polyline points={trait} fill="none" stroke="#23223a" stroke-width="0.28" stroke-dasharray="1.2 0.9" opacity="0.8" />{/each}
+      <line x1={piece.filDroit.x1} y1={piece.filDroit.y1} x2={piece.filDroit.x2} y2={piece.filDroit.y2} stroke="#23223a" stroke-width="0.35" opacity="0.65" />
+      {#if variante !== 'mini'}
+        <text x={piece.etiquetteX} y={piece.etiquetteY} font-size="3" font-weight="700" fill="#23223a">{piece.nom}</text>
+        {#each piece.cotes as cote}
+          <line x1={cote.x1} y1={cote.y1} x2={cote.x2} y2={cote.y2} stroke="#c2410c" stroke-width="0.35" marker-start="url(#{flecheGen})" marker-end="url(#{flecheGen})" />
+          <rect x={cote.fondX} y={cote.fondY} width={cote.fondLargeur} height={cote.fondHauteur} rx="2.6" fill="#ffffff" stroke="#c2410c" stroke-width="0.25" />
+          <text x={cote.tx} y={cote.ty + 0.8} text-anchor="middle" font-size="2.6" font-weight="700" fill="#c2410c">{cote.libelle} {cote.valeur} cm</text>
+        {/each}
+      {/if}
+    {/each}
+  </svg>
+{:else if d && variante === 'mini'}
   <svg viewBox={miniVb} role="img" aria-label={d.ariaLabel} class="patron-cote mini {classe}">
     <title>Patron du pantalon — brouillon à valider</title>
     {#each pieces as piece}
@@ -41,7 +72,7 @@
       <line x1={piece.filDroit.x1} y1={piece.filDroit.y1} x2={piece.filDroit.x2} y2={piece.filDroit.y2} stroke="#23223a" stroke-width="0.35" opacity="0.65" />
     {/each}
   </svg>
-{:else}
+{:else if d}
   <svg viewBox="0 0 {d.largeurTotale} {d.hauteurTotale}" role="img" aria-label={d.ariaLabel} class="patron-cote complet {classe}">
     <title>Patron du pantalon — brouillon à valider</title>
     <defs>
@@ -84,17 +115,17 @@
       <text x={piece.centreX} y={piece.yHanches + 1.2} text-anchor="middle" font-size="3" font-weight="800" fill="#c2410c">Hanches {d.valeurs.hanches} cm</text>
 
       <!-- Longueur, au centre de la pièce -->
-      <line x1={piece.centreX} y1={piece.y} x2={piece.centreX} y2={piece.y + mesures.longueurPantalonCm} stroke="#c2410c" stroke-width="0.38" marker-start="url(#{fleche})" marker-end="url(#{fleche})" opacity="0.9" />
+      <line x1={piece.centreX} y1={piece.y} x2={piece.centreX} y2={piece.y + mesures!.longueurPantalonCm} stroke="#c2410c" stroke-width="0.38" marker-start="url(#{fleche})" marker-end="url(#{fleche})" opacity="0.9" />
       <rect x={piece.centreX - 9.5} y={piece.y + piece.hauteur * 0.68} width="19" height="9" rx="2.6" fill="#ffffff" stroke="#c2410c" stroke-width="0.3" />
       <text x={piece.centreX} y={piece.y + piece.hauteur * 0.68 + 3.6} text-anchor="middle" font-size="2.6" font-weight="700" fill="#c2410c">Longueur</text>
       <text x={piece.centreX} y={piece.y + piece.hauteur * 0.68 + 7.2} text-anchor="middle" font-size="3" font-weight="800" fill="#c2410c">{d.valeurs.longueur} cm</text>
 
       <!-- Fourche, devant seulement -->
       {#if i === 0}
-        <line x1={piece.x + 3} y1={piece.y} x2={piece.x + 3} y2={piece.y + mesures.hauteurFourcheCm} stroke="#c2410c" stroke-width="0.4" marker-start="url(#{fleche})" marker-end="url(#{fleche})" />
-        <rect x={piece.x - 1} y={piece.y + mesures.hauteurFourcheCm / 2 - 4.5} width="17" height="9" rx="2.6" fill="#ffffff" stroke="#c2410c" stroke-width="0.3" />
-        <text x={piece.x + 7.5} y={piece.y + mesures.hauteurFourcheCm / 2 - 0.9} text-anchor="middle" font-size="2.6" font-weight="700" fill="#c2410c">Fourche</text>
-        <text x={piece.x + 7.5} y={piece.y + mesures.hauteurFourcheCm / 2 + 2.7} text-anchor="middle" font-size="3" font-weight="800" fill="#c2410c">{d.valeurs.fourche} cm</text>
+        <line x1={piece.x + 3} y1={piece.y} x2={piece.x + 3} y2={piece.y + mesures!.hauteurFourcheCm} stroke="#c2410c" stroke-width="0.4" marker-start="url(#{fleche})" marker-end="url(#{fleche})" />
+        <rect x={piece.x - 1} y={piece.y + mesures!.hauteurFourcheCm / 2 - 4.5} width="17" height="9" rx="2.6" fill="#ffffff" stroke="#c2410c" stroke-width="0.3" />
+        <text x={piece.x + 7.5} y={piece.y + mesures!.hauteurFourcheCm / 2 - 0.9} text-anchor="middle" font-size="2.6" font-weight="700" fill="#c2410c">Fourche</text>
+        <text x={piece.x + 7.5} y={piece.y + mesures!.hauteurFourcheCm / 2 + 2.7} text-anchor="middle" font-size="3" font-weight="800" fill="#c2410c">{d.valeurs.fourche} cm</text>
       {/if}
 
       <!-- Bas, valeur calculée de la pièce -->

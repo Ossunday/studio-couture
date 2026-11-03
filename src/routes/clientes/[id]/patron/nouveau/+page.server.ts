@@ -22,6 +22,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     csrfToken: locals.csrfToken
   };
   const modeleBrut = url.searchParams.get('modele');
+  // Paramètre absent → écran de choix. Paramètre présent mais inconnu →
+  // 404 explicite, jamais un autre modèle à la place.
+  if (modeleBrut !== null && !estModelePatron(modeleBrut)) throw error(404, 'Modèle indisponible.');
   if (!estModelePatron(modeleBrut)) return { ...base, modele: null as null };
   const modele = modeleBrut;
 
@@ -64,7 +67,7 @@ export const actions: Actions = {
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
     if (!cliente) throw error(404, 'Cliente introuvable.');
     const modele = String(data.get('modele') ?? '');
-    if (!estModelePatron(modele)) throw error(400, 'Modèle inconnu.');
+    if (!estModelePatron(modele)) throw error(404, 'Modèle indisponible.');
     const mensurations = await repo.listerMensurations(cliente.id);
     const fiche = new Map(mensurations.map((m) => [m.code, m.valeurCm]));
     const manquantes = MODELES[modele].champs.filter((code) => !fiche.has(code));
@@ -93,7 +96,7 @@ export const actions: Actions = {
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
     if (!cliente) throw error(404, 'Cliente introuvable.');
     const modele = String(data.get('modele') ?? '');
-    if (!estModelePatron(modele)) throw error(400, 'Modèle inconnu.');
+    if (!estModelePatron(modele)) throw error(404, 'Modèle indisponible.');
     try {
       const valide = validerPatronEnregistre(modele, (code) => data.get(code)?.toString());
       await repo.creerPatron(u.atelierId, {

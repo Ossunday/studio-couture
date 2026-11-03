@@ -1,22 +1,23 @@
 import { COULEURS_TISSU, MATIERES } from '$lib/demo/tissus';
 import {
-  lireOptionsPantalon,
-  MODELES,
-  validerMesuresPatron,
-  type ModelePatron
-} from '$lib/patterns/saisie-patron';
-import type { OptionsPantalonLarge } from '$lib/patterns/pantalon-large/geometry';
+  exigerEntreeModele,
+  parametresOptionsModele,
+  type OptionsModele
+} from '$lib/patterns/registre';
+import { validerMesuresPatron, type ModelePatron } from '$lib/patterns/saisie-patron';
 
 /**
  * Validation serveur d'un patron enregistré depuis la salle d'essayage
  * connectée. Aucune confiance dans le client : le nom est borné, les mesures
- * repassent par les mêmes bornes que la saisie manuelle, les options par
- * lireOptionsPantalon, et le tissu doit être une couleur/matière connue.
+ * repassent par les mêmes bornes que la saisie manuelle, les options sont
+ * relues dans le REGISTRE du modèle (bornées ou choix fermés), et le tissu
+ * doit être une couleur/matière connue. Un modèle inconnu lève
+ * « Modèle indisponible » — jamais de substitution.
  */
 export interface PatronValide {
   nom: string;
   mesures: Record<string, number>;
-  options: Record<string, number>;
+  options: OptionsModele;
   tissu: { couleurId: string; matiereId: string };
 }
 
@@ -24,16 +25,13 @@ export function validerPatronEnregistre(
   modele: ModelePatron,
   lire: (code: string) => string | null | undefined
 ): PatronValide {
+  const entree = exigerEntreeModele(modele);
   const nom = (lire('nom_patron') ?? '').trim().replace(/\s+/g, ' ');
   if (nom.length < 2 || nom.length > 80) {
     throw new Error('Vérifiez : le nom du patron doit faire entre 2 et 80 caractères.');
   }
   const mesures = validerMesuresPatron(modele, lire);
-  let options: Record<string, number> = {};
-  if (modele === 'pantalon_large') {
-    const lues: OptionsPantalonLarge = lireOptionsPantalon(lire);
-    options = Object.fromEntries(Object.entries(lues).filter(([, v]) => v !== undefined));
-  }
+  const options = entree.lireOptions(lire);
   const couleurId = (lire('couleur_id') ?? '').trim();
   if (!COULEURS_TISSU.some((c) => c.id === couleurId)) {
     throw new Error('Vérifiez : choisissez une couleur de tissu proposée.');
@@ -46,14 +44,13 @@ export function validerPatronEnregistre(
 }
 
 /** Repart d'un patron enregistré vers les paramètres de l'aperçu/PDF existants. */
-export function parametresDepuisPatron(modele: ModelePatron, nom: string, mesures: Record<string, number>, options: Record<string, number>): URLSearchParams {
+export function parametresDepuisPatron(modele: ModelePatron, nom: string, mesures: Record<string, number>, options: OptionsModele): URLSearchParams {
+  const entree = exigerEntreeModele(modele);
   const params = new URLSearchParams({ modele, nom });
-  for (const code of MODELES[modele].champs) {
+  for (const code of entree.champs) {
     const valeur = mesures[code];
     if (valeur !== undefined) params.set(code, String(valeur));
   }
-  if (options.largeurBasPieceCm !== undefined) params.set('largeur_bas_cm', String(options.largeurBasPieceCm));
-  if (options.profondeurPliCm !== undefined) params.set('profondeur_pli_cm', String(options.profondeurPliCm));
-  if (options.hauteurCeintureFinieCm !== undefined) params.set('hauteur_ceinture_cm', String(options.hauteurCeintureFinieCm));
+  parametresOptionsModele(params, entree, options);
   return params;
 }

@@ -3,7 +3,9 @@ import type { Actions, PageServerLoad } from './$types';
 import { peut } from '$lib/domain/permissions';
 import { DEFINITIONS_MENSURATIONS, validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
 import { preparerPiece } from '$lib/patterns/apercu-rendu';
-import { estModelePatron, genererPiecesPlacees, MODELES } from '$lib/patterns/saisie-patron';
+import { estModelePatron, genererPiecesPlacees } from '$lib/patterns/saisie-patron';
+import { preparerPatronGenerique, type PatronGeneriquePrepare } from '$lib/design/patron-cote';
+import { REGISTRE_MODELES, texteResumeMesures } from '$lib/patterns/registre';
 import { couleurTissu } from '$lib/demo/tissus';
 import { assertConsentementPhoto, calculerExpiration } from '$lib/privacy/retention';
 import { chiffrer, clePhotoDepuisEnv, validerPhoto } from '$lib/server/crypto';
@@ -26,52 +28,41 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   const valeurs = new Map(mensurations.map((m) => [m.code, m.valeurCm]));
   const patronsBruts = await repo.listerPatrons(u.atelierId, cliente.id);
   // Miniatures SVG générées à la volée depuis l'instantané (aucune image stockée).
+  // Tous les modèles passent par la cotation générique du registre.
   const patrons = patronsBruts.map((p) => {
+    const entree = estModelePatron(p.modele) ? REGISTRE_MODELES[p.modele] : null;
     let miniature: { pieces: ReturnType<typeof preparerPiece>[]; largeur: number; hauteur: number } | null = null;
-    if (estModelePatron(p.modele)) {
+    let vignette: PatronGeneriquePrepare | null = null;
+    if (entree) {
       try {
-        const placees = genererPiecesPlacees(p.modele, p.mesures, p.modele === 'pantalon_large' ? p.options : {});
+        const placees = genererPiecesPlacees(p.modele as typeof entree.id, p.mesures, p.options);
         miniature = {
           pieces: placees.pieces.map(preparerPiece),
           largeur: Math.ceil(placees.largeur),
           hauteur: Math.ceil(placees.hauteur)
         };
+        vignette = preparerPatronGenerique(entree, p.mesures, p.options);
       } catch {
         miniature = null;
+        vignette = null;
       }
     }
-    const hrefPdf = estModelePatron(p.modele)
-      ? `/patron/pdf?${parametresDepuisPatron(p.modele, p.nom, p.mesures, p.options).toString()}`
+    const hrefPdf = entree
+      ? `/patron/pdf?${parametresDepuisPatron(entree.id, p.nom, p.mesures, p.options).toString()}`
       : '#';
-    const mesuresPantalon =
-      p.modele === 'pantalon_large' &&
-      p.mesures['tour_taille_cm'] !== undefined &&
-      p.mesures['tour_hanches_cm'] !== undefined &&
-      p.mesures['hauteur_fourche_cm'] !== undefined &&
-      p.mesures['longueur_pantalon_cm'] !== undefined
-        ? {
-            tourTailleCm: p.mesures['tour_taille_cm'],
-            tourHanchesCm: p.mesures['tour_hanches_cm'],
-            hauteurFourcheCm: p.mesures['hauteur_fourche_cm'],
-            longueurPantalonCm: p.mesures['longueur_pantalon_cm']
-          }
-        : null;
     return {
       id: p.id,
       modele: p.modele,
-      titreModele: estModelePatron(p.modele) ? MODELES[p.modele].titre : p.modele,
+      titreModele: entree ? entree.titre : 'Modèle indisponible',
       nom: p.nom,
       creeLe: p.createdAt.toISOString(),
       modifieLe: p.updatedAt.toISOString(),
-      mesuresPantalon,
-      optionsPantalon: p.modele === 'pantalon_large' ? p.options : {},
-      mesuresResume: mesuresPantalon
-        ? `Taille ${String(mesuresPantalon.tourTailleCm).replace('.', ',')} · Hanches ${String(mesuresPantalon.tourHanchesCm).replace('.', ',')} · Fourche ${String(mesuresPantalon.hauteurFourcheCm).replace('.', ',')} · Long. ${String(mesuresPantalon.longueurPantalonCm).replace('.', ',')}`
-        : '',
-      mesuresTexte: estModelePatron(p.modele)
-        ? MODELES[p.modele].champs
-            .filter((code) => p.mesures[code] !== undefined)
-            .map((code) => `${code.replaceAll('_cm', '').replaceAll('_', ' ')} : ${String(p.mesures[code]).replace('.', ',')} cm`)
+      vignette,
+      mesuresResume: entree ? texteResumeMesures(entree, p.mesures) : '',
+      mesuresTexte: entree
+        ? entree.mesures
+            .filter((m) => p.mesures[m.code] !== undefined)
+            .map((m) => `${m.libelle} : ${String(p.mesures[m.code]).replace('.', ',')} cm`)
             .join(' · ')
         : '',
       tissuHex: couleurTissu(p.tissu.couleurId).hex,

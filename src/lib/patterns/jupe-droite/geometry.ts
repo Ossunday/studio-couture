@@ -37,6 +37,7 @@ function moitie(m: MesuresJupeDroite, dos: boolean): PieceBrouillon {
   ];
   const xPince = quartTaille * 0.55;
   const longueurPince = dos ? c.longueurPinceDosCm : c.longueurPinceDevantCm;
+  const largeurBas = quartHanches + c.elargissementBasCm;
   return construirePiece({
     id: dos ? 'dos' : 'devant',
     nom: dos ? 'Dos (×2, milieu avec fermeture)' : 'Devant (×1 au pli)',
@@ -49,6 +50,20 @@ function moitie(m: MesuresJupeDroite, dos: boolean): PieceBrouillon {
         { x: xPince, y: longueurPince },
         { x: xPince + c.largeurPinceCm / 2, y: 0 }
       ]
+    ],
+    // Cotes génériques (données) : mêmes libellés que les mesures de la pièce,
+    // dessinées par le rendu commun — aucun libellé d'un autre vêtement.
+    cotes: [
+      { libelle: 'Taille', valeurCm: quartTaille, de: { x: 0, y: 5 }, a: { x: quartTaille, y: 5 }, texte: { x: quartTaille / 2, y: 5 } },
+      { libelle: 'Hanches', valeurCm: quartHanches, de: { x: 0, y: hauteurHanches }, a: { x: quartHanches, y: hauteurHanches }, texte: { x: quartHanches / 2, y: hauteurHanches } },
+      { libelle: 'Bas', valeurCm: largeurBas, de: { x: 0, y: m.longueurJupeCm }, a: { x: largeurBas, y: m.longueurJupeCm }, texte: { x: largeurBas / 2, y: m.longueurJupeCm } },
+      { libelle: 'Longueur', valeurCm: m.longueurJupeCm, de: { x: 2.5, y: 0 }, a: { x: 2.5, y: m.longueurJupeCm }, texte: { x: 2.5, y: m.longueurJupeCm / 2 } }
+    ],
+    mesuresPatron: [
+      { libelle: 'Taille', valeurCm: quartTaille },
+      { libelle: 'Hanches', valeurCm: quartHanches },
+      { libelle: 'Bas', valeurCm: largeurBas },
+      { libelle: 'Longueur', valeurCm: m.longueurJupeCm }
     ]
   });
 }
@@ -69,7 +84,15 @@ export function genererPatronJupeDroite(m: MesuresJupeDroite): PieceBrouillon[] 
       { x: 0, y: c.hauteurCeintureCoupeeCm }
     ],
     filDroit: { de: { x: 4, y: c.hauteurCeintureCoupeeCm / 2 }, a: { x: longueurCeinture - 4, y: c.hauteurCeintureCoupeeCm / 2 } },
-    crans: [{ x: longueurCeinture / 2, y: 0 }]
+    crans: [{ x: longueurCeinture / 2, y: 0 }],
+    cotes: [
+      { libelle: 'Longueur ceinture', valeurCm: longueurCeinture, de: { x: 0, y: c.hauteurCeintureCoupeeCm / 2 }, a: { x: longueurCeinture, y: c.hauteurCeintureCoupeeCm / 2 }, texte: { x: longueurCeinture / 2, y: c.hauteurCeintureCoupeeCm / 2 } },
+      { libelle: 'Hauteur coupée', valeurCm: c.hauteurCeintureCoupeeCm, de: { x: longueurCeinture - 3, y: 0 }, a: { x: longueurCeinture - 3, y: c.hauteurCeintureCoupeeCm }, texte: { x: longueurCeinture - 12, y: c.hauteurCeintureCoupeeCm / 2 } }
+    ],
+    mesuresPatron: [
+      { libelle: 'Longueur de ceinture (avec croisure)', valeurCm: longueurCeinture },
+      { libelle: 'Hauteur coupée', valeurCm: c.hauteurCeintureCoupeeCm }
+    ]
   });
   return [moitie(m, false), moitie(m, true), ceinture];
 }

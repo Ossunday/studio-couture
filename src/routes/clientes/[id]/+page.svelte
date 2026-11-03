@@ -242,8 +242,8 @@
         {#each data.patrons as patron, i}
           <li class="carte-patron">
             <div class="patron-visuel">
-              {#if patron.mesuresPantalon}
-                <PatronCote mesures={patron.mesuresPantalon} options={patron.optionsPantalon} variante="mini" remplissage={['#dce5fa', '#ffdfb8', '#e3dbff'][i % 3]} uid="fiche-{patron.id}" classe="miniature" />
+              {#if patron.vignette}
+                <PatronCote generique={patron.vignette} variante="mini" remplissage={['#dce5fa', '#ffdfb8', '#e3dbff'][i % 3]} uid="fiche-{patron.id}" classe="miniature" />
               {:else if patron.miniature}
                 <svg class="miniature" viewBox="0 0 {patron.miniature.largeur} {patron.miniature.hauteur}" role="img" aria-label="Miniature du patron {patron.nom}">
                   {#each patron.miniature.pieces as piece}

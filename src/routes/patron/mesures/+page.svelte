@@ -47,19 +47,30 @@
         </label>
       </div>
     {/each}
-    {#if data.modele === 'pantalon_large'}
+    {#if data.options.length > 0}
       <details>
         <summary>Options du modèle (facultatif)</summary>
-        <p>Valeurs du modèle si vous ne changez rien : bas calculé à partir du genou (jambe droite), un pli devant, ceinture de 4 cm. Aucun champ obligatoire ici.</p>
-        <label>Largeur du bas par pièce (cm)
-          <input name="largeur_bas_cm" inputmode="decimal" placeholder="calculée : jambe droite" />
-        </label>
-        <label>Profondeur du pli devant (cm)
-          <input name="profondeur_pli_cm" inputmode="decimal" placeholder="4" />
-        </label>
-        <label>Hauteur finie de la ceinture (cm)
-          <input name="hauteur_ceinture_cm" inputmode="decimal" placeholder="4" />
-        </label>
+        <p>Les valeurs par défaut du modèle s'appliquent si vous ne changez rien. Aucun champ obligatoire ici.</p>
+        {#each data.options as option}
+          {#if option.type === 'nombre'}
+            <label>{option.libelle} (cm)
+              <input name={option.code} inputmode="decimal" placeholder={option.placeholder ?? ''} />
+            </label>
+          {:else if option.type === 'choix'}
+            <label>{option.libelle}
+              <select name={option.code}>
+                {#each option.choix ?? [] as choix}
+                  <option value={choix.valeur} selected={option.defaut === choix.valeur}>{choix.libelle}</option>
+                {/each}
+              </select>
+            </label>
+          {:else}
+            <label class="coche">
+              <input type="checkbox" name={option.code} value={String(option.defaut ?? 'oui')} checked />
+              {option.libelle}
+            </label>
+          {/if}
+        {/each}
       </details>
     {/if}
     <button type="submit">Voir mon patron</button>

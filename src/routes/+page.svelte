@@ -92,8 +92,8 @@
               {#each t.derniersPatrons as patron, i}
                 <li>
                   <a href="/clientes/{patron.clienteId}/patron/{patron.id}">
-                    <span class="vignette">{#if patron.mesures}<PatronCote mesures={patron.mesures} variante="mini" remplissage={['#dce5fa', '#ffdfb8', '#e3dbff'][i % 3]} uid="dash-{patron.id}" />{/if}</span>
-                    <span class="flex"><strong>Pantalon large — {patron.clienteNom}</strong><small>{patron.texte}</small><span class="puce-peche">Brouillon à valider</span></span>
+                    <span class="vignette">{#if patron.vignette}<PatronCote generique={patron.vignette} variante="mini" remplissage={['#dce5fa', '#ffdfb8', '#e3dbff'][i % 3]} uid="dash-{patron.id}" />{/if}</span>
+                    <span class="flex"><strong>{patron.titreModele} — {patron.clienteNom}</strong><small>{patron.texte}</small><span class="puce-peche">Brouillon à valider</span></span>
                   </a>
                 </li>
               {/each}
@@ -114,10 +114,16 @@
     {#if t.dernierPatron}
       {@const dp = t.dernierPatron}
       <section class="dernier-patron" aria-labelledby="dernier-titre">
-        <div class="dernier-dessin"><PatronCote mesures={dp.mesures} variante="complet" uid="dernier" /></div>
+        <div class="dernier-dessin">
+          {#if dp.mesuresPantalon}
+            <PatronCote mesures={dp.mesuresPantalon} variante="complet" uid="dernier" />
+          {:else if dp.generique}
+            <PatronCote generique={dp.generique} variante="complet" uid="dernier" />
+          {/if}
+        </div>
         <div class="dernier-infos">
           <h2 id="dernier-titre">Dernier patron — {dp.prenomCliente} <span class="puce-peche">Brouillon à valider</span></h2>
-          <p>Pantalon large · créé le {dateFr(dp.creeLe)}. Les mesures sont écrites directement sur le dessin.</p>
+          <p>{dp.titreModele} · créé le {dateFr(dp.creeLe)}. Les mesures sont écrites directement sur le dessin.</p>
           <ul class="lignes-mesures">
             {#each dp.lignes as ligne}<li><span><span class="point-mesure"></span>{ligne.libelle}</span><strong>{ligne.valeur}</strong></li>{/each}
           </ul>
@@ -130,7 +136,7 @@
     {:else}
       <section class="carte-bloc">
         <h2>Dernier patron</h2>
-        <p class="vide-texte">Aucun patron de pantalon large pour le moment. <a href="/patron/mesures?modele=pantalon_large">Créer un patron</a></p>
+        <p class="vide-texte">Aucun patron pour le moment. <a href="/patron/mesures?modele=pantalon_large">Créer un patron</a></p>
       </section>
     {/if}
   </main>

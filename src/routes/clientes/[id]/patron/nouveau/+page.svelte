@@ -2,6 +2,7 @@
   import IllustrationModele from '$lib/illustrations/IllustrationModele.svelte';
   import SalleEssayageCliente from '$lib/demo/SalleEssayageCliente.svelte';
   import { definitionMensuration } from '$lib/domain/mensurations-saisie';
+  import { LISTE_MODELES } from '$lib/patterns/registre';
   let { data, form } = $props();
 </script>
 
@@ -19,12 +20,11 @@
   {#if !data.modele}
     <h2>1. Choisir le modèle</h2>
     <div class="modeles">
-      <a class="carte-modele" href="/clientes/{data.cliente.id}/patron/nouveau?modele=pantalon_large">
-        <IllustrationModele modele="pantalon_large" /><strong>Pantalon large</strong><span>4 mesures, salle d’essayage 3D</span>
-      </a>
-      <a class="carte-modele" href="/clientes/{data.cliente.id}/patron/nouveau?modele=jupe_droite">
-        <IllustrationModele modele="jupe_droite" /><strong>Jupe droite</strong><span>3 mesures, patron à plat</span>
-      </a>
+      {#each LISTE_MODELES as entree}
+        <a class="carte-modele" href="/clientes/{data.cliente.id}/patron/nouveau?modele={entree.id}">
+          <IllustrationModele modele={entree.id} /><strong>{entree.titre}</strong><span>{entree.accroche}</span>
+        </a>
+      {/each}
     </div>
   {:else if data.manquantes && data.manquantes.length > 0}
     <h2>2. Il manque {data.manquantes.length} mesure{data.manquantes.length > 1 ? 's' : ''}</h2>
@@ -46,7 +46,7 @@
     </form>
   {:else if data.mesures}
     <SalleEssayageCliente
-      modele={data.modele === 'jupe_droite' ? 'jupe_droite' : 'pantalon_large'}
+      modele={data.modele}
       mesuresInitiales={data.mesures}
       nomInitial={data.nomPropose ?? ''}
       csrfToken={data.csrfToken ?? ''}

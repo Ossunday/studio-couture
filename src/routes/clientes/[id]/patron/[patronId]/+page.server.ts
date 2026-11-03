@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   if (!cliente) throw error(404, 'Cliente introuvable.');
   const patron = await repo.trouverPatron(u.atelierId, params.patronId);
   if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
-  if (!estModelePatron(patron.modele)) throw error(404, 'Modèle inconnu.');
+  if (!estModelePatron(patron.modele)) throw error(404, 'Modèle indisponible.');
   const modele: ModelePatron = patron.modele;
   const prenom = cliente.nom.trim().split(/\s+/)[0] ?? cliente.nom;
   return {
@@ -41,7 +41,7 @@ export const actions: Actions = {
     if (!cliente) throw error(404, 'Cliente introuvable.');
     const patron = await repo.trouverPatron(u.atelierId, params.patronId);
     if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
-    if (!estModelePatron(patron.modele)) throw error(400, 'Modèle inconnu.');
+    if (!estModelePatron(patron.modele)) throw error(404, 'Modèle indisponible.');
     try {
       const valide = validerPatronEnregistre(patron.modele, (code) => data.get(code)?.toString());
       await repo.modifierPatron(u.atelierId, patron.id, valide);

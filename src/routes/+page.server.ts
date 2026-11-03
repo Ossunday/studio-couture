@@ -1,18 +1,10 @@
 import type { PageServerLoad } from './$types';
-import { preparerPatronCote, type MesuresPatronCote } from '$lib/design/patron-cote';
+import { preparerCartePatron, preparerPatronGenerique, type PatronGeneriquePrepare } from '$lib/design/patron-cote';
+import { estModelePatron, REGISTRE_MODELES, texteResumeMesures } from '$lib/patterns/registre';
 import { getRepository } from '$lib/server/repository';
 import { parametresDepuisPatron } from '$lib/server/patron-cliente';
 
 const NB_MESURES_FICHE = 9;
-
-function mesuresPantalon(mesures: Record<string, number>): MesuresPatronCote | null {
-  const taille = mesures['tour_taille_cm'];
-  const hanches = mesures['tour_hanches_cm'];
-  const fourche = mesures['hauteur_fourche_cm'];
-  const longueur = mesures['longueur_pantalon_cm'];
-  if (taille === undefined || hanches === undefined || fourche === undefined || longueur === undefined) return null;
-  return { tourTailleCm: taille, tourHanchesCm: hanches, hauteurFourcheCm: fourche, longueurPantalonCm: longueur };
-}
 
 /** Accueil public (visiteur) / tableau de bord (utilisatrice connectée, maquette Atelier). */
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -40,33 +32,31 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   const nbCompletes = parCliente.filter((x) => x.nbMesures >= NB_MESURES_FICHE).length;
 
-  const dernier = tousPatrons.find((x) => x.patron.modele === 'pantalon_large' && mesuresPantalon(x.patron.mesures));
+  // Dernier patron, TOUS modèles confondus : le plus récent qui se génère.
+  // Le modèle vient du registre — une jupe s'affiche comme une jupe.
   let dernierPatron = null;
-  if (dernier) {
-    const mesures = mesuresPantalon(dernier.patron.mesures)!;
+  for (const candidat of tousPatrons) {
+    if (!estModelePatron(candidat.patron.modele)) continue;
+    const entree = REGISTRE_MODELES[candidat.patron.modele];
     try {
-      const prepare = preparerPatronCote(mesures, dernier.patron.modele === 'pantalon_large' ? dernier.patron.options : {});
+      const carte = preparerCartePatron(entree, candidat.patron.mesures, candidat.patron.options);
       dernierPatron = {
-        id: dernier.patron.id,
-        clienteId: dernier.cliente.id,
-        clienteNom: dernier.cliente.nom,
-        prenomCliente: dernier.cliente.nom.trim().split(/\s+/)[0] ?? dernier.cliente.nom,
-        nom: dernier.patron.nom,
-        creeLe: dernier.patron.createdAt.toISOString(),
-        mesures,
-        lignes: [
-          { libelle: 'Ceinture', valeur: `${prepare.valeurs.ceinture} cm × ${prepare.valeurs.ceintureHauteur} cm` },
-          { libelle: 'Taille', valeur: `${prepare.valeurs.taille} cm` },
-          { libelle: 'Hanches', valeur: `${prepare.valeurs.hanches} cm` },
-          { libelle: 'Fourche', valeur: `${prepare.valeurs.fourche} cm` },
-          { libelle: 'Longueur', valeur: `${prepare.valeurs.longueur} cm` },
-          { libelle: 'Bas', valeur: `${prepare.valeurs.basDevant} cm` }
-        ],
-        hrefSalle: `/clientes/${dernier.cliente.id}/patron/${dernier.patron.id}`,
-        hrefPdf: `/patron/pdf?${parametresDepuisPatron('pantalon_large', dernier.patron.nom, dernier.patron.mesures, dernier.patron.options).toString()}`
+        id: candidat.patron.id,
+        clienteId: candidat.cliente.id,
+        clienteNom: candidat.cliente.nom,
+        prenomCliente: candidat.cliente.nom.trim().split(/\s+/)[0] ?? candidat.cliente.nom,
+        nom: candidat.patron.nom,
+        titreModele: entree.titre,
+        creeLe: candidat.patron.createdAt.toISOString(),
+        mesuresPantalon: carte.mesuresPantalon,
+        generique: carte.generique,
+        lignes: carte.lignes,
+        hrefSalle: `/clientes/${candidat.cliente.id}/patron/${candidat.patron.id}`,
+        hrefPdf: `/patron/pdf?${parametresDepuisPatron(entree.id, candidat.patron.nom, candidat.patron.mesures, candidat.patron.options).toString()}`
       };
+      break;
     } catch {
-      dernierPatron = null;
+      // Patron illisible (mesures incomplètes) : on essaie le précédent.
     }
   }
 
@@ -91,18 +81,27 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         total: NB_MESURES_FICHE,
         nbPatrons: patrons.length
       })),
-      derniersPatrons: tousPatrons.slice(0, 3).map(({ patron, cliente }) => ({
-        id: patron.id,
-        clienteId: cliente.id,
-        clienteNom: cliente.nom,
-        nom: patron.nom,
-        modele: patron.modele,
-        mesures: mesuresPantalon(patron.mesures),
-        texte: (() => {
-          const m = mesuresPantalon(patron.mesures);
-          return m ? `Taille ${String(m.tourTailleCm).replace('.', ',')} · Hanches ${String(m.tourHanchesCm).replace('.', ',')}` : patron.modele;
-        })()
-      })),
+      derniersPatrons: tousPatrons.slice(0, 3).map(({ patron, cliente }) => {
+        const entree = estModelePatron(patron.modele) ? REGISTRE_MODELES[patron.modele] : null;
+        let vignette: PatronGeneriquePrepare | null = null;
+        if (entree) {
+          try {
+            vignette = preparerPatronGenerique(entree, patron.mesures, patron.options);
+          } catch {
+            vignette = null;
+          }
+        }
+        return {
+          id: patron.id,
+          clienteId: cliente.id,
+          clienteNom: cliente.nom,
+          nom: patron.nom,
+          modele: patron.modele,
+          titreModele: entree ? entree.titre : 'Modèle indisponible',
+          vignette,
+          texte: entree ? texteResumeMesures(entree, patron.mesures) : patron.modele
+        };
+      }),
       dernierPatron
     }
   };

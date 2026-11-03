@@ -7,9 +7,10 @@
   import ApercuTroisVues from '$lib/demo/ApercuTroisVues.svelte';
   import type { VuesApercu } from '$lib/demo/planche';
   import { COULEURS_TISSU, MATIERES, couleurTissu, type MatiereId } from '$lib/demo/tissus';
-  import { definitionMensuration, validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
+  import { validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
   import { preparerPiece } from '$lib/patterns/apercu-rendu';
-  import { genererPiecesPlacees, MODELES, validerMesuresPatron, type ModelePatron } from '$lib/patterns/saisie-patron';
+  import { genererPiecesPlacees, validerMesuresPatron, type ModelePatron } from '$lib/patterns/saisie-patron';
+  import { parametresOptionsModele, REGISTRE_MODELES, type OptionsModele, type ValeurOption } from '$lib/patterns/registre';
   import type { OptionsPantalonLarge } from '$lib/patterns/pantalon-large/geometry';
 
   /**
@@ -42,7 +43,7 @@
     actionEnregistrer: string;
     libelleEnregistrer: string;
     tissuInitial?: { couleurId: string; matiereId: string };
-    optionsInitiales?: Record<string, number>;
+    optionsInitiales?: Record<string, ValeurOption>;
     prenomCliente: string;
     hrefRetour: string;
     sousTitre?: string;
@@ -50,27 +51,15 @@
     infoPatron?: string;
   } = $props();
 
-  // Libellés courts de la maquette (« Longueur du pantalon », sans « (cm) »).
-  const LIBELLES_COURTS: Record<string, string> = {
-    tour_taille_cm: 'Tour de taille',
-    tour_hanches_cm: 'Tour de hanches',
-    hauteur_fourche_cm: 'Hauteur de fourche',
-    longueur_pantalon_cm: 'Longueur du pantalon',
-    longueur_jupe_cm: 'Longueur de jupe'
-  };
-  const champs = $derived(MODELES[modele].champs.map((code) => {
-    const def = definitionMensuration(code);
-    return { code, libelle: LIBELLES_COURTS[code] ?? def.libelle.replace(' (cm)', ''), minCm: def.minCm, maxCm: def.maxCm, pasCm: 0.5 };
-  }));
+  // Tout ce qui dépend du modèle vient du REGISTRE (champs, bornes, options,
+  // morphologies, vue 3D) : cette salle ne connaît aucun modèle en particulier.
+  // svelte-ignore state_referenced_locally
+  const entree = REGISTRE_MODELES[modele];
+  const champs = $derived(entree.mesures.map((m) => ({ code: m.code, libelle: m.libelle, minCm: m.minCm, maxCm: m.maxCm, pasCm: 0.5 })));
   const fmt = (v: number) => String(v).replace('.', ',');
 
-  // Morphologies de référence (mêmes valeurs que la démo publique).
-  const PRESETS = [
-    { id: 'petite', libelle: 'Petite', valeurs: { tour_taille_cm: 64, tour_hanches_cm: 88, hauteur_fourche_cm: 24, longueur_pantalon_cm: 96 } },
-    { id: 'moyenne', libelle: 'Moyenne', valeurs: { tour_taille_cm: 82, tour_hanches_cm: 100, hauteur_fourche_cm: 27, longueur_pantalon_cm: 105 } },
-    { id: 'forte', libelle: 'Forte', valeurs: { tour_taille_cm: 110, tour_hanches_cm: 128, hauteur_fourche_cm: 31, longueur_pantalon_cm: 108 } }
-  ] as const;
-  type PresetId = (typeof PRESETS)[number]['id'];
+  // Morphologies de référence du modèle (registre).
+  const PRESETS = entree.presets;
 
   // Captures initiales voulues : le composant part des valeurs de la fiche ou
   // du patron enregistré (instance créée à chaque navigation, pas synchrone).
@@ -90,33 +79,61 @@
   let zoom = $state(1);
   let minuteur: ReturnType<typeof setTimeout> | undefined;
 
-  // Options du pantalon (jamais obligatoires) : chaînes du formulaire, converties si valides.
+  // Options du modèle (registre, jamais obligatoires) : nombres en texte
+  // convertis si valides ; choix et cases suivis dans optionsChoix.
+  const defsOptions = entree.options;
   // svelte-ignore state_referenced_locally
-  let optionsTexte = $state<Record<string, string>>({
-    largeur_bas_cm: optionsInitiales.largeurBasPieceCm !== undefined ? fmt(optionsInitiales.largeurBasPieceCm) : '',
-    profondeur_pli_cm: optionsInitiales.profondeurPliCm !== undefined ? fmt(optionsInitiales.profondeurPliCm) : '',
-    hauteur_ceinture_cm: optionsInitiales.hauteurCeintureFinieCm !== undefined ? fmt(optionsInitiales.hauteurCeintureFinieCm) : ''
-  });
+  let optionsTexte = $state<Record<string, string>>(
+    Object.fromEntries(
+      defsOptions
+        .filter((d) => d.type === 'nombre')
+        .map((d) => {
+          const v = optionsInitiales[d.cle];
+          return [d.code, typeof v === 'number' ? fmt(v) : ''] as [string, string];
+        })
+    )
+  );
+  // svelte-ignore state_referenced_locally
+  let optionsChoix = $state<Record<string, string>>(
+    Object.fromEntries(
+      defsOptions
+        .filter((d) => d.type !== 'nombre')
+        .map((d) => {
+          const v = optionsInitiales[d.cle];
+          if (d.type === 'case') return [d.code, v !== undefined || d.defaut !== undefined ? 'on' : ''] as [string, string];
+          return [d.code, typeof v === 'string' && v ? v : String(d.defaut ?? d.choix?.[0]?.valeur ?? '')] as [string, string];
+        })
+    )
+  );
   let erreurOptions = $state('');
-  const optionsValides = $derived.by((): OptionsPantalonLarge => {
-    const lire = (code: string, min: number, max: number) => {
-      const brut = (optionsTexte[code] ?? '').trim().replace(',', '.');
-      if (!brut) return undefined;
-      const v = Number(brut);
-      return Number.isFinite(v) && v >= min && v <= max ? v : undefined;
-    };
-    return {
-      largeurBasPieceCm: lire('largeur_bas_cm', 18, 40),
-      profondeurPliCm: lire('profondeur_pli_cm', 0, 8),
-      hauteurCeintureFinieCm: lire('hauteur_ceinture_cm', 3, 6)
-    };
+  const optionsValides = $derived.by((): OptionsModele => {
+    const options: OptionsModele = {};
+    for (const def of defsOptions) {
+      if (def.type === 'nombre') {
+        const brut = (optionsTexte[def.code] ?? '').trim().replace(',', '.');
+        if (!brut) continue;
+        const v = Number(brut);
+        if (Number.isFinite(v) && (def.min === undefined || v >= def.min) && (def.max === undefined || v <= def.max)) options[def.cle] = v;
+      } else if (def.type === 'choix') {
+        const v = optionsChoix[def.code] ?? '';
+        if ((def.choix ?? []).some((c) => c.valeur === v)) options[def.cle] = v;
+      } else if (optionsChoix[def.code] === 'on') {
+        options[def.cle] = def.defaut ?? 'oui';
+      }
+    }
+    return options;
+  });
+  // Vue spécialisée du pantalon (PatronCote historique + assistant IA).
+  const optionsPantalon = $derived.by((): OptionsPantalonLarge => {
+    const num = (cle: string) => (typeof optionsValides[cle] === 'number' ? (optionsValides[cle] as number) : undefined);
+    return { largeurBasPieceCm: num('largeurBasPieceCm'), profondeurPliCm: num('profondeurPliCm'), hauteurCeintureFinieCm: num('hauteurCeintureFinieCm') };
   });
   function verifierOptions() {
-    const bornes: Record<string, [number, number]> = { largeur_bas_cm: [18, 40], profondeur_pli_cm: [0, 8], hauteur_ceinture_cm: [3, 6] };
-    for (const [code, [min, max]] of Object.entries(bornes)) {
-      const brut = (optionsTexte[code] ?? '').trim().replace(',', '.');
-      if (brut && (!Number.isFinite(Number(brut)) || Number(brut) < min || Number(brut) > max)) {
-        erreurOptions = `Option « ${code.replaceAll('_', ' ')} » : entrez un nombre entre ${min} et ${max} cm (ou laissez vide).`;
+    for (const def of defsOptions) {
+      if (def.type !== 'nombre') continue;
+      const brut = (optionsTexte[def.code] ?? '').trim().replace(',', '.');
+      if (brut && (!Number.isFinite(Number(brut)) || Number(brut) < (def.min ?? -Infinity) || Number(brut) > (def.max ?? Infinity))) {
+        erreurOptions = `Option « ${def.libelle.toLowerCase()} » : entrez un nombre entre ${def.min} et ${def.max} cm (ou laissez vide).`;
         return;
       }
     }
@@ -181,12 +198,13 @@
   const matiereLibelle = $derived(MATIERES.find((m) => m.id === matiere)?.libelle ?? matiere);
   const tissuTexte = $derived(`${couleurChoisie.libelle} · ${matiereLibelle}`);
   const rendu = $derived.by(() => {
-    const { pieces, largeur, hauteur } = genererPiecesPlacees(modele, mesuresValidees, modele === 'pantalon_large' ? optionsValides : {});
+    const { pieces, largeur, hauteur } = genererPiecesPlacees(modele, mesuresValidees, optionsValides);
     return { pieces: pieces.map(preparerPiece), largeur: Math.ceil(largeur), hauteur: Math.ceil(hauteur) };
   });
   const resume = $derived(champs.map((c) => `${c.libelle} : ${fmt(mesuresValidees[c.code]!)} cm`));
+  // La vue 3D n'existe que pour les modèles qui la déclarent (registre).
   const mesures3d = $derived(
-    modele === 'pantalon_large'
+    entree.aVue3d
       ? {
           tourTailleCm: mesuresValidees.tour_taille_cm!,
           tourHanchesCm: mesuresValidees.tour_hanches_cm!,
@@ -195,14 +213,12 @@
         }
       : null
   );
-  // Valeurs du moteur pour les pastilles « Votre patron » (pantalon seulement).
-  const patronCote = $derived(modele === 'pantalon_large' && mesures3d ? preparerPatronCote(mesures3d, optionsValides) : null);
+  // Valeurs du moteur pour les pastilles « Votre patron » (dessin spécialisé).
+  const patronCote = $derived(entree.aVue3d && mesures3d ? preparerPatronCote(mesures3d, optionsPantalon) : null);
   const hrefPdf = $derived.by(() => {
     const params = new URLSearchParams({ modele, nom: nomInitial });
     for (const [k, v] of Object.entries(mesuresValidees)) params.set(k, String(v));
-    if (optionsValides.largeurBasPieceCm !== undefined) params.set('largeur_bas_cm', String(optionsValides.largeurBasPieceCm));
-    if (optionsValides.profondeurPliCm !== undefined) params.set('profondeur_pli_cm', String(optionsValides.profondeurPliCm));
-    if (optionsValides.hauteurCeintureFinieCm !== undefined) params.set('hauteur_ceinture_cm', String(optionsValides.hauteurCeintureFinieCm));
+    parametresOptionsModele(params, entree, optionsValides);
     return `/patron/pdf?${params.toString()}`;
   });
 
@@ -283,7 +299,7 @@
     if (minuteur) clearTimeout(minuteur);
     tenterMajLive();
   }
-  const presetActif = $derived.by((): PresetId | null => {
+  const presetActif = $derived.by((): string | null => {
     for (const p of PRESETS) {
       if (Object.entries(p.valeurs).every(([code, v]) => fmt(v) === (valeursLive[code] ?? ''))) return p.id;
     }
@@ -315,7 +331,7 @@
 
 <div class="essayage">
   <div class="scene-essayage carte-scene">
-    {#if modele === 'pantalon_large'}
+    {#if entree.aVue3d}
       <div class="scene-haut">
         <div class="onglets-vue" role="tablist" aria-label="Choix de la vue" tabindex="-1" onkeydown={onkeydownOnglets}>
           <button type="button" role="tab" id="onglet-vue-plat" aria-selected={vue === 'plat'} aria-controls="panneau-vue-plat" tabindex={vue === 'plat' ? 0 : -1} class:actif={vue === 'plat'} onclick={() => (vue = 'plat')}>1 · Patron à plat</button>
@@ -331,7 +347,7 @@
     {/if}
     {#if message3d}<p class="erreur-mesure" role="alert">{message3d}</p>{/if}
 
-    {#if modele === 'pantalon_large'}
+    {#if entree.aVue3d}
       {#if vue === 'plat'}
         <div role="tabpanel" id="panneau-vue-plat" aria-labelledby="onglet-vue-plat">
           <div class="controles-zoom" aria-label="Zoom du patron à plat">
@@ -366,6 +382,7 @@
         </div>
       {/if}
     {:else}
+      <p class="aide-scene">Vue 3D non disponible pour ce modèle : voici le patron à plat, qui fait foi.</p>
       <VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />
     {/if}
   </div>
@@ -383,7 +400,7 @@
         {#if ficheLibelle}<Puce ton="bleu">{ficheLibelle}</Puce>{/if}
       </div>
       <p class="aide">Préremplies depuis la fiche — ajustez ici pour ce patron. La fiche n’est pas modifiée.</p>
-      {#if modele === 'pantalon_large'}
+      {#if PRESETS.length > 0}
         <div class="presets" role="group" aria-label="Morphologies de référence">
           {#each PRESETS as p}
             <button type="button" class:actif={presetActif === p.id} aria-pressed={presetActif === p.id} onclick={() => appliquerPreset(p)}>{p.libelle}</button>
@@ -422,7 +439,7 @@
       <p class="aide">La couleur remplit les pièces du patron à plat ; la loupe, dans la vue 3D, montre la matière en gros plan.</p>
     </section>
 
-    {#if modele === 'pantalon_large'}
+    {#if entree.assistantIa}
     <section class="carte panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label="Assistant de modèle">
       <h2>Assistant de modèle</h2>
       <p class="aide">Décrivez le pantalon voulu en quelques mots : l’assistant propose seulement les options du modèle (ampleur du bas, pli, ceinture). Il ne fournit aucune cote, ne dessine pas le patron et ne le valide pas — le moteur calcule, vous vérifiez.</p>
@@ -469,18 +486,31 @@
         <label class="nom-patron">Nom du patron
           <input name="nom_patron" value={nomInitial} required minlength="2" maxlength="80" />
         </label>
-        {#if modele === 'pantalon_large'}
+        {#if defsOptions.length > 0}
           <details bind:open={optionsOuvertes}>
             <summary>Options du modèle (facultatif)</summary>
-            <label>Largeur du bas par pièce (cm)
-              <input name="largeur_bas_cm" inputmode="decimal" placeholder="calculée : jambe droite" bind:value={optionsTexte.largeur_bas_cm} oninput={verifierOptions} />
-            </label>
-            <label>Profondeur du pli devant (cm)
-              <input name="profondeur_pli_cm" inputmode="decimal" placeholder="4" bind:value={optionsTexte.profondeur_pli_cm} oninput={verifierOptions} />
-            </label>
-            <label>Hauteur finie de la ceinture (cm)
-              <input name="hauteur_ceinture_cm" inputmode="decimal" placeholder="4" bind:value={optionsTexte.hauteur_ceinture_cm} oninput={verifierOptions} />
-            </label>
+            {#each defsOptions as def}
+              {#if def.type === 'nombre'}
+                <label>{def.libelle} (cm)
+                  <input name={def.code} inputmode="decimal" placeholder={def.placeholder ?? ''} bind:value={optionsTexte[def.code]} oninput={verifierOptions} />
+                </label>
+              {:else if def.type === 'choix'}
+                <fieldset class="options-choix">
+                  <legend>{def.libelle}</legend>
+                  {#each def.choix ?? [] as choix}
+                    <label class="coche-option">
+                      <input type="radio" name={def.code} value={choix.valeur} bind:group={optionsChoix[def.code]} />
+                      {choix.libelle}
+                    </label>
+                  {/each}
+                </fieldset>
+              {:else}
+                <label class="coche-option">
+                  <input type="checkbox" name={def.code} value={String(def.defaut ?? 'oui')} checked={optionsChoix[def.code] === 'on'} onchange={(e) => { optionsChoix = { ...optionsChoix, [def.code]: e.currentTarget.checked ? 'on' : '' }; }} />
+                  {def.libelle}
+                </label>
+              {/if}
+            {/each}
             {#if erreurOptions}<p class="erreur-mesure" role="alert">{erreurOptions}</p>{/if}
           </details>
         {/if}
@@ -577,6 +607,10 @@
   .enregistrer label { display: grid; gap: 6px; font-weight: 600; }
   .enregistrer input { min-height: 48px; font: inherit; padding: 10px 12px; border: 2px solid var(--bord-fort); border-radius: 10px; width: 100%; background: #fff; color: var(--encre); }
   .enregistrer details { display: grid; gap: 10px; }
+  .enregistrer .coche-option { display: flex; gap: 10px; align-items: center; font-weight: 600; min-height: 44px; }
+  .enregistrer .coche-option input { min-height: auto; width: auto; }
+  .options-choix { border: 0; padding: 0; margin: 0; display: grid; gap: 4px; }
+  .options-choix legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
   .enregistrer summary { min-height: 48px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
   table { border-collapse: collapse; margin-bottom: 12px; }
   th, td { border: 1px solid rgb(255 255 255 / 0.35); padding: 5px 10px; text-align: left; font-weight: 400; }

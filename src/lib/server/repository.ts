@@ -97,7 +97,7 @@ export interface Repository {
       modele: string;
       nom: string;
       mesures: Record<string, number>;
-      options: Record<string, number>;
+      options: Record<string, number | string>;
       tissu: { couleurId: string; matiereId: string };
       creePar: string;
     }
@@ -109,7 +109,7 @@ export interface Repository {
     maj: {
       nom: string;
       mesures: Record<string, number>;
-      options: Record<string, number>;
+      options: Record<string, number | string>;
       tissu: { couleurId: string; matiereId: string };
     }
   ): Promise<void>;

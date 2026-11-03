@@ -73,13 +73,13 @@ export interface PhotoCliente {
 export interface PatronCliente {
   id: string;
   clienteId: string;
-  /** Modèle de patron : 'pantalon_large' | 'jupe_droite' (voir MODELES). */
+  /** Modèle de patron : identifiant du registre ('pantalon_large', 'jupe_droite', …). */
   modele: string;
   nom: string;
   /** Instantané des mesures du patron, ex. { tour_taille_cm: 82 }. */
   mesures: Record<string, number>;
-  /** Options du modèle, ex. { largeurBasPieceCm: 24 } — {} si aucune. */
-  options: Record<string, number>;
+  /** Options du modèle (nombres ou choix textuels du registre) — {} si aucune. */
+  options: Record<string, number | string>;
   tissu: { couleurId: string; matiereId: string };
   statut: 'brouillon';
   creePar?: string;

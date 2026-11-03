@@ -1,5 +1,7 @@
 import { analyserPantalonLarge, genererPatronPantalonLarge, type MesuresPantalonLarge, type OptionsPantalonLarge } from '../patterns/pantalon-large/geometry';
-import { pointsEnAttribut, type PieceBrouillon } from '../patterns/brouillon';
+import { agencerPieces, pointsEnAttribut, type PieceBrouillon } from '../patterns/brouillon';
+import { preparerPiece, type PieceRendue } from '../patterns/apercu-rendu';
+import { assertJamais, resumeMesures, type EntreeModele, type OptionsModele } from '../patterns/registre';
 
 export type MesuresPatronCote = MesuresPantalonLarge;
 
@@ -128,3 +130,80 @@ export function preparerPatronCote(mesures: MesuresPatronCote, options: OptionsP
 }
 
 export type PatronCotePrepare = ReturnType<typeof preparerPatronCote>;
+
+export interface PatronGeneriquePrepare {
+  pieces: PieceRendue[];
+  largeur: number;
+  hauteur: number;
+  titre: string;
+  ariaLabel: string;
+}
+
+/**
+ * Cotation GÉNÉRIQUE : prépare n'importe quel modèle du registre depuis les
+ * cotes que ses pièces portent comme données (départ, arrivée, valeur,
+ * libellé). Aucun libellé propre à un vêtement n'est ajouté ici.
+ */
+export function preparerPatronGenerique(
+  entree: EntreeModele,
+  mesures: Record<string, number>,
+  options: OptionsModele = {}
+): PatronGeneriquePrepare {
+  const { pieces, largeur, hauteur } = agencerPieces(entree.genererPieces(mesures, options));
+  const rendues = pieces.map(preparerPiece);
+  return {
+    pieces: rendues,
+    largeur: Math.ceil(largeur),
+    hauteur: Math.ceil(hauteur),
+    titre: `Patron ${entree.titre.toLowerCase()} — brouillon à valider`,
+    ariaLabel: `Patron du modèle ${entree.titre}, brouillon à valider : ${rendues.map((p) => p.nom).join(', ')}.`
+  };
+}
+
+export interface CartePatronPreparee {
+  /** Dessin spécialisé (pantalon large uniquement), sinon null. */
+  mesuresPantalon: MesuresPatronCote | null;
+  /** Dessin générique du registre, sinon null. */
+  generique: PatronGeneriquePrepare | null;
+  lignes: { libelle: string; valeur: string }[];
+}
+
+/**
+ * Carte « dernier patron » des écrans : switch EXHAUSTIF sur le modèle
+ * (le compilateur refuse un modèle non traité). Le pantalon garde son
+ * dessin spécialisé historique ; les autres modèles passent par la
+ * cotation générique du registre.
+ */
+export function preparerCartePatron(entree: EntreeModele, mesures: Record<string, number>, options: OptionsModele = {}): CartePatronPreparee {
+  switch (entree.id) {
+    case 'pantalon_large': {
+      const m: MesuresPatronCote = {
+        tourTailleCm: mesures['tour_taille_cm']!,
+        tourHanchesCm: mesures['tour_hanches_cm']!,
+        hauteurFourcheCm: mesures['hauteur_fourche_cm']!,
+        longueurPantalonCm: mesures['longueur_pantalon_cm']!
+      };
+      const prepare = preparerPatronCote(m, options as OptionsPantalonLarge);
+      return {
+        mesuresPantalon: m,
+        generique: null,
+        lignes: [
+          { libelle: 'Ceinture', valeur: `${prepare.valeurs.ceinture} cm × ${prepare.valeurs.ceintureHauteur} cm` },
+          { libelle: 'Taille', valeur: `${prepare.valeurs.taille} cm` },
+          { libelle: 'Hanches', valeur: `${prepare.valeurs.hanches} cm` },
+          { libelle: 'Fourche', valeur: `${prepare.valeurs.fourche} cm` },
+          { libelle: 'Longueur', valeur: `${prepare.valeurs.longueur} cm` },
+          { libelle: 'Bas', valeur: `${prepare.valeurs.basDevant} cm` }
+        ]
+      };
+    }
+    case 'jupe_droite':
+      return {
+        mesuresPantalon: null,
+        generique: preparerPatronGenerique(entree, mesures, options),
+        lignes: resumeMesures(entree, mesures).map((x) => ({ libelle: x.libelle, valeur: `${String(x.valeur).replace('.', ',')} cm` }))
+      };
+    default:
+      return assertJamais(entree.id, 'preparerCartePatron');
+  }
+}

@@ -9,8 +9,8 @@ async function verifierLargeur(page: import('@playwright/test').Page, etiquette:
 test('démo guidée publique : 4 étapes sans compte, patron zoomable et PDF %PDF', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Votre patron sur mesure, en 2 minutes' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Voir la démo guidée' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Mesurez-la une fois/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Voir mon premier patron/ })).toBeVisible();
   await verifierLargeur(page, 'accueil 360');
 
   await page.goto('/demo');
@@ -243,7 +243,7 @@ test('captures démo 360 px et 768 px : accueil et chaque étape (test-results/,
   for (const largeur of [360, 768]) {
     await page.setViewportSize({ width: largeur, height: 900 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Votre patron sur mesure, en 2 minutes' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Mesurez-la une fois/ })).toBeVisible();
     await page.screenshot({ path: `test-results/demo-accueil-${largeur}.png`, fullPage: true });
     await verifierLargeur(page, `accueil ${largeur}`);
     await page.goto('/demo');

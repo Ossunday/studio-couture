@@ -26,7 +26,7 @@ test('design v2 : captures accueil public, liste clientes et fiche cliente à 36
   for (const largeur of [360, 768, 1280]) {
     await page.setViewportSize({ width: largeur, height: 900 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Votre patron sur mesure, en 2 minutes' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Mesurez-la une fois/ })).toBeVisible();
     await verifierLargeur(page, `accueil design ${largeur}`);
     await page.screenshot({ path: `test-results/design-accueil-${largeur}.png`, fullPage: true });
   }

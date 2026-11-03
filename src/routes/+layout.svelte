@@ -5,9 +5,12 @@
   import '@fontsource/manrope/600.css';
   import '@fontsource/manrope/700.css';
   import '@fontsource/manrope/800.css';
+  import { page } from '$app/state';
   import { BRAND_NAME } from '$lib/brand';
   import Rail from '$lib/design/Rail.svelte';
   let { children, data } = $props();
+  // L'accueil public porte son propre en-tête bleu nuit et son pied (maquette Accueil).
+  const estAccueil = $derived(page.url.pathname === '/');
 </script>
 
 {#if data.utilisatrice}
@@ -20,6 +23,8 @@
       </footer>
     </div>
   </div>
+{:else if estAccueil}
+  {@render children()}
 {:else}
   <header class="entete-public">
     <div class="barre-publique">

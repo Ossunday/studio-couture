@@ -3,13 +3,18 @@ node_modules/
 build/
 .env
 .env.*
+*.env
 !.env.example
 *.local
 .DS_Store
 # Jamais de photos clientes ni d'exports de patrons clients dans le repo
 /uploads/
 /private-storage/
+/photos-clientes/
+**/photos-clientes/
+static/photos-clientes/
 *.enc
 docs/references-locales/
+docs/maquette/
 test-results/
 /playwright-report/

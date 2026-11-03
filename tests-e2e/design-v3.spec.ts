@@ -223,7 +223,11 @@ test('design v3 accueil : reproduction maquette Accueil à 1280 px', async ({ pa
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Mesurez-la une fois/ })).toBeVisible();
   await expect(page.getByRole('img', { name: /Pantalon de tailleur bleu roi/ })).toBeVisible();
-  await expect(page.getByText('Le vêtement', { exact: true })).toBeVisible();
+  // Deux cartes « Le vêtement » : le pantalon du héros, puis la robe (partie C).
+  await expect(page.getByText('Le vêtement', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: /La robe fourreau, du tour de poitrine/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Robe fourreau portée/ })).toBeVisible();
+  await expect(page.getByText('Le patron calculé — brouillon non validé', { exact: true })).toBeVisible();
   // PatronCote : valeurs du moteur pour les mesures de démonstration (82/100/27/105).
   const patron = page.getByRole('img', { name: /Patron du pantalon, brouillon à valider/ }).first();
   await expect(patron).toBeVisible();

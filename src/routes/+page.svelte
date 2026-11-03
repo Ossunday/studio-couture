@@ -5,8 +5,18 @@
   import { BRAND_NAME } from '$lib/brand';
   import Avatar from '$lib/design/Avatar.svelte';
   import PatronCote from '$lib/design/PatronCote.svelte';
-  import { MESURES_DEMONSTRATION } from '$lib/design/patron-cote';
+  import IllustrationModele from '$lib/illustrations/IllustrationModele.svelte';
+  import { MESURES_DEMONSTRATION, preparerPatronGenerique } from '$lib/design/patron-cote';
+  import { REGISTRE_MODELES } from '$lib/patterns/registre';
   let { data } = $props();
+  // Bloc robe de l'accueil public : patron CALCULÉ par le moteur (preset
+  // « Moyenne » du registre), jamais le dessin de l'image de référence.
+  const entreeRobe = REGISTRE_MODELES.robe_fourreau;
+  const presetRobe = entreeRobe.presets.find((p) => p.id === 'moyenne') ?? entreeRobe.presets[0]!;
+  const patronRobe = preparerPatronGenerique(entreeRobe, { ...presetRobe.valeurs });
+  // La photo recadrée est ignorée par Git : si elle est absente, une
+  // illustration SVG originale prend sa place, sans erreur d'affichage.
+  let photoRobePresente = $state(true);
   const dateFr = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   const tonsPriorite = ['priorite-lavande', 'priorite-peche', 'priorite-jaune'];
 </script>
@@ -183,6 +193,35 @@
       </div>
     </section>
 
+    <!-- La robe fourreau : photo recadrée et patron calculé par le moteur -->
+    <section class="section robe-accueil" aria-labelledby="robe-accueil-titre">
+      <div class="robe-grille">
+        <div class="robe-texte">
+          <p class="sur-titre clair">Un troisième modèle</p>
+          <h2 class="serif" id="robe-accueil-titre">La robe fourreau, du tour de poitrine à la longueur choisie</h2>
+          <p>Six mesures suffisent pour tracer le devant et le dos : poitrine, taille, hanches, nuque-taille, longueur de robe et épaules. Encolure ronde ou fendue en V, sans manches ou avec une petite manche courte, fermeture dos à glissière.</p>
+          <p>Comme le pantalon large et la jupe droite, ce patron est un <strong>brouillon non validé</strong> : il se relit et s’ajuste à l’atelier avant toute coupe. Aucune coupe n’est promise sans cet essayage.</p>
+          <p class="hero-actions">
+            <a class="bouton-nuit" href="/demo">Essayer la robe dans la démo <span aria-hidden="true">→</span></a>
+          </p>
+        </div>
+        <div class="robe-visuels">
+          <figure class="carte-vetement carte-robe">
+            {#if photoRobePresente}
+              <img src="/img/accueil-robe-photo.jpg" alt="Robe fourreau portée : encolure ronde fendue en V, petites manches courtes, longueur au genou" onerror={() => (photoRobePresente = false)} />
+            {:else}
+              <div class="repli-robe"><IllustrationModele modele="robe_fourreau" /></div>
+            {/if}
+            <figcaption>Le vêtement</figcaption>
+          </figure>
+          <figure class="carte-hero-patron carte-robe-patron">
+            <PatronCote generique={patronRobe} variante="complet" uid="accueil-robe" />
+            <figcaption>Le patron calculé — brouillon non validé</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <!-- Ce que vous obtenez -->
     <section class="section services" id="fonctionnalites">
       <p class="sur-titre clair">Ce que vous obtenez</p>
@@ -307,6 +346,18 @@
   .carte-vetement img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .carte-vetement figcaption { position: absolute; left: 14px; bottom: 14px; background: var(--nuit); color: #fff; border-radius: 999px; padding: 8px 14px; font-size: 12px; font-weight: 800; }
   .carte-hero-patron { margin: 0; flex: 1 1 280px; max-width: 340px; border-radius: 32px; background: #f6f3ec; overflow: hidden; padding: 12px 8px 8px; }
+  /* Bloc robe de l'accueil public (partie C). */
+  .robe-accueil { padding-top: 56px; padding-bottom: 8px; }
+  .robe-grille { max-width: 1152px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 40px 48px; }
+  .robe-texte { flex: 1 1 340px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .robe-texte h2 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.75rem); font-weight: 600; color: var(--encre); }
+  .robe-texte p { margin: 0; font-size: 16.5px; line-height: 1.65; color: var(--texte-secondaire); }
+  .robe-visuels { flex: 1 1 620px; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-items: stretch; min-width: 0; }
+  .carte-vetement.carte-robe { background: #efe7f7; }
+  .carte-robe img { object-position: top center; }
+  .repli-robe { display: flex; align-items: center; justify-content: center; height: 100%; min-height: 420px; padding: 24px; }
+  .carte-robe-patron { position: relative; }
+  .carte-robe-patron figcaption { margin: 8px 10px 10px; font-size: 12.5px; font-weight: 700; color: var(--texte-secondaire); text-align: center; }
   .section { padding: 72px clamp(16px, 5vw, 64px); max-width: 1280px; margin: 0 auto; }
   .services { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
   .services h2, .patron-lisible h2, .marche-texte h2 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.75rem); font-weight: 600; color: var(--encre); }

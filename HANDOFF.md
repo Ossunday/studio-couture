@@ -1,6 +1,14 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-11-03 (partie A registre des modèles, partie B robe fourreau ; partie C accueil robe à suivre).
+Dernière mise à jour : 2026-11-03 (parties A, B et C : registre des modèles, robe fourreau, accueil robe).
+
+## Partie C — Accueil public : la robe à côté du pantalon (2026-11-03)
+
+- **Recadrage** : `static/img/accueil-robe.jpg` (fournie, original aussi conservé dans `docs/references-locales/robe-fourreau.jpg`) recadrée par un script Node ponctuel (Playwright/Chromium + canvas, `test-results/recadrer-robe.mjs`, non commité) : coupe verticale à 56 % de la largeur, seule la **photo de la robe** est gardée (`static/img/accueil-robe-photo.jpg`, 641×1374). Résultat relu visuellement : robe entière, **aucun dessin de patron ni aucune valeur cotée de l'image source n'apparaît** dans l'application.
+- **Bloc accueil** : deuxième grand bloc après le héros pantalon — carte arrondie « Le vêtement » (la photo recadrée) à côté du **patron calculé par le moteur** (`PatronCote` générique, preset « Moyenne » du registre robe), texte inclusif sans promesse de coupe, mention « brouillon non validé », lien vers la démo. Le dessin coté de l'image source n'est jamais affiché.
+- **Images non commitées** : `static/img/accueil-robe*.jpg` sont ignorées par Git (règle ajoutée par le propriétaire dans `.gitignore`, non commitée par l'assistant) ; sans la photo, l'accueil affiche une **illustration SVG originale de repli** (`IllustrationModele`, bascule `onerror`) et reste entièrement fonctionnel. Au propriétaire de décider s'il commite les images.
+- **Visionneuse générique** : ses onglets de pièces sont désormais déduits des pièces du modèle affiché (la robe n'a plus d'onglet « Ceinture » sans pièce, la manche apparaît quand elle existe) et sa légende ne nomme plus de pièce propre à un vêtement.
+- **Vérifications réelles partie C** : `npm test` **133 réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement (906 fichiers)**, `npm run build` **réussi**, `npm run test:e2e` **28/28** (assertion accueil design v3 adaptée : deux cartes « Le vêtement », pantalon puis robe, et présence du patron calculé de la robe).
 
 ## Partie B — Robe fourreau, troisième modèle du registre (2026-11-03)
 

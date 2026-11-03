@@ -9,12 +9,12 @@
     matiereTissu = ''
   }: { pieces: PieceRendue[]; largeur: number; hauteur: number; couleurTissu?: string; matiereTissu?: string } = $props();
 
-  const onglets = [
+  // Onglets déduits des pièces du modèle affiché (aucun nom de pièce codé ici).
+  const onglets = $derived([
     { id: 'tout', libelle: 'Tout' },
-    { id: 'devant', libelle: 'Devant' },
-    { id: 'dos', libelle: 'Dos' },
-    { id: 'ceinture', libelle: 'Ceinture' }
-  ] as const;
+    ...pieces.map((p) => ({ id: p.id, libelle: p.nom.replace(/\s*\(.*$/, '') }))
+  ]);
+  const ariaPatron = $derived(`Aperçu du patron brouillon : ${pieces.map((p) => p.nom).join(', ')}, avec cotes`);
 
   let onglet = $state<string>('tout');
   let echelle = $state(1);
@@ -82,7 +82,7 @@
   <p class="zoom-lu" aria-live="polite">Zoom : {Math.round(echelle * 100)} % — glissez pour déplacer, pincez sur mobile.</p>
   <div class="scene" onpointerdown={debut} onpointermove={bouger} onpointerup={fin} onpointercancel={fin} role="application" aria-label="Patron déplaçable et zoomable">
     <div class="calque" style="transform: translate({tx}px, {ty}px) scale({echelle});">
-      <svg viewBox="0 0 {largeur} {hauteur}" role="img" aria-label="Aperçu du patron brouillon : devant, dos et ceinture, avec cotes" class="patron" data-tissu-couleur={couleurTissu} data-tissu-matiere={matiereTissu}>
+      <svg viewBox="0 0 {largeur} {hauteur}" role="img" aria-label={ariaPatron} class="patron" data-tissu-couleur={couleurTissu} data-tissu-matiere={matiereTissu}>
         <title>Aperçu du patron brouillon</title>
         {#each visibles as piece}
           <polygon points={piece.coupe} pathLength="100" class="trace" fill={couleurTissu ? 'url(#motif-tissu)' : '#fffdf8'} stroke="#1e1a17" stroke-width="0.35" />
@@ -124,7 +124,7 @@
   </div>
   <details class="legende">
     <summary>Légende du patron</summary>
-    <p>Trait plein : coupe (marges comprises). Pointillé terracotta : couture — 1 cm de marge, 2 cm d’ourlet en bas. Flèches : fil droit. Croix : crans. Vert : cotes en cm. Gris : lignes de construction (hanches, genou, fourche). Poche : bientôt — non incluse dans ce brouillon.</p>
+    <p>Trait plein : coupe (marges comprises). Pointillé terracotta : couture — 1 cm de marge, 2 cm d’ourlet en bas. Flèches : fil droit. Croix : crans. Vert : cotes en cm. Gris : lignes de construction du modèle.</p>
   </details>
 </div>
 

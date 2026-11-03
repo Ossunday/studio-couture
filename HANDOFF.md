@@ -1,6 +1,15 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-10-31 (design v2 moderne, fiche cliente espace de travail et patrons enregistrés).
+Dernière mise à jour : 2026-11-03 (Design v3 — phase 1 fondations, puis phase 2 inscription).
+
+## Design v3 — Phase 1 : fondations (2026-11-03)
+
+- **Polices locales épinglées** : `@fontsource/manrope@5.3.0` (400–800, interface) et `@fontsource/playfair-display@5.3.0` (500–700, titres de l’accueil public uniquement, importés dans la page d’accueil) ; aucune CDN, CSP complétée par `font-src 'self'` (même origine).
+- **Jetons v3** (`src/lib/design/tokens.css`, source unique) : fond `#EFEFF2`, cartes `#FFFFFF` bordure `#E6E6EC` rayon 26 px, encre `#1E1E22`, secondaire `#5B5B66`, carte sombre `#2A2940`, rail `#25252B`, bleu `#7F9BDB` (pastille `#DCE5FA`/`#1F2F5C`), lavande `#B8A5FA`, pêche `#FFDFB8` (pastille `#FFE3C2`/`#6B3A00`), jaune-vert `#E9F74B` (action forte unique), cotes `#C2410C` ; accueil public nuit `#23223A`, doré `#C9A77C` (`#A8845A` sur fond clair), crème `#F7F4EF`. Boutons en pilule (999 px), noirs texte blanc, secondaires bordés. Anciens noms de variables conservés en alias (démo/3D non refondues).
+- **Composants** : `Bouton` (variante `fort` jaune-vert ajoutée), `Puce` (tons bleu/lavande/pêche/fort), `ChampTexte` (rayon 14, hauteur 52), `Carte`, `Avatar`, `Onglets`, `EtatVide`, `Squelette` alignés ; nouveau `BarreProgression` (`role=progressbar`) et nouveau `Rail` (bureau : rail noir arrondi flottant 76 px, icônes + libellés, actif en pastille blanche, avatar et déconnexion en bas ; mobile : barre d’onglets noire en bas, cibles ≥ 44 px).
+- **Gabarit connecté** : `+layout.svelte` utilise le Rail à gauche (contenu décalé de 108 px au bureau) ; déconnexion en bas du rail.
+- **Vérifications réelles** : `npm test` **95 réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement** (886 fichiers), `npm run build` **réussi**, `npm run test:e2e` **20/20 réussis**. Toujours « brouillon non validé » partout, aucun changement moteur.
+
 
 ## Design v2 moderne + fiche cliente espace de travail et patrons enregistrés (2026-10-31)
 

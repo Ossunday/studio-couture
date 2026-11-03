@@ -1,42 +1,70 @@
-/* Studio Couture — Design v2 « app produit ».
+/* Studio Couture — Design v3.
    Source unique des couleurs, typographies, rayons et ombres.
-   Direction : fond clair chaud, cartes blanches 20 px, encre douce comme
-   primaire, terracotta réservé aux actions clés et états actifs, vert profond
-   en secondaire, laiton en détails fins. Contrastes AA sur fond et cartes.
+   Application : fond gris clair, cartes blanches 24-28 px, encre douce,
+   carte sombre et rail noir, bleu/lavande/pêche en pastilles, jaune-vert
+   réservé à une seule action forte par écran, cotes du patron en orange.
+   Accueil public : bleu nuit, doré, crème ; titres en Playfair Display local.
    Les anciens noms (--ivoire, --papier, --vert-cote…) restent comme alias :
    la démo et la 3D les consomment encore. */
 :root {
-  --fond: #f6f4f0;
-  --ivoire: #f6f4f0;
+  /* --- Application (v3) --- */
+  --fond: #efeff2;
   --carte: #ffffff;
-  --papier: #ffffff;
-  --encre: #14110f;
-  --encre-douce: #57504a;
-  --primaire: #14110f;
+  --bord: #e6e6ec;
+  --bord-fort: #d8d8df;
+  --encre: #1e1e22;
+  --texte-secondaire: #5b5b66;
+  --encre-douce: #5b5b66;
+  --carte-sombre: #2a2940;
+  --rail: #25252b;
+  --bleu: #7f9bdb;
+  --bleu-pastille: #dce5fa;
+  --bleu-texte: #1f2f5c;
+  --lavande: #b8a5fa;
+  --lavande-pastille: #e3dbff;
+  --lavande-texte: #33226b;
+  --peche: #ffdfb8;
+  --peche-pastille: #ffe3c2;
+  --peche-texte: #6b3a00;
+  --jaune-vert: #e9f74b;
+  --jaune-vert-texte: #2e3300;
+  --cote: #c2410c;
+  --cote-texte: #9a3412;
+  /* --- Accueil public --- */
+  --nuit: #23223a;
+  --dore: #c9a77c;
+  --dore-sur-clair: #a8845a;
+  --creme: #f7f4ef;
+  /* --- Alias v2 conservés (démo, 3D, écrans non refondus) --- */
+  --ivoire: var(--fond);
+  --papier: var(--carte);
+  --primaire: var(--encre);
   --primaire-texte: #ffffff;
-  --vert: #1f3d36;
-  --vert-texte-sur-ivoire: #1f3d36;
-  --vert-cote: #2f6b4f;
-  --terracotta: #b5532f;
-  --terracotta-fonce: #96421f;
-  --terracotta-doux: #f7e8e0;
-  --laiton: #c9a24b;
-  --laiton-doux: #efe6cd;
+  --vert: #2a2940;
+  --vert-texte-sur-ivoire: #1f2f5c;
+  --vert-cote: var(--cote);
+  --terracotta: var(--cote);
+  --terracotta-fonce: #9a3412;
+  --terracotta-doux: var(--peche-pastille);
+  --laiton: var(--dore);
+  --laiton-doux: var(--creme);
   --rouge-doux: #fdf0e9;
-  --bord: #e4ded2;
-  --bord-fort: #cfc6b4;
-  --sans: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* --- Typographie : Manrope local partout, Playfair pour l'accueil public --- */
+  --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --serif: var(--sans);
+  --serif-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  /* --- Formes --- */
   --rayon: 14px;
-  --rayon-carte: 20px;
+  --rayon-carte: 26px;
   --rayon-puce: 999px;
-  --ombre: 0 16px 40px rgb(20 17 15 / 0.1), 0 2px 8px rgb(20 17 15 / 0.05);
-  --ombre-petite: 0 2px 10px rgb(20 17 15 / 0.05);
+  --rayon-bouton: 999px;
+  --ombre: 0 16px 40px rgb(30 30 34 / 0.1), 0 2px 8px rgb(30 30 34 / 0.05);
+  --ombre-petite: 0 2px 10px rgb(30 30 34 / 0.05);
   --titre-1: clamp(2rem, 6vw, 3.2rem);
   --titre-2: clamp(1.5rem, 4vw, 2.1rem);
   --titre-3: clamp(1.15rem, 3vw, 1.35rem);
   --texte-base: clamp(1rem, 2.4vw, 1.075rem);
-  --focus: #8a5a00;
+  --focus: #9a3412;
   --transition: 220ms ease;
 }
 @media (prefers-reduced-motion: reduce) {

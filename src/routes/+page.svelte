@@ -1,4 +1,7 @@
 <script lang="ts">
+  import '@fontsource/playfair-display/500.css';
+  import '@fontsource/playfair-display/600.css';
+  import '@fontsource/playfair-display/700.css';
   import { BRAND_NAME } from '$lib/brand';
   import IllustrationModele from '$lib/illustrations/IllustrationModele.svelte';
   import Aiguille from '$lib/design/icones/Aiguille.svelte';
@@ -57,7 +60,7 @@
   .hero { text-align: center; padding: 28px 12px 10px; }
   .sur-titre { display: inline-flex; gap: 8px; align-items: center; font-weight: 700; color: var(--terracotta-fonce); }
   .sur-titre :global(.icone) { width: 22px; height: 22px; }
-  .hero h1 { margin: 10px auto; max-width: 16ch; }
+  .hero h1 { margin: 10px auto; max-width: 16ch; font-family: var(--serif-display); font-weight: 600; }
   .sous-titre { font-size: var(--titre-3); max-width: 38rem; margin: 0 auto; }
   .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 22px 0 14px; }
   .gros { font-size: 1.2rem; padding: 16px 30px; }

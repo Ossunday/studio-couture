@@ -12,7 +12,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
 a, button { min-height: 48px; min-width: 48px; }
 a { color: var(--vert); text-underline-offset: 3px; }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-button { font: inherit; font-weight: 600; padding: 12px 20px; border: 1.5px solid var(--primaire); background: var(--primaire); color: var(--primaire-texte); border-radius: var(--rayon); cursor: pointer; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
+button { font: inherit; font-weight: 700; padding: 12px 20px; border: 1.5px solid var(--encre); background: var(--encre); color: #fff; border-radius: var(--rayon-bouton); cursor: pointer; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
 button:hover { box-shadow: var(--ombre-petite); }
 button:active { transform: translateY(1px); }
 button[disabled] { background: var(--papier); color: var(--encre-douce); border-color: var(--bord-fort); cursor: not-allowed; box-shadow: none; }
@@ -20,13 +20,13 @@ button[disabled] { background: var(--papier); color: var(--encre-douce); border-
 .etapes li { border: 1px solid var(--bord); border-radius: var(--rayon-carte); padding: 16px; background: var(--carte); box-shadow: var(--ombre-petite); }
 .etiquette-rendu { display: inline-block; font-weight: 700; border: 1.5px solid var(--terracotta); color: var(--terracotta-fonce); padding: 2px 12px; border-radius: var(--rayon-puce); }
 .alerte { border-left: 6px solid var(--terracotta); padding: 14px 16px; background: var(--rouge-doux); border-radius: 0 var(--rayon) var(--rayon) 0; }
-.bouton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 22px; border: 1.5px solid var(--primaire); background: var(--primaire); color: var(--primaire-texte); border-radius: var(--rayon); font-weight: 650; text-decoration: none; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
+.bouton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 22px; border: 1.5px solid var(--encre); background: var(--encre); color: #fff; border-radius: var(--rayon-bouton); font-weight: 700; text-decoration: none; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
 .bouton:hover { box-shadow: var(--ombre-petite); }
 .bouton:active { transform: translateY(1px); }
-.bouton-action { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
-.bouton-action:hover { background: var(--terracotta-fonce); border-color: var(--terracotta-fonce); }
+.bouton-action { background: var(--encre); border-color: var(--encre); color: #fff; }
+.bouton-action:hover { background: var(--carte-sombre); border-color: var(--carte-sombre); }
 .bouton-secondaire { background: var(--carte); color: var(--encre); border-color: var(--bord-fort); }
-.bouton-discret { background: transparent; color: var(--vert); border-color: transparent; box-shadow: none; }
+.bouton-discret { background: transparent; color: var(--bleu-texte); border-color: transparent; box-shadow: none; }
 .carte { border: 1px solid var(--bord); border-radius: var(--rayon-carte); padding: 20px; margin: 16px 0; background: var(--carte); box-shadow: var(--ombre-petite); }
 form.grille { display: grid; gap: 16px; max-width: 640px; }
 form.grille label { display: grid; gap: 6px; font-weight: 600; }

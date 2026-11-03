@@ -9,7 +9,7 @@
     nom,
     children
   }: {
-    variante?: 'primaire' | 'action' | 'secondaire' | 'discret';
+    variante?: 'primaire' | 'action' | 'fort' | 'secondaire' | 'discret';
     href?: string;
     type?: 'button' | 'submit';
     disabled?: boolean;
@@ -17,7 +17,7 @@
     children: Snippet;
   } = $props();
 
-  const classe = $derived(`bouton-v2 bouton-${variante}`);
+  const classe = $derived(`bouton-v3 bouton-${variante}`);
 </script>
 
 {#if href}
@@ -27,12 +27,14 @@
 {/if}
 
 <style>
-  .bouton-v2 { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; min-width: 48px; padding: 12px 22px; border-radius: var(--rayon); border: 1.5px solid var(--primaire); background: var(--primaire); color: var(--primaire-texte); font-weight: 650; font-size: 1rem; text-decoration: none; cursor: pointer; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
-  .bouton-v2:hover { box-shadow: var(--ombre-petite); }
-  .bouton-v2:active { transform: translateY(1px); }
-  .bouton-action { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
-  .bouton-action:hover { background: var(--terracotta-fonce); border-color: var(--terracotta-fonce); }
+  .bouton-v3 { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; min-width: 48px; padding: 12px 22px; border-radius: var(--rayon-bouton); border: 1.5px solid var(--encre); background: var(--encre); color: #fff; font-weight: 700; font-size: 1rem; text-decoration: none; cursor: pointer; transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition), transform var(--transition); }
+  .bouton-v3:hover { box-shadow: var(--ombre-petite); }
+  .bouton-v3:active { transform: translateY(1px); }
+  /* Action historique : désormais noire (pilule v3). */
+  .bouton-action { background: var(--encre); border-color: var(--encre); color: #fff; }
+  /* Une seule action forte par écran : jaune-vert, texte encre. */
+  .bouton-fort { background: var(--jaune-vert); border-color: var(--jaune-vert); color: var(--encre); }
   .bouton-secondaire { background: var(--carte); color: var(--encre); border-color: var(--bord-fort); }
-  .bouton-discret { background: transparent; color: var(--vert); border-color: transparent; box-shadow: none; }
-  .bouton-v2[disabled] { background: var(--papier); color: var(--encre-douce); border-color: var(--bord-fort); cursor: not-allowed; box-shadow: none; }
+  .bouton-discret { background: transparent; color: var(--bleu-texte); border-color: transparent; box-shadow: none; }
+  .bouton-v3[disabled] { background: var(--carte); color: var(--texte-secondaire); border-color: var(--bord-fort); cursor: not-allowed; box-shadow: none; }
 </style>

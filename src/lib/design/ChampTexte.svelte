@@ -52,10 +52,11 @@
 
 <style>
   .champ-v2 { display: grid; gap: 6px; }
-  label { font-weight: 600; }
-  input { min-height: 48px; font: inherit; padding: 10px 14px; border: 1.5px solid var(--bord-fort); border-radius: 12px; width: 100%; background: #fff; color: var(--encre); transition: border-color var(--transition), box-shadow var(--transition); }
-  input:focus { border-color: var(--primaire); box-shadow: 0 0 0 3px rgb(20 17 15 / 0.08); outline: none; }
-  input[aria-invalid='true'] { border-color: var(--terracotta); }
-  .erreur { margin: 0; color: var(--terracotta-fonce); font-weight: 600; font-size: 0.95rem; }
+  label { font-weight: 700; font-size: 0.92rem; }
+  input { min-height: 52px; font: inherit; padding: 10px 16px; border: 1.5px solid var(--bord-fort); border-radius: 14px; width: 100%; background: #fff; color: var(--encre); transition: border-color var(--transition), box-shadow var(--transition); }
+  input::placeholder { color: #7a7a86; }
+  input:focus { border-color: var(--encre); box-shadow: 0 0 0 3px rgb(30 30 34 / 0.1); outline: none; }
+  input[aria-invalid='true'] { border-color: var(--cote); }
+  .erreur { margin: 0; color: var(--cote-texte); font-weight: 600; font-size: 0.95rem; }
   .aide { margin: 0; color: var(--encre-douce); font-size: 0.95rem; }
 </style>

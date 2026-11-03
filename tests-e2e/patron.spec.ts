@@ -10,6 +10,8 @@ async function connecter(page: Page) {
     await page.locator('input[name="mot_de_passe"]').fill('mot-de-passe-long');
     await page.getByRole('button', { name: /Créer l’atelier/ }).click();
   }
+  if (await page.getByRole('heading', { name: 'Clientes' }).isVisible().catch(() => false)) return;
+  await page.goto('/connexion');
   if (await page.getByRole('heading', { name: 'Connexion à l’atelier' }).isVisible().catch(() => false)) {
     await page.locator('input[name="identifiant"]').fill('awa@exemple.bj');
     await page.locator('input[name="mot_de_passe"]').fill('mot-de-passe-long');
@@ -27,12 +29,11 @@ test('patron pantalon large en 3 écrans, sans cliente obligatoire', async ({ pa
 
   await connecter(page);
 
-  // Écran 1 — accueil public, puis modèle dans l'espace atelier connecté.
+  // Écran 1 — tableau de bord connecté (maquette Atelier), puis « Créer un patron ».
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Votre patron sur mesure, en 2 minutes' })).toBeVisible();
-  await expect(page.getByRole('img', { name: /Illustration : pantalon large/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Bonjour,/ })).toBeVisible();
   await page.screenshot({ path: 'test-results/patron-1-modele-360.png' });
-  await page.getByRole('link', { name: /Pantalon large/ }).click();
+  await page.getByRole('link', { name: /Créer un patron/ }).first().click();
 
   // Écran 2 — seulement les mesures du pantalon (actions 2 à 5 : 4 champs, nom laissé vide).
   await expect(page.getByRole('heading', { name: 'Pantalon large — vos mesures' })).toBeVisible();

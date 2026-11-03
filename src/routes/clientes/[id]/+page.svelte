@@ -3,7 +3,7 @@
   import Bouton from '$lib/design/Bouton.svelte';
   import Carte from '$lib/design/Carte.svelte';
   import EtatVide from '$lib/design/EtatVide.svelte';
-  import Onglets from '$lib/design/Onglets.svelte';
+  import PatronCote from '$lib/design/PatronCote.svelte';
   import Puce from '$lib/design/Puce.svelte';
   let { data, form } = $props();
 
@@ -25,6 +25,13 @@
 
   const fmt = (v: number) => String(v).replace('.', ',');
   const dateFr = (iso: string) => new Date(iso).toLocaleDateString('fr-FR');
+  const moisAnneeFr = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const nbMesures = $derived(data.mensurations.filter((m) => m.valeurCm !== null).length);
+  const mesuresPantalonCompletes = $derived(
+    ['tour_taille_cm', 'tour_hanches_cm', 'hauteur_fourche_cm', 'longueur_pantalon_cm'].every((code) =>
+      data.mensurations.some((m) => m.code === code && m.valeurCm !== null)
+    )
+  );
   const base = $derived(`/clientes/${data.cliente.id}`);
   const onglets = $derived([
     { id: 'resume', libelle: 'Résumé', href: `${base}?onglet=resume` },
@@ -53,18 +60,32 @@
   };
 </script>
 
-<main>
-  <p><a href="/clientes">← Toutes les clientes</a></p>
+<main class="fiche">
+  <p class="retour"><a href="/clientes">← Toutes les clientes</a></p>
   <div class="entete-fiche">
-    <Avatar nom={data.cliente.nom} taille={64} />
+    <Avatar nom={data.cliente.nom} taille={84} />
     <div class="entete-infos">
       <h1>{data.cliente.nom}</h1>
-      <p class="meta">{data.cliente.telephone ?? 'Téléphone non renseigné'} · <a href="{base}/modifier">Modifier la fiche</a></p>
+      <p class="meta">{data.cliente.telephone ?? 'Téléphone non renseigné'} · cliente depuis {moisAnneeFr(data.cliente.creeeLe)}</p>
+      <p class="chips-fiche">
+        {#if data.consentement}<span class="chip-fiche chip-bleue">Consentement signé</span>{:else}<span class="chip-fiche">Consentement photo non signé</span>{/if}
+        <span class="chip-fiche chip-bleue">{nbMesures} mesures sur {data.mensurations.length}</span>
+        <span class="chip-fiche">{data.photos.length} photo{data.photos.length > 1 ? 's' : ''}</span>
+      </p>
     </div>
-    <Bouton variante="action" href="{base}/patron/nouveau">Créer un patron pour {data.prenom}</Bouton>
+    <div class="entete-actions">
+      <a class="bouton-fiche-noir" href="{base}/patron/nouveau" aria-label="Créer un patron pour {data.prenom}">Créer un patron pour {data.prenom} <span aria-hidden="true">→</span></a>
+      <a class="bouton-fiche-bord" href="{base}/modifier">Modifier la fiche</a>
+    </div>
   </div>
 
-  <Onglets onglets={onglets} actif={data.onglet} ariaLabel="Sections de la fiche cliente" />
+  <nav class="onglets-fiche" aria-label="Sections de la fiche cliente">
+    {#each onglets as onglet}
+      <a href={onglet.href} class:actif={onglet.id === data.onglet} aria-current={onglet.id === data.onglet ? 'page' : undefined}>
+        {onglet.libelle}{#if onglet.id === 'patrons' && data.patrons.length > 0} · {data.patrons.length}{/if}
+      </a>
+    {/each}
+  </nav>
 
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
   {#if data.messagePatron && messagesPatron[data.messagePatron]}<p class="succes" role="status">{messagesPatron[data.messagePatron]}</p>{/if}
@@ -218,22 +239,27 @@
       </EtatVide>
     {:else}
       <ul class="grille-patrons">
-        {#each data.patrons as patron}
+        {#each data.patrons as patron, i}
           <li class="carte-patron">
-            {#if patron.miniature}
-              <svg class="miniature" viewBox="0 0 {patron.miniature.largeur} {patron.miniature.hauteur}" role="img" aria-label="Miniature du patron {patron.nom}">
-                {#each patron.miniature.pieces as piece}
-                  <polygon points={piece.couture} fill={patron.tissuHex} fill-opacity="0.75" stroke="var(--encre)" stroke-width="0.4" />
-                {/each}
-              </svg>
-            {/if}
+            <div class="patron-visuel">
+              {#if patron.mesuresPantalon}
+                <PatronCote mesures={patron.mesuresPantalon} options={patron.optionsPantalon} variante="mini" remplissage={['#dce5fa', '#ffdfb8', '#e3dbff'][i % 3]} uid="fiche-{patron.id}" classe="miniature" />
+              {:else if patron.miniature}
+                <svg class="miniature" viewBox="0 0 {patron.miniature.largeur} {patron.miniature.hauteur}" role="img" aria-label="Miniature du patron {patron.nom}">
+                  {#each patron.miniature.pieces as piece}
+                    <polygon points={piece.couture} fill={patron.tissuHex} fill-opacity="0.75" stroke="var(--encre)" stroke-width="0.4" />
+                  {/each}
+                </svg>
+              {/if}
+            </div>
             <div class="patron-corps">
-              <p class="patron-nom"><strong>{patron.nom}</strong> <Puce ton="accent">Brouillon</Puce></p>
-              <p class="meta">{patron.titreModele} · {dateFr(patron.creeLe)}</p>
-              <p class="meta">{patron.mesuresTexte}</p>
+              <p class="patron-nom"><strong>{patron.titreModele} — {patron.nom}</strong></p>
+              <p class="meta">{patron.mesuresResume || patron.mesuresTexte}</p>
+              <p class="meta">{dateFr(patron.creeLe)}</p>
+              <p><span class="chip-brouillon">Brouillon à valider</span></p>
               <p class="actions-patron">
-                <a class="bouton bouton-secondaire" href="{base}/patron/{patron.id}">Ouvrir dans la salle d’essayage</a>
-                <a class="bouton bouton-action" href={patron.hrefPdf} download>Télécharger le PDF A4 1:1</a>
+                <a class="bouton-patron-noir" href="{base}/patron/{patron.id}" aria-label="Ouvrir dans la salle d’essayage">Ouvrir</a>
+                <a class="bouton-patron-bord" href={patron.hrefPdf} download aria-label="Télécharger le PDF A4 1:1">PDF A4</a>
               </p>
               <form method="post" action="?/dupliquerPatron" class="ligne-form">
                 <input type="hidden" name="_csrf" value={data.csrfToken} />
@@ -256,15 +282,33 @@
             </div>
           </li>
         {/each}
+        <li class="carte-nouveau-patron">
+          <a href="{base}/patron/nouveau" aria-label="Créer un patron pour {data.prenom}">
+            <span class="plus-rond" aria-hidden="true">+</span>
+            <strong>Nouveau patron pour {data.prenom}</strong>
+            <span>{mesuresPantalonCompletes ? 'Ses mesures sont déjà enregistrées, rien à ressaisir.' : 'Vous pourrez compléter ses mesures pendant la création.'}</span>
+          </a>
+        </li>
       </ul>
     {/if}
   {/if}
 </main>
 
 <style>
-  .entete-fiche { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 10px 0 18px; }
-  .entete-infos { flex: 1; min-width: 200px; }
-  .entete-infos h1 { margin: 0; }
+  .retour a { color: var(--encre); font-weight: 700; text-decoration: none; }
+  .entete-fiche { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; margin: 14px 0 22px; background: var(--carte); border: 1px solid var(--bord); border-radius: 32px; padding: clamp(20px, 3.5vw, 34px); }
+  .entete-fiche :global(.avatar) { background: var(--peche); color: #7c2d12; }
+  .entete-infos { flex: 1; min-width: 220px; }
+  .entete-infos h1 { margin: 0; font-size: clamp(2rem, 4vw, 2.7rem); }
+  .chips-fiche { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+  .chip-fiche { background: var(--fond); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 700; }
+  .chip-bleue { background: var(--bleu-pastille); color: var(--bleu-texte); }
+  .entete-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-left: auto; }
+  .bouton-fiche-noir { display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 12px 26px; border-radius: 999px; background: var(--encre); color: #fff; text-decoration: none; font-weight: 800; }
+  .bouton-fiche-bord { display: inline-flex; align-items: center; min-height: 56px; padding: 12px 24px; border-radius: 999px; border: 1.5px solid var(--encre); color: var(--encre); background: #fff; text-decoration: none; font-weight: 700; }
+  .onglets-fiche { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+  .onglets-fiche a { display: inline-flex; align-items: center; min-height: 48px; padding: 10px 22px; border-radius: 999px; background: #e4e4ea; color: var(--encre); text-decoration: none; font-weight: 700; }
+  .onglets-fiche a.actif { background: var(--encre); color: #fff; }
   .meta { color: var(--encre-douce); margin: 4px 0; }
   .succes { border-left: 6px solid var(--vert-cote); background: #e7f0ec; padding: 12px 16px; border-radius: 0 var(--rayon) var(--rayon) 0; font-weight: 600; }
   .grille-resume { display: grid; gap: 16px; margin-top: 18px; }
@@ -279,11 +323,20 @@
   .coche { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; margin: 10px 0; }
   .coche input { min-height: auto; width: auto; margin-top: 4px; }
   .bouton-danger { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
-  .grille-patrons { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 16px; }
-  @media (min-width: 900px) { .grille-patrons { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); } }
-  .carte-patron { display: flex; gap: 14px; min-width: 0; background: var(--carte); border: 1px solid var(--bord); border-radius: var(--rayon-carte); box-shadow: var(--ombre-petite); padding: 16px; }
-  .miniature { width: 92px; height: 118px; flex: 0 0 auto; background: var(--fond); border: 1px solid var(--bord); border-radius: 10px; }
-  .patron-corps { flex: 1; min-width: 0; }
+  .grille-patrons { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 20px; }
+  @media (min-width: 760px) { .grille-patrons { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); } }
+  .carte-patron { display: flex; flex-direction: column; gap: 14px; min-width: 0; background: var(--carte); border: 1px solid var(--bord); border-radius: 28px; box-shadow: var(--ombre-petite); padding: 16px; }
+  .patron-visuel { background: #ececf1; border-radius: 20px; padding: 14px; display: flex; align-items: center; justify-content: center; min-height: 230px; }
+  .patron-visuel :global(.miniature), .miniature { width: min(190px, 80%); height: auto; max-height: 260px; }
+  .patron-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .patron-corps > p { margin: 0 0 8px; }
+  .chip-brouillon { background: var(--peche-pastille); color: var(--peche-texte); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 800; display: inline-flex; }
+  .bouton-patron-noir { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border-radius: 14px; background: var(--encre); color: #fff; text-decoration: none; font-weight: 800; flex: 1; }
+  .bouton-patron-bord { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border-radius: 14px; border: 1.5px solid var(--encre); color: var(--encre); background: #fff; text-decoration: none; font-weight: 700; flex: 1; }
+  .carte-nouveau-patron { border: 2px dashed #b9b9c6; border-radius: 28px; min-height: 320px; display: flex; }
+  .carte-nouveau-patron a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; color: var(--encre); text-decoration: none; }
+  .carte-nouveau-patron span { color: var(--texte-secondaire); line-height: 1.5; }
+  .plus-rond { width: 56px; height: 56px; border-radius: 999px; background: var(--bleu-pastille); color: var(--encre) !important; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 400; }
   .patron-nom { margin: 0 0 4px; overflow-wrap: anywhere; }
   .actions-patron { display: flex; flex-wrap: wrap; gap: 8px; }
   .ligne-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }

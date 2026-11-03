@@ -86,7 +86,7 @@ test('patron cliente : création préremplie, enregistrement, PDF, duplication, 
   await expect(page.getByText('Patron enregistré sur la fiche.')).toBeVisible();
   const carte = page.locator('.carte-patron', { hasText: 'Pantalon E2E Awa' });
   await expect(carte).toHaveCount(1);
-  await expect(carte.getByText('Brouillon')).toBeVisible();
+  await expect(carte.getByText('Brouillon à valider', { exact: true })).toBeVisible();
   await expect(carte.locator('svg.miniature polygon').first()).toBeAttached();
 
   // PDF depuis la carte : le fichier téléchargé commence bien par %PDF.

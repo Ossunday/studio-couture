@@ -43,6 +43,19 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     const hrefPdf = estModelePatron(p.modele)
       ? `/patron/pdf?${parametresDepuisPatron(p.modele, p.nom, p.mesures, p.options).toString()}`
       : '#';
+    const mesuresPantalon =
+      p.modele === 'pantalon_large' &&
+      p.mesures['tour_taille_cm'] !== undefined &&
+      p.mesures['tour_hanches_cm'] !== undefined &&
+      p.mesures['hauteur_fourche_cm'] !== undefined &&
+      p.mesures['longueur_pantalon_cm'] !== undefined
+        ? {
+            tourTailleCm: p.mesures['tour_taille_cm'],
+            tourHanchesCm: p.mesures['tour_hanches_cm'],
+            hauteurFourcheCm: p.mesures['hauteur_fourche_cm'],
+            longueurPantalonCm: p.mesures['longueur_pantalon_cm']
+          }
+        : null;
     return {
       id: p.id,
       modele: p.modele,
@@ -50,6 +63,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
       nom: p.nom,
       creeLe: p.createdAt.toISOString(),
       modifieLe: p.updatedAt.toISOString(),
+      mesuresPantalon,
+      optionsPantalon: p.modele === 'pantalon_large' ? p.options : {},
+      mesuresResume: mesuresPantalon
+        ? `Taille ${String(mesuresPantalon.tourTailleCm).replace('.', ',')} · Hanches ${String(mesuresPantalon.tourHanchesCm).replace('.', ',')} · Fourche ${String(mesuresPantalon.hauteurFourcheCm).replace('.', ',')} · Long. ${String(mesuresPantalon.longueurPantalonCm).replace('.', ',')}`
+        : '',
       mesuresTexte: estModelePatron(p.modele)
         ? MODELES[p.modele].champs
             .filter((code) => p.mesures[code] !== undefined)
@@ -64,7 +82,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   const ongletBrut = url.searchParams.get('onglet') ?? 'resume';
   const onglet = (ONGLETS as readonly string[]).includes(ongletBrut) ? ongletBrut : 'resume';
   return {
-    cliente: { id: cliente.id, nom: cliente.nom, telephone: cliente.telephone ?? null },
+    cliente: { id: cliente.id, nom: cliente.nom, telephone: cliente.telephone ?? null, creeeLe: cliente.createdAt.toISOString() },
     prenom: cliente.nom.trim().split(/\s+/)[0] ?? cliente.nom,
     onglet,
     messagePatron: url.searchParams.get('patron'),

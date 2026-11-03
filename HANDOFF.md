@@ -1,6 +1,25 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-11-03 (Design v3 — phase 1 fondations, puis phase 2 inscription).
+Dernière mise à jour : 2026-11-03 (Design v3 — phases 1 à 6 terminées).
+
+## Design v3 — Phase 6 : pages d’erreur et finitions (2026-11-03)
+
+- **Page d’erreur unique** `src/routes/+error.svelte` dans le style v3 (carte blanche rayon 26, pastille pêche, grand code en pastille bleue, bouton noir « Retour à l’accueil ») : 404 = « Page introuvable », tout autre statut (dont 500) = « Un problème est survenu ». Le message interne de l’erreur n’est jamais affiché : aucune trace technique, aucun détail serveur.
+- **Alignement jetons v3** : `/connexion` (séparateur passé de `#dadae1` codé en dur à `var(--bord-fort)`) ; `/installation` reconstruite avec `Carte` + `ChampTexte` (mêmes noms de champs `nom_atelier`, `nom`, `identifiant`, `mot_de_passe` et même bouton, aide mot de passe ajoutée) ; `/profil` repris (en-tête « Mon compte », carte v3, avatar, puce de rôle bleue, lien équipe et déconnexion en boutons secondaires — mêmes action `/deconnexion` et jeton CSRF) ; `/demo` recolorée entièrement sur les jetons v3 (progression, bulle d’aide, scène au dégradé radial de la salle, bascule et panneaux actifs en encre, tableaux en `--bord-fort`) sans changer ni libellés ni logique (les tests démo existants passent inchangés).
+- **Vérifications** : nouveau test e2e « design v3 finitions » — 404 réel (statut, titre, retour, absence de trace technique), ordre de tabulation connexion (identifiant → mot de passe → « Se connecter »), aucun débordement horizontal et captures 1280/390 pour erreur, connexion, démo et profil (`test-results/design-v3-{erreur-404,connexion,demo,profil}-{1280,390}.png`, non commitées). Contrastes relus sur les captures : textes secondaires et pastilles utilisent les couples texte/fond des jetons v3 déjà validés AA. `/installation` n’a pas pu être capturée pendant la suite (l’atelier partagé existe déjà, la route redirige vers `/connexion`, comportement voulu) ; son alignement est couvert par `npm run check` et la relecture du code.
+- **Vérifications réelles** : `npm test` **106 réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement** (897 fichiers), `npm run build` **réussi**, `npm run test:e2e` **26/26 réussis**.
+
+## Design v3 — Phase 5 : salle d’essayage en deux vues (2026-11-03)
+
+- **`SalleEssayageCliente` refondue** sur les maquettes « Salle » / « Salle3d » : en-tête propre au composant (retour, « Salle d’essayage — {prénom} », chip « Brouillon non validé », PDF A4, bouton d’enregistrement qui soumet le formulaire resté dans la carte patron via `form="form-enregistrer-salle"`), onglets accessibles `role="tablist"` « 1 · Patron à plat » (défaut) / « 2 · Vue 3D (aperçu) » avec roving tabindex et flèches clavier. Vue 1 : `PatronCote` complet grand avec zoom et barre « Le patron à plat fait foi ». Vue 2 : 3D existante inchangée (chargement paresseux, repli sans WebGL vers la vue 1 avec message), bandeau « Aperçu indicatif · le patron à plat fait foi », loupe tissu légendée « {Matière} · {Couleur} » affichant la couleur choisie, planche 3 images conservée. Colonne de droite : « Vos mesures » (morphologies Petite/Moyenne/Forte, pastilles de valeurs, curseurs synchronisés qui redessinent PatronCote en direct), « Tissu », carte sombre « Votre patron » (chips Devant ×2 / Dos ×2 / Ceinture ×1 relues depuis `preparerPatronCote`, jamais recopiées). La jupe droite conserve `VisionneusePatron` dans la même coquille.
+- **Tests** : e2e `patrons-cliente` adaptés aux onglets (intention conservée) ; nouveau test « design v3 salle » (onglets, cotes moteur 89/82/100/35,8, curseur taille 82 → 90 → ceinture recalculée, 3D + planche, captures 1280/390 des deux vues dans `test-results/`, non commitées).
+- **Écarts assumés vs maquette** : la 3D existante démarre vue de dos (maquette : de face) ; légende loupe « Denim · Bleu denim » (libellé produit réel) contre « Denim · Bleu » ; aides de plage, nom du patron et options présents dans l’app (nécessaires) mais absents de la maquette ; planche 3 images sous la scène plutôt qu’en barre intégrée ; pas de maquette mobile fournie (empilement + panneaux Mesures/Tissu/Patron conservés).
+- **Vérifications réelles (phase 5)** : `npm test` **106 réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement**, `npm run build` **réussi**, `npm run test:e2e` **25/25 réussis**.
+
+## Design v3 — Phases 3 et 4 : accueil public, tableau de bord, fiche cliente (2026-11-03)
+
+- **Phase 3** : accueil public fidèle à la maquette « Accueil » (nuit/doré/crème, Playfair local), photo propriétaire `static/img/accueil-pantalon-bleu.jpg` (droits confirmés par le propriétaire) dans la carte arrondie, et nouveau composant `PatronCote` (devant, dos, ceinture) alimenté uniquement par le moteur (`preparerPatronCote`) — aucune cote inventée.
+- **Phase 4** : tableau de bord connecté (maquette « Atelier ») et fiche cliente (maquette « Fiche ») calculés depuis le dépôt, états vides réels, vignettes `PatronCote` mini ; test unitaire `patron-cote.test.ts` (valeurs moteur, une mesure modifiée change la cote).
 
 ## Design v3 — Phase 2 : inscription « Créer mon atelier » (2026-11-03)
 

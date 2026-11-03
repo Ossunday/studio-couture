@@ -37,7 +37,7 @@
   .grille-form { display: grid; gap: 16px; }
   .plein { width: 100%; min-height: 56px; border-radius: 16px; font-size: 16px; }
   .separateur { display: flex; align-items: center; gap: 14px; }
-  .separateur span:first-child, .separateur span:last-child { flex: 1; height: 1px; background: #dadae1; }
+  .separateur span:first-child, .separateur span:last-child { flex: 1; height: 1px; background: var(--bord-fort); }
   .separateur .ou { font-size: 13px; color: var(--texte-secondaire); }
   .bouton-demo { height: 54px; min-height: 54px; border-radius: 16px; border: 1.5px solid var(--encre); display: flex; align-items: center; justify-content: center; text-decoration: none; font-weight: 700; font-size: 16px; color: var(--encre); background: var(--carte); }
   .creer { margin: 0; text-align: center; }

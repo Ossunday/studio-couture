@@ -161,6 +161,57 @@ test('design v3 salle : reproduction maquettes Salle et Salle3d à 1280 px et 39
   await page.screenshot({ path: 'test-results/design-v3-salle3d-390.png', fullPage: true });
 });
 
+test('design v3 finitions : erreur 404 et pages alignées à 1280 px et 390 px', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  // Page d’erreur 404 : style v3, retour à l’accueil, aucune trace technique.
+  const reponse = await page.goto('/cette-page-nexiste-pas');
+  expect(reponse?.status()).toBe(404);
+  await expect(page.getByRole('heading', { name: 'Page introuvable' })).toBeVisible();
+  await expect(page.getByText('La page que vous cherchez n’existe pas ou a été déplacée.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Retour à l’accueil' })).toBeVisible();
+  const texteErreur = await page.locator('body').innerText();
+  expect(texteErreur).not.toMatch(/stack|internal server error|trace technique/i);
+  await verifierLargeur(page, 'erreur 404 v3 1280');
+  await page.screenshot({ path: 'test-results/design-v3-erreur-404-1280.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await verifierLargeur(page, 'erreur 404 v3 390');
+  await page.screenshot({ path: 'test-results/design-v3-erreur-404-390.png', fullPage: true });
+
+  // Connexion : ordre de tabulation identifiant → mot de passe → bouton.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/connexion');
+  await expect(page.getByRole('heading', { name: 'Connexion à l’atelier' })).toBeVisible();
+  await page.locator('input[name="identifiant"]').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('input[name="mot_de_passe"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Se connecter' })).toBeFocused();
+  await verifierLargeur(page, 'connexion v3 1280');
+  await page.screenshot({ path: 'test-results/design-v3-connexion-1280.png', fullPage: true });
+
+  // Démo publique alignée sur les jetons v3, aux deux largeurs.
+  await page.goto('/demo');
+  await expect(page.getByRole('heading', { name: 'Démo guidée' })).toBeVisible();
+  await verifierLargeur(page, 'demo v3 1280');
+  await page.screenshot({ path: 'test-results/design-v3-demo-1280.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await verifierLargeur(page, 'demo v3 390');
+  await page.screenshot({ path: 'test-results/design-v3-demo-390.png', fullPage: true });
+
+  // Profil connecté aligné, aux deux largeurs.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await connecter(page);
+  await page.goto('/profil');
+  await expect(page.getByRole('heading', { name: 'Profil' })).toBeVisible();
+  await expect(page.locator('main').getByRole('button', { name: 'Se déconnecter' })).toBeVisible();
+  await verifierLargeur(page, 'profil v3 1280');
+  await page.screenshot({ path: 'test-results/design-v3-profil-1280.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await verifierLargeur(page, 'profil v3 390');
+  await page.screenshot({ path: 'test-results/design-v3-profil-390.png', fullPage: true });
+});
+
 test('design v3 accueil : reproduction maquette Accueil à 1280 px', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');

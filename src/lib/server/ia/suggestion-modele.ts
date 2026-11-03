@@ -131,7 +131,12 @@ export function lireConfigIa(env: NodeJS.ProcessEnv = process.env): ConfigIa | n
   return { apiKey, baseUrl: baseUrl.toString().replace(/\/+$/, ''), modele };
 }
 
-/** Client HTTP compatible API Messages d’Anthropic (POST /v1/messages). */
+/**
+ * Client HTTP compatible API Messages d’Anthropic (POST /v1/messages).
+ * La même clé est envoyée dans les deux en-têtes que ces endpoints peuvent
+ * accepter (`x-api-key` et `Authorization: Bearer`) ; elle n'est jamais
+ * journalisée et n'apparaît dans aucun message d'erreur.
+ */
 export function creerClientAnthropique(config: ConfigIa, fetchFn: typeof fetch = fetch): ClientIa {
   return {
     async genererTexte(systeme, utilisateur, signal) {
@@ -151,6 +156,8 @@ export function creerClientAnthropique(config: ConfigIa, fetchFn: typeof fetch =
           messages: [{ role: 'user', content: utilisateur }]
         })
       });
+      // Échec : message générique, le corps de réponse n'est ni lu ni recopié
+      // (il ne doit jamais fuiter — ni lui, ni la clé — vers l'utilisatrice).
       if (!reponse.ok) throw new Error('Assistant indisponible.');
       const corps: unknown = await reponse.json().catch(() => null);
       const contenu = (corps as { content?: unknown } | null)?.content;

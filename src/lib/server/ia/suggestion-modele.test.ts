@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   LimiteurSuggestionsIa,
   construirePromptUtilisateur,
+  creerClientAnthropique,
   lireConfigIa,
   suggererOptionsModele,
   validerSuggestionIa,
-  type ClientIa
+  type ClientIa,
+  type ConfigIa
 } from './suggestion-modele';
 
 function fauxClient(reponse: string | Error): ClientIa {
@@ -107,6 +109,75 @@ describe('lireConfigIa', () => {
     });
     expect(config).toEqual({ apiKey: 'cle-de-test', baseUrl: 'https://exemple.invalid/api', modele: 'modele-de-test' });
     expect(lireConfigIa({ STUDIO_COUTURE_IA_API_KEY: 'x', STUDIO_COUTURE_IA_BASE_URL: 'pas une url', STUDIO_COUTURE_IA_MODELE: 'm' })).toBeNull();
+  });
+});
+
+describe('creerClientAnthropique — double en-tête d’authentification, échec propre', () => {
+  // Clé entièrement fictive, propre à ce fichier de test. Les assertions
+  // comparent par booléens pour ne jamais afficher sa valeur en cas d'échec.
+  const CLE_TEST = 'cle-fictive-reservee-aux-tests';
+  const MARQUEUR_REPONSE_BRUTE = 'marqueur-reponse-brute-a-ne-jamais-afficher';
+  const config: ConfigIa = { apiKey: CLE_TEST, baseUrl: 'https://exemple.invalid/api', modele: 'modele-de-test' };
+
+  it('envoie la même clé dans x-api-key ET dans Authorization: Bearer', async () => {
+    let urlRecue = '';
+    let methodeRecue = '';
+    let enTetesRecus: Record<string, string> = {};
+    const fauxFetch = vi.fn(async (url: unknown, init?: { method?: string; headers?: Record<string, string> }) => {
+      urlRecue = String(url);
+      methodeRecue = init?.method ?? '';
+      enTetesRecus = init?.headers ?? {};
+      return {
+        ok: true,
+        json: async () => ({ content: [{ type: 'text', text: '{"largeurBasPieceCm": 30}' }] })
+      };
+    }) as unknown as typeof fetch;
+
+    const client = creerClientAnthropique(config, fauxFetch);
+    const texte = await client.genererTexte('système', 'utilisateur', new AbortController().signal);
+
+    expect(texte).toBe('{"largeurBasPieceCm": 30}');
+    expect(urlRecue).toBe('https://exemple.invalid/api/v1/messages');
+    expect(methodeRecue).toBe('POST');
+    // Présence des deux en-têtes, même clé des deux côtés (comparaisons booléennes).
+    expect(typeof enTetesRecus['x-api-key'] === 'string' && enTetesRecus['x-api-key'].length > 0).toBe(true);
+    expect(enTetesRecus['x-api-key'] === CLE_TEST).toBe(true);
+    expect(enTetesRecus['authorization'] === `Bearer ${CLE_TEST}`).toBe(true);
+    expect(enTetesRecus['authorization'] === `Bearer ${enTetesRecus['x-api-key']}`).toBe(true);
+  });
+
+  it('échec du serveur : ni la clé ni la réponse brute dans le message de repli', async () => {
+    const fauxFetchEchec = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      json: async () => ({ erreur: `${MARQUEUR_REPONSE_BRUTE} ${CLE_TEST}` }),
+      text: async () => `${MARQUEUR_REPONSE_BRUTE} ${CLE_TEST}`
+    })) as unknown as typeof fetch;
+
+    const client = creerClientAnthropique(config, fauxFetchEchec);
+    let messageErreur = '';
+    try {
+      await client.genererTexte('système', 'utilisateur', new AbortController().signal);
+    } catch (e) {
+      messageErreur = e instanceof Error ? e.message : String(e);
+    }
+    expect(messageErreur.length > 0).toBe(true);
+    expect(messageErreur.includes(CLE_TEST)).toBe(false);
+    expect(messageErreur.includes(MARQUEUR_REPONSE_BRUTE)).toBe(false);
+
+    // De bout en bout : le résultat de repli ne contient ni clé ni réponse brute.
+    const r = await suggererOptionsModele('pantalon ample', {
+      env: {
+        STUDIO_COUTURE_IA_API_KEY: CLE_TEST,
+        STUDIO_COUTURE_IA_BASE_URL: 'https://exemple.invalid/api',
+        STUDIO_COUTURE_IA_MODELE: 'modele-de-test'
+      },
+      fetchFn: fauxFetchEchec
+    });
+    expect(r).toEqual({ statut: 'echec' });
+    const serialise = JSON.stringify(r);
+    expect(serialise.includes(CLE_TEST)).toBe(false);
+    expect(serialise.includes(MARQUEUR_REPONSE_BRUTE)).toBe(false);
   });
 });
 

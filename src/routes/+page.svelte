@@ -14,6 +14,9 @@
 <svelte:head><title>{BRAND_NAME} — Votre patron sur mesure, en 2 minutes</title></svelte:head>
 
 <main>
+  {#if data.bienvenue}
+    <p class="bienvenue" role="status">Votre atelier est prêt. Ajoutez votre première cliente. <a href="/clientes/nouvelle">Ajouter votre première cliente</a></p>
+  {/if}
   <section class="hero">
     <p class="sur-titre"><Epingle /> Studio Couture, l’atelier dans la poche</p>
     <h1>Votre patron sur mesure, en 2 minutes</h1>
@@ -23,6 +26,7 @@
       {#if data.connectee}
         <a class="bouton bouton-discret" href="/clientes">Espace atelier</a>
       {:else}
+        <a class="bouton bouton-secondaire gros" href="/inscription">Créer mon atelier</a>
         <a class="bouton bouton-discret" href="/connexion">Espace atelier (connexion)</a>
       {/if}
     </p>
@@ -58,6 +62,8 @@
 
 <style>
   .hero { text-align: center; padding: 28px 12px 10px; }
+  .bienvenue { border: 1.5px solid var(--bleu); background: var(--bleu-pastille); color: var(--bleu-texte); border-radius: var(--rayon-carte); padding: 16px 20px; font-weight: 700; }
+  .bienvenue a { color: var(--bleu-texte); }
   .sur-titre { display: inline-flex; gap: 8px; align-items: center; font-weight: 700; color: var(--terracotta-fonce); }
   .sur-titre :global(.icone) { width: 22px; height: 22px; }
   .hero h1 { margin: 10px auto; max-width: 16ch; font-family: var(--serif-display); font-weight: 600; }

@@ -26,6 +26,7 @@
       <p class="marque"><a href="/">{BRAND_NAME}</a></p>
       <nav aria-label="Public">
         <a href="/demo">Démo guidée</a>
+        <a href="/inscription">Créer mon atelier</a>
         <a class="bouton bouton-petit" href="/connexion">Espace atelier</a>
       </nav>
     </div>

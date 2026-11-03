@@ -17,6 +17,10 @@ export class RepositoryMemoire implements Repository {
   }
 
   async creerAtelierEtAdmin(e: { nomAtelier: string; nom: string; identifiant: string; motDePasseHash: string }) {
+    // Même contrainte d'unicité de l'identifiant que la base PostgreSQL.
+    if (this.comptes.some((c) => c.identifiant === e.identifiant)) {
+      throw new Error('Cette adresse est déjà utilisée. Connectez-vous.');
+    }
     const compte: CompteUtilisatrice = {
       id: randomUUID(),
       atelierId: randomUUID(),

@@ -2,6 +2,16 @@
 
 Dernière mise à jour : 2026-11-03 (Design v3 — phase 1 fondations, puis phase 2 inscription).
 
+## Design v3 — Phase 2 : inscription « Créer mon atelier » (2026-11-03)
+
+- **Route publique `/inscription`** (GET + action POST), fidèle à la maquette « Main » via le nouveau `PanneauAuth` (panneau gauche `#2A2940` : logo, titre, 3 bénéfices, mention « Brouillon à valider… ») partagé avec `/connexion` refaite dans le même style. Formulaire : nom d’atelier 2–80, nom, e-mail minuscules unique, mot de passe **12 caractères minimum** (aucune règle de composition) + confirmation, case obligatoire de consentement clientes, bouton « Créer mon atelier », liens « Se connecter » et « Essayer la démo guidée, sans compte ». Liens vers `/inscription` depuis l’accueil public, l’en-tête public et `/connexion`.
+- **Comportement** : `src/lib/server/inscription.ts` (`validerInscription`, `inscrireAtelier`) crée l’atelier ET l’admin via `creerAtelierEtAdmin` du dépôt (transaction PostgreSQL existante ; unicité d’identifiant désormais aussi appliquée par le dépôt mémoire), hachage **scrypt réutilisé** (`hacherMotDePasse`, aucun code dupliqué), session ouverte, redirection vers le tableau de bord (`/?bienvenue=atelier` — accueil connecté actuel, tableau de bord refondu en phase 4) avec le message « Votre atelier est prêt. Ajoutez votre première cliente. » et un lien direct vers l’ajout d’une cliente.
+- **Sécurité** : contrôle d’origine/CSRF SvelteKit existant (aucun jeton de session avant inscription), champ piège `site_web` invisible hors tabulation (redirigé sans rien créer), limite mémoire **5 créations/heure/IP** (`LimiteurInscriptions`, mono-instance comme `/demo`), aucune fuite sauf le message autorisé « Cette adresse est déjà utilisée. Connectez-vous. », aucun mot de passe journalisé. `INSCRIPTION_OUVERTE` (défaut `true`, documentée dans le README) : à `false`, message « Les inscriptions sont fermées. » et POST refusé.
+- **Isolation prouvée** : test unitaire créant deux ateliers par le vrai service d’inscription — chacun ne liste/retrouve que ses clientes, accès croisé par identifiant = vide.
+- **Tests** : unitaires inscription (validation, e-mail minuscules, atelier 2–80, mot de passe < 12, confirmation, consentement, honeypot, limite 5/h par IP, `INSCRIPTION_OUVERTE`, doublon, isolation 2 ateliers) ; e2e `tests-e2e/inscription.spec.ts` (inscription → message tableau de bord → ajout d’une cliente jusqu’à sa fiche ; refus mot de passe < 12 ; pas de débordement à 360 px).
+- **Docs** : nouveau `docs/A_FAIRE_AVANT_MISE_EN_LIGNE.md` (remplacer `accueil-pantalon.jpg` — image provisoire copiée dans `static/img/`, droits non confirmés ; pas de vérification e-mail ; pas de mot de passe oublié). README : route `/inscription`, `INSCRIPTION_OUVERTE`, polices locales.
+- **Vérifications réelles** : `npm test` **104 réussis / 6 ignorés**, `npm run check` **0 erreur / 0 avertissement** (893 fichiers), `npm run build` **réussi**, `npm run test:e2e` **22/22 réussis**.
+
 ## Design v3 — Phase 1 : fondations (2026-11-03)
 
 - **Polices locales épinglées** : `@fontsource/manrope@5.3.0` (400–800, interface) et `@fontsource/playfair-display@5.3.0` (500–700, titres de l’accueil public uniquement, importés dans la page d’accueil) ; aucune CDN, CSP complétée par `font-src 'self'` (même origine).

@@ -49,7 +49,7 @@ test('design v3 atelier et fiche : reproduction maquettes Atelier et Fiche à 12
   // Patron enregistré depuis la fiche (mesures préremplies, rien à ressaisir).
   await page.getByRole('link', { name: 'Créer un patron pour Awa' }).first().click();
   await page.getByRole('link', { name: /Pantalon large/ }).click();
-  await expect(page.getByRole('heading', { name: '2. Salle d’essayage — Pantalon large' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Salle d’essayage — Awa' })).toBeVisible();
   await page.locator('input[name="nom_patron"]').fill('Lin sable');
   await page.getByRole('button', { name: 'Enregistrer ce patron' }).click();
   await expect(page.getByText('Patron enregistré sur la fiche.')).toBeVisible();
@@ -86,6 +86,79 @@ test('design v3 atelier et fiche : reproduction maquettes Atelier et Fiche à 12
   await expect(page.getByRole('link', { name: /Créer un patron/ }).first()).toBeVisible();
   await verifierLargeur(page, 'atelier v3 1280');
   await page.screenshot({ path: 'test-results/design-v3-atelier-1280.png', fullPage: true });
+});
+
+test('design v3 salle : reproduction maquettes Salle et Salle3d à 1280 px et 390 px', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await connecter(page);
+
+  // Cliente de capture (82/100/27/105, comme la maquette).
+  await page.getByRole('link', { name: 'Nouvelle cliente' }).click();
+  await page.locator('input[name="nom"]').fill('Awa Salle');
+  await page.locator('input[name="telephone"]').fill('+225 07 10 50 50');
+  await page.getByRole('button', { name: 'Créer la fiche cliente' }).click();
+  await expect(page.getByRole('heading', { name: 'Awa Salle' })).toBeVisible();
+  const navFiche = page.getByRole('navigation', { name: 'Sections de la fiche cliente' });
+  await navFiche.getByRole('link', { name: 'Mesures' }).click();
+  await page.locator('input[name="tour_taille_cm"]').fill('82');
+  await page.locator('input[name="tour_hanches_cm"]').fill('100');
+  await page.locator('input[name="hauteur_fourche_cm"]').fill('27');
+  await page.locator('input[name="longueur_pantalon_cm"]').fill('105');
+  await page.getByRole('button', { name: 'Enregistrer les mensurations' }).click();
+  await expect(page.getByText('Mensurations enregistrées et validées par la couturière.')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Créer un patron pour Awa' }).first().click();
+  await page.getByRole('link', { name: /Pantalon large/ }).click();
+  await expect(page.getByRole('heading', { name: 'Salle d’essayage — Awa' })).toBeVisible();
+
+  // Vue 1 (défaut) : onglets, chip brouillon, PatronCote coté, encart « fait foi ».
+  await expect(page.getByRole('tab', { name: '1 · Patron à plat' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: '2 · Vue 3D (aperçu)' })).toHaveAttribute('aria-selected', 'false');
+  await expect(page.getByText('Brouillon non validé', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Vos mesures' })).toBeVisible();
+  await expect(page.getByText('Fiche d’Awa', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tissu' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Votre patron' })).toBeVisible();
+  const patron = page.getByRole('img', { name: /Patron du pantalon, brouillon à valider/ });
+  await expect(patron).toBeVisible();
+  await expect(patron.getByText('Ceinture 89 cm', { exact: true })).toBeVisible();
+  await expect(patron.getByText('Taille 82 cm', { exact: true }).first()).toBeVisible();
+  await expect(patron.getByText('Hanches 100 cm', { exact: true }).first()).toBeVisible();
+  await expect(patron.getByText('Bas 35,8 cm', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Le patron à plat fait foi')).toBeVisible();
+  await expect(page.getByText('Imprimez-le à l’échelle 1:1 et vérifiez le carré de 10 cm avant de couper.')).toBeVisible();
+  await expect(page.getByText('Devant ×2 · bas 35,8')).toBeVisible();
+  await expect(page.getByText('Dos ×2 · bas 35,8')).toBeVisible();
+  await expect(page.getByText('Ceinture ×1 · 89 cm')).toBeVisible();
+  await verifierLargeur(page, 'salle v3 1280');
+  await page.screenshot({ path: 'test-results/design-v3-salle-1280.png', fullPage: true });
+
+  // Le curseur de taille met à jour le patron à plat en direct (89 cm → autre ceinture).
+  await page.getByLabel('Curseur Tour de taille').fill('90');
+  await expect(patron.getByText(/Ceinture 9\d cm/).first()).toBeVisible();
+  await expect(page.locator('#live-tour_taille_cm')).toHaveValue('90');
+  await page.getByLabel('Curseur Tour de taille').fill('82');
+  await expect(patron.getByText('Ceinture 89 cm', { exact: true })).toBeVisible();
+
+  // Vue 2 : 3D indicative, loupe du tissu, planche 3 images.
+  await page.getByRole('tab', { name: '2 · Vue 3D (aperçu)' }).click();
+  await expect(page.getByText('Aperçu indicatif · le patron à plat fait foi')).toBeVisible();
+  await expect(page.locator('.scene-essayage canvas').first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('Denim · Bleu denim')).toBeVisible();
+  await expect(page.locator('img[data-vue]')).toHaveCount(3, { timeout: 20_000 });
+  await expect(page.getByText('Volume généré à partir des cotes du patron, pas une simulation de drapé.')).toBeVisible();
+  await page.screenshot({ path: 'test-results/design-v3-salle3d-1280.png', fullPage: true });
+
+  // Retour à la vue 1, puis captures mobiles des deux vues.
+  await page.getByRole('tab', { name: '1 · Patron à plat' }).click();
+  await expect(page.getByText('Le patron à plat fait foi')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await verifierLargeur(page, 'salle v3 390');
+  await page.screenshot({ path: 'test-results/design-v3-salle-390.png', fullPage: true });
+  await page.getByRole('tab', { name: '2 · Vue 3D (aperçu)' }).click();
+  await expect(page.getByText('Aperçu indicatif · le patron à plat fait foi')).toBeVisible();
+  await verifierLargeur(page, 'salle3d v3 390');
+  await page.screenshot({ path: 'test-results/design-v3-salle3d-390.png', fullPage: true });
 });
 
 test('design v3 accueil : reproduction maquette Accueil à 1280 px', async ({ page }) => {

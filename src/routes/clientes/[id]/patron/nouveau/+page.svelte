@@ -6,12 +6,14 @@
 </script>
 
 <main>
-  <p><a href="/clientes/{data.cliente.id}">← Fiche de {data.cliente.nom}</a></p>
-  <h1>Créer un patron pour {data.cliente.prenom}</h1>
-  <section class="alerte" role="alert">
-    <strong>Brouillon non validé.</strong>
-    Ces formules sont marquées « à valider » : un maître tailleur ne les a pas encore confirmées. Essayez d’abord sur un tissu peu coûteux.
-  </section>
+  {#if !data.mesures}
+    <p><a href="/clientes/{data.cliente.id}">← Fiche de {data.cliente.nom}</a></p>
+    <h1>Créer un patron pour {data.cliente.prenom}</h1>
+    <section class="alerte" role="alert">
+      <strong>Brouillon non validé.</strong>
+      Ces formules sont marquées « à valider » : un maître tailleur ne les a pas encore confirmées. Essayez d’abord sur un tissu peu coûteux.
+    </section>
+  {/if}
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
 
   {#if !data.modele}
@@ -43,8 +45,6 @@
       <button type="submit">Continuer vers la salle d’essayage</button>
     </form>
   {:else if data.mesures}
-    <h2>2. Salle d’essayage — {data.titreModele}</h2>
-    <p>Mesures préremplies depuis la fiche de {data.cliente.prenom}. Ajustez, choisissez le tissu, puis enregistrez le patron sur sa fiche.</p>
     <SalleEssayageCliente
       modele={data.modele === 'jupe_droite' ? 'jupe_droite' : 'pantalon_large'}
       mesuresInitiales={data.mesures}
@@ -52,6 +52,10 @@
       csrfToken={data.csrfToken ?? ''}
       actionEnregistrer="?/enregistrerPatron"
       libelleEnregistrer="Enregistrer ce patron"
+      prenomCliente={data.cliente.prenom}
+      hrefRetour="/clientes/{data.cliente.id}"
+      sousTitre="{data.titreModele} · les mesures de la fiche sont déjà chargées"
+      ficheLibelle="Fiche d’{data.cliente.prenom}"
     />
   {/if}
 </main>

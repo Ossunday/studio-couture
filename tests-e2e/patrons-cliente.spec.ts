@@ -69,16 +69,16 @@ test('patron cliente : création préremplie, enregistrement, PDF, duplication, 
   await page.getByRole('button', { name: 'Continuer vers la salle d’essayage' }).click();
 
   // Salle d’essayage : mesures préremplies (fiche + mesures complétées).
-  await expect(page.getByRole('heading', { name: '2. Salle d’essayage — Pantalon large' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Salle d’essayage — Patron/ })).toBeVisible();
   await expect(page.locator('#live-tour_taille_cm')).toHaveValue('84');
   await expect(page.locator('#live-tour_hanches_cm')).toHaveValue('104');
   await expect(page.locator('#live-hauteur_fourche_cm')).toHaveValue('29');
   await expect(page.locator('#live-longueur_pantalon_cm')).toHaveValue('104');
 
   // 3D (fumée) : la scène se charge, puis on revient au patron à plat.
-  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  await page.getByRole('tab', { name: /Vue 3D/ }).click();
   await expect(page.locator('.scene-essayage canvas').first()).toBeVisible({ timeout: 20_000 });
-  await page.getByRole('button', { name: 'Patron à plat' }).click();
+  await page.getByRole('tab', { name: /Patron à plat/ }).click();
 
   // Enregistrement sur la fiche.
   await page.locator('input[name="nom_patron"]').fill('Pantalon E2E Awa');
@@ -114,7 +114,8 @@ test('patron cliente : création préremplie, enregistrement, PDF, duplication, 
 
   // Ouverture dans la salle : la taille passe de 84 à 86 puis est enregistrée.
   await renomme.getByRole('link', { name: 'Ouvrir dans la salle d’essayage' }).click();
-  await expect(page.getByRole('heading', { name: 'Pantalon E2E renommé' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Salle d’essayage — Patron/ })).toBeVisible();
+  await expect(page.locator('input[name="nom_patron"]')).toHaveValue('Pantalon E2E renommé');
   await expect(page.locator('#live-tour_taille_cm')).toHaveValue('84');
   await page.locator('#live-tour_taille_cm').fill('86');
   await expect(page.locator('input[type="hidden"][name="tour_taille_cm"]')).toHaveValue('86');
@@ -159,7 +160,7 @@ test('fiche cliente et salle connectée : captures 360/768/1280', async ({ page 
 
     await page.getByRole('link', { name: 'Créer un patron pour Patron' }).first().click();
     await page.getByRole('link', { name: /Pantalon large/ }).click();
-    await expect(page.getByRole('heading', { name: '2. Salle d’essayage — Pantalon large' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Salle d’essayage — Patron/ })).toBeVisible();
     await verifierLargeur(page, `salle cliente ${largeur}`);
     await page.screenshot({ path: `test-results/salle-cliente-${largeur}.png`, fullPage: true });
     await page.goBack();

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { couleurTissu, dessinerTextureTissu, type MatiereId } from './tissus';
 
-  let { couleurId, matiere }: { couleurId: string; matiere: MatiereId } = $props();
+  let { couleurId, matiere, legende = '' }: { couleurId: string; matiere: MatiereId; legende?: string } = $props();
   let canvas = $state<HTMLCanvasElement | null>(null);
 
   $effect(() => {
@@ -16,7 +16,7 @@
 
 <figure class="loupe">
   <canvas bind:this={canvas} width="192" height="192" data-testid="loupe-tissu" aria-label="Gros plan du tissu choisi, dessiné par code"></canvas>
-  <figcaption>Gros plan du tissu</figcaption>
+  <figcaption>{legende || 'Gros plan du tissu'}</figcaption>
 </figure>
 
 <style>

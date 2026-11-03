@@ -1,5 +1,8 @@
 <script lang="ts">
   import VisionneusePatron from '$lib/design/VisionneusePatron.svelte';
+  import PatronCote from '$lib/design/PatronCote.svelte';
+  import { preparerPatronCote } from '$lib/design/patron-cote';
+  import Puce from '$lib/design/Puce.svelte';
   import LoupeTissu from '$lib/demo/LoupeTissu.svelte';
   import ApercuTroisVues from '$lib/demo/ApercuTroisVues.svelte';
   import type { VuesApercu } from '$lib/demo/planche';
@@ -10,8 +13,9 @@
   import type { OptionsPantalonLarge } from '$lib/patterns/pantalon-large/geometry';
 
   /**
-   * Salle d'essayage connectée : mêmes composants que la démo publique
-   * (mesures en direct, tissu, patron à plat, 3D et aperçu 3 images), mais les
+   * Salle d'essayage connectée (maquette « Salle » / « Salle3d », design v3) :
+   * deux vues par onglets accessibles — « 1 · Patron à plat » (PatronCote, fait
+   * foi) puis « 2 · Vue 3D (aperçu) » indicative, avec repli sans WebGL. Les
    * mesures viennent d'une fiche cliente et le patron peut être ENREGISTRÉ.
    * Le formulaire d'enregistrement n'envoie que les dernières mesures valides ;
    * le serveur revalide tout (patron-cliente.ts).
@@ -24,7 +28,12 @@
     actionEnregistrer,
     libelleEnregistrer,
     tissuInitial,
-    optionsInitiales = {}
+    optionsInitiales = {},
+    prenomCliente,
+    hrefRetour,
+    sousTitre = '',
+    ficheLibelle = '',
+    infoPatron = ''
   }: {
     modele: ModelePatron;
     mesuresInitiales: Record<string, number>;
@@ -34,13 +43,34 @@
     libelleEnregistrer: string;
     tissuInitial?: { couleurId: string; matiereId: string };
     optionsInitiales?: Record<string, number>;
+    prenomCliente: string;
+    hrefRetour: string;
+    sousTitre?: string;
+    ficheLibelle?: string;
+    infoPatron?: string;
   } = $props();
 
+  // Libellés courts de la maquette (« Longueur du pantalon », sans « (cm) »).
+  const LIBELLES_COURTS: Record<string, string> = {
+    tour_taille_cm: 'Tour de taille',
+    tour_hanches_cm: 'Tour de hanches',
+    hauteur_fourche_cm: 'Hauteur de fourche',
+    longueur_pantalon_cm: 'Longueur du pantalon',
+    longueur_jupe_cm: 'Longueur de jupe'
+  };
   const champs = $derived(MODELES[modele].champs.map((code) => {
     const def = definitionMensuration(code);
-    return { code, libelle: def.libelle, minCm: def.minCm, maxCm: def.maxCm, pasCm: 0.5 };
+    return { code, libelle: LIBELLES_COURTS[code] ?? def.libelle.replace(' (cm)', ''), minCm: def.minCm, maxCm: def.maxCm, pasCm: 0.5 };
   }));
   const fmt = (v: number) => String(v).replace('.', ',');
+
+  // Morphologies de référence (mêmes valeurs que la démo publique).
+  const PRESETS = [
+    { id: 'petite', libelle: 'Petite', valeurs: { tour_taille_cm: 64, tour_hanches_cm: 88, hauteur_fourche_cm: 24, longueur_pantalon_cm: 96 } },
+    { id: 'moyenne', libelle: 'Moyenne', valeurs: { tour_taille_cm: 82, tour_hanches_cm: 100, hauteur_fourche_cm: 27, longueur_pantalon_cm: 105 } },
+    { id: 'forte', libelle: 'Forte', valeurs: { tour_taille_cm: 110, tour_hanches_cm: 128, hauteur_fourche_cm: 31, longueur_pantalon_cm: 108 } }
+  ] as const;
+  type PresetId = (typeof PRESETS)[number]['id'];
 
   // Captures initiales voulues : le composant part des valeurs de la fiche ou
   // du patron enregistré (instance créée à chaque navigation, pas synchrone).
@@ -57,6 +87,7 @@
   let message3d = $state('');
   let vues3d = $state<VuesApercu | null>(null);
   let panneauMobile = $state<'mesures' | 'tissu' | 'patron'>('mesures');
+  let zoom = $state(1);
   let minuteur: ReturnType<typeof setTimeout> | undefined;
 
   // Options du pantalon (jamais obligatoires) : chaînes du formulaire, converties si valides.
@@ -93,12 +124,13 @@
   }
 
   const couleurChoisie = $derived(couleurTissu(couleurId));
-  const tissuTexte = $derived(`${couleurChoisie.libelle} · ${MATIERES.find((m) => m.id === matiere)?.libelle ?? matiere}`);
+  const matiereLibelle = $derived(MATIERES.find((m) => m.id === matiere)?.libelle ?? matiere);
+  const tissuTexte = $derived(`${couleurChoisie.libelle} · ${matiereLibelle}`);
   const rendu = $derived.by(() => {
     const { pieces, largeur, hauteur } = genererPiecesPlacees(modele, mesuresValidees, modele === 'pantalon_large' ? optionsValides : {});
     return { pieces: pieces.map(preparerPiece), largeur: Math.ceil(largeur), hauteur: Math.ceil(hauteur) };
   });
-  const resume = $derived(champs.map((c) => `${c.libelle.replace(' (cm)', '')} : ${fmt(mesuresValidees[c.code]!)} cm`));
+  const resume = $derived(champs.map((c) => `${c.libelle} : ${fmt(mesuresValidees[c.code]!)} cm`));
   const mesures3d = $derived(
     modele === 'pantalon_large'
       ? {
@@ -109,6 +141,8 @@
         }
       : null
   );
+  // Valeurs du moteur pour les pastilles « Votre patron » (pantalon seulement).
+  const patronCote = $derived(modele === 'pantalon_large' && mesures3d ? preparerPatronCote(mesures3d, optionsValides) : null);
   const hrefPdf = $derived.by(() => {
     const params = new URLSearchParams({ modele, nom: nomInitial });
     for (const [k, v] of Object.entries(mesuresValidees)) params.set(k, String(v));
@@ -135,6 +169,23 @@
   function repli3d(message: string) {
     vue = 'plat';
     message3d = message;
+  }
+
+  // Onglets des vues : navigation au clavier (flèches), onglet actif seul tabulable.
+  function toucheOnglet(e: KeyboardEvent, cible: 'plat' | '3d') {
+    e.preventDefault();
+    if (cible === '3d') void activerVue3d();
+    else vue = 'plat';
+    document.getElementById(cible === '3d' ? 'onglet-vue-3d' : 'onglet-vue-plat')?.focus();
+  }
+  function onkeydownOnglets(e: KeyboardEvent) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      toucheOnglet(e, vue === 'plat' ? '3d' : 'plat');
+    } else if (e.key === 'Home') {
+      toucheOnglet(e, 'plat');
+    } else if (e.key === 'End') {
+      toucheOnglet(e, '3d');
+    }
   }
 
   function tenterMajLive(codeModifie?: string): boolean {
@@ -172,30 +223,96 @@
     const v = Number((valeursLive[code] ?? '').replace(',', '.'));
     return Number.isFinite(v) ? v : min;
   };
+
+  function appliquerPreset(p: (typeof PRESETS)[number]) {
+    valeursLive = { ...valeursLive, ...Object.fromEntries(Object.entries(p.valeurs).map(([k, v]) => [k, fmt(v)])) };
+    if (minuteur) clearTimeout(minuteur);
+    tenterMajLive();
+  }
+  const presetActif = $derived.by((): PresetId | null => {
+    for (const p of PRESETS) {
+      if (Object.entries(p.valeurs).every(([code, v]) => fmt(v) === (valeursLive[code] ?? ''))) return p.id;
+    }
+    return null;
+  });
+
+  function zoomer(facteur: number) {
+    zoom = Math.min(2.5, Math.max(0.6, Math.round(zoom * facteur * 20) / 20));
+  }
 </script>
+
+<header class="entete-salle">
+  <div class="entete-gauche">
+    <a class="retour" href={hrefRetour} aria-label="Retour à la fiche de {prenomCliente}">
+      <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </a>
+    <div class="titres">
+      <h1>Salle d’essayage — {prenomCliente}</h1>
+      {#if sousTitre}<p>{sousTitre}</p>{/if}
+      {#if infoPatron}<p class="info-patron">{infoPatron}</p>{/if}
+    </div>
+    <Puce ton="accent">Brouillon non validé</Puce>
+  </div>
+  <div class="entete-actions">
+    <a class="bouton bouton-secondaire" href={hrefPdf} download>Télécharger le PDF A4</a>
+    <button type="submit" form="form-enregistrer-salle" class="bouton bouton-action">{libelleEnregistrer} <span aria-hidden="true">✓</span></button>
+  </div>
+</header>
 
 <div class="essayage">
   <div class="scene-essayage carte-scene">
-    <div class="scene-haut">
-      {#if modele === 'pantalon_large'}
-        <div class="bascule" role="group" aria-label="Choix de la vue">
-          <button type="button" class:actif={vue === '3d'} aria-pressed={vue === '3d'} onclick={activerVue3d}>Vue 3D</button>
-          <button type="button" class:actif={vue === 'plat'} aria-pressed={vue === 'plat'} onclick={() => (vue = 'plat')}>Patron à plat</button>
+    {#if modele === 'pantalon_large'}
+      <div class="scene-haut">
+        <div class="onglets-vue" role="tablist" aria-label="Choix de la vue" tabindex="-1" onkeydown={onkeydownOnglets}>
+          <button type="button" role="tab" id="onglet-vue-plat" aria-selected={vue === 'plat'} aria-controls="panneau-vue-plat" tabindex={vue === 'plat' ? 0 : -1} class:actif={vue === 'plat'} onclick={() => (vue = 'plat')}>1 · Patron à plat</button>
+          <button type="button" role="tab" id="onglet-vue-3d" aria-selected={vue === '3d'} aria-controls="panneau-vue-3d" tabindex={vue === '3d' ? 0 : -1} class:actif={vue === '3d'} onclick={activerVue3d}>2 · Vue 3D (aperçu)</button>
+        </div>
+        {#if vue === '3d'}
+          <span class="bandeau-indicatif">Aperçu indicatif · le patron à plat fait foi</span>
+          <div class="loupe-scene">
+            <LoupeTissu couleurId={couleurId} matiere={matiere} legende="{matiereLibelle} · {couleurChoisie.libelle}" />
+          </div>
+        {/if}
+      </div>
+    {/if}
+    {#if message3d}<p class="erreur-mesure" role="alert">{message3d}</p>{/if}
+
+    {#if modele === 'pantalon_large'}
+      {#if vue === 'plat'}
+        <div role="tabpanel" id="panneau-vue-plat" aria-labelledby="onglet-vue-plat">
+          <div class="controles-zoom" aria-label="Zoom du patron à plat">
+            <button type="button" aria-label="Zoomer" disabled={zoom >= 2.5} onclick={() => zoomer(1.25)}>+</button>
+            <button type="button" aria-label="Dézoomer" disabled={zoom <= 0.6} onclick={() => zoomer(0.8)}>−</button>
+            <button type="button" aria-label="Réinitialiser la vue" disabled={zoom === 1} onclick={() => (zoom = 1)}>⟲</button>
+          </div>
+          <div class="plat-defilant">
+            <div class="plat-zoom" style="--zoom: {zoom}">
+              {#if mesures3d}<PatronCote mesures={mesures3d} options={optionsValides} uid="salle" />{/if}
+            </div>
+          </div>
+          <div class="barre-foi">
+            <div class="barre-foi-texte">
+              <strong>Le patron à plat fait foi</strong>
+              <span>Imprimez-le à l’échelle 1:1 et vérifiez le carré de 10 cm avant de couper.</span>
+            </div>
+            <a class="bouton bouton-action" href={hrefPdf} download>Télécharger le PDF A4</a>
+          </div>
+        </div>
+      {:else}
+        <div role="tabpanel" id="panneau-vue-3d" aria-labelledby="onglet-vue-3d">
+          {#if Scene3D && mesures3d}
+            <Scene3D mesures={mesures3d} couleurId={couleurId} matiere={matiere} onIndisponible={repli3d} onVues={(v: VuesApercu) => (vues3d = v)} />
+          {/if}
+          {#if vues3d}
+            <ApercuTroisVues vues={vues3d} mesuresTexte={resume.join(' · ')} tissuTexte={tissuTexte} />
+            <p class="aide-scene">Volume généré à partir des cotes du patron, pas une simulation de drapé.</p>
+          {:else if message3d}
+            <p>Aperçu en 3 images indisponible ici : le patron à plat reste consultable et téléchargeable en PDF.</p>
+          {/if}
         </div>
       {/if}
-      <LoupeTissu couleurId={couleurId} matiere={matiere} />
-    </div>
-    <div class="ombre-sol" aria-hidden="true"></div>
-    {#if message3d}<p class="erreur-mesure" role="alert">{message3d}</p>{/if}
-    {#if vue === '3d' && Scene3D && mesures3d}
-      <Scene3D mesures={mesures3d} couleurId={couleurId} matiere={matiere} onIndisponible={repli3d} onVues={(v: VuesApercu) => (vues3d = v)} />
     {:else}
       <VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />
-    {/if}
-    {#if vues3d && vue === '3d'}
-      <ApercuTroisVues vues={vues3d} mesuresTexte={resume.join(' · ')} tissuTexte={tissuTexte} />
-    {:else if message3d}
-      <p>Aperçu en 3 images indisponible ici : le patron à plat ci-dessus reste consultable et téléchargeable en PDF.</p>
     {/if}
   </div>
 
@@ -206,15 +323,27 @@
       <button type="button" role="tab" aria-selected={panneauMobile === 'patron'} onclick={() => (panneauMobile = 'patron')}>Patron</button>
     </div>
 
-    <section class="carte panneau" class:panneau-actif={panneauMobile === 'mesures'} aria-label="Mesures de la cliente">
-      <h3>Mesures</h3>
+    <section class="carte panneau" class:panneau-actif={panneauMobile === 'mesures'} aria-label="Vos mesures">
+      <div class="carte-entete">
+        <h2>Vos mesures</h2>
+        {#if ficheLibelle}<Puce ton="bleu">{ficheLibelle}</Puce>{/if}
+      </div>
       <p class="aide">Préremplies depuis la fiche — ajustez ici pour ce patron. La fiche n’est pas modifiée.</p>
+      {#if modele === 'pantalon_large'}
+        <div class="presets" role="group" aria-label="Morphologies de référence">
+          {#each PRESETS as p}
+            <button type="button" class:actif={presetActif === p.id} aria-pressed={presetActif === p.id} onclick={() => appliquerPreset(p)}>{p.libelle}</button>
+          {/each}
+        </div>
+      {/if}
       {#each champs as champ}
         <div class="pastille-mesure">
-          <label for="live-{champ.code}">{champ.libelle}</label>
           <div class="pastille-ligne">
-            <input id="live-{champ.code}" name="live-{champ.code}" type="text" inputmode="decimal" value={valeursLive[champ.code]} oninput={(e) => { valeursLive = { ...valeursLive, [champ.code]: e.currentTarget.value }; planifierMaj(champ.code); }} aria-invalid={erreursLive[champ.code] ? 'true' : undefined} aria-describedby={erreursLive[champ.code] ? `err-${champ.code}` : undefined} />
-            <span aria-hidden="true">cm</span>
+            <label for="live-{champ.code}">{champ.libelle}</label>
+            <span class="pastille-valeur">
+              <input id="live-{champ.code}" name="live-{champ.code}" type="text" inputmode="decimal" value={valeursLive[champ.code]} oninput={(e) => { valeursLive = { ...valeursLive, [champ.code]: e.currentTarget.value }; planifierMaj(champ.code); }} aria-invalid={erreursLive[champ.code] ? 'true' : undefined} aria-describedby={erreursLive[champ.code] ? `err-${champ.code}` : undefined} />
+              <span aria-hidden="true">cm</span>
+            </span>
           </div>
           <input type="range" min={champ.minCm} max={champ.maxCm} step={champ.pasCm} value={nombreLive(champ.code, champ.minCm)} oninput={(e) => majDepuisCurseur(champ.code, e.currentTarget.valueAsNumber)} aria-label="Curseur {champ.libelle}" />
           <span class="aide">Plage : {champ.minCm} à {champ.maxCm} cm, pas de {fmt(champ.pasCm)} cm.</span>
@@ -224,8 +353,8 @@
     </section>
 
     <section class="carte panneau" class:panneau-actif={panneauMobile === 'tissu'} aria-label="Tissu">
-      <h3>Tissu</h3>
-      <p id="tissu-choisi" aria-live="polite">{couleurChoisie.libelle} · {MATIERES.find((m) => m.id === matiere)?.libelle}</p>
+      <h2>Tissu</h2>
+      <p id="tissu-choisi" aria-live="polite">{couleurChoisie.libelle} · {matiereLibelle}</p>
       <div class="pastilles-couleur" role="group" aria-label="Couleur du tissu">
         {#each COULEURS_TISSU as c}
           <button type="button" class="pastille-couleur" class:actif={couleurId === c.id} style="--pastille: {c.hex}" aria-pressed={couleurId === c.id} aria-label="Couleur {c.libelle}" title={c.libelle} onclick={() => (couleurId = c.id)}></button>
@@ -236,23 +365,30 @@
           <button type="button" class:actif={matiere === m.id} aria-pressed={matiere === m.id} onclick={() => (matiere = m.id)}>{m.libelle}</button>
         {/each}
       </div>
-      <p class="aide">La couleur remplit les pièces du patron à plat ; la loupe, à côté de la scène, montre la matière en gros plan.</p>
+      <p class="aide">La couleur remplit les pièces du patron à plat ; la loupe, dans la vue 3D, montre la matière en gros plan.</p>
     </section>
 
-    <section class="carte panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label="Votre patron">
-      <h3>Ce patron</h3>
-      {#each rendu.pieces as piece}
-        <h4>{piece.nom}</h4>
-        <table>
-          <tbody>
-            {#each piece.tableau as ligne}<tr><th scope="row">{ligne.libelle}</th><td>{ligne.valeur} cm</td></tr>{/each}
-          </tbody>
-        </table>
-      {/each}
-      <p><a class="bouton bouton-action" href={hrefPdf} download>Télécharger le PDF A4 1:1</a></p>
-      <p>Après impression en taille réelle, vérifiez le <strong>carré de contrôle de 10 cm</strong> à la règle avant de couper.</p>
+    <section class="carte panneau carte-sombre-panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label="Votre patron">
+      <h2>Votre patron</h2>
+      {#if patronCote}
+        <div class="puces-pieces">
+          <span class="puce-piece">Devant ×2 · bas {patronCote.valeurs.basDevant}</span>
+          <span class="puce-piece">Dos ×2 · bas {patronCote.valeurs.basDos}</span>
+          <span class="puce-piece">Ceinture ×1 · {patronCote.valeurs.ceinture} cm</span>
+        </div>
+      {:else}
+        {#each rendu.pieces as piece}
+          <h3 class="piece-nom">{piece.nom}</h3>
+          <table>
+            <tbody>
+              {#each piece.tableau as ligne}<tr><th scope="row">{ligne.libelle}</th><td>{ligne.valeur} cm</td></tr>{/each}
+            </tbody>
+          </table>
+        {/each}
+      {/if}
+      <p class="texte-sombre-doux">Imprimez sans mise à l’échelle puis vérifiez le carré de 10 cm à la règle avant de couper.</p>
 
-      <form method="post" action={actionEnregistrer} class="enregistrer">
+      <form method="post" action={actionEnregistrer} class="enregistrer" id="form-enregistrer-salle">
         <input type="hidden" name="_csrf" value={csrfToken} />
         <input type="hidden" name="modele" value={modele} />
         {#each champs as champ}
@@ -278,50 +414,103 @@
             {#if erreurOptions}<p class="erreur-mesure" role="alert">{erreurOptions}</p>{/if}
           </details>
         {/if}
-        <button type="submit" class="bouton bouton-action">{libelleEnregistrer}</button>
       </form>
     </section>
   </div>
 </div>
 
 <style>
-  .essayage { display: grid; gap: 16px; margin: 16px 0; }
+  .entete-salle { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 20px; margin: 4px 0 18px; }
+  .entete-gauche { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; min-width: 0; }
+  .retour { flex: 0 0 auto; width: 48px; height: 48px; border-radius: 999px; background: var(--carte); border: 1px solid var(--bord-fort); display: inline-flex; align-items: center; justify-content: center; color: var(--encre); text-decoration: none; }
+  .titres { min-width: 0; }
+  .titres h1 { margin: 0; font-size: clamp(1.45rem, 3.4vw, 1.75rem); font-weight: 800; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+  .titres p { margin: 2px 0 0; font-size: 14px; color: var(--texte-secondaire); }
+  .titres .info-patron { font-size: 13px; }
+  .entete-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .entete-actions .bouton { min-height: 50px; }
+  @media (min-width: 1024px) {
+    .entete-salle { flex-wrap: nowrap; }
+    .entete-gauche { flex-wrap: nowrap; align-items: center; }
+    .entete-gauche :global(.puce) { flex: 0 0 auto; white-space: nowrap; }
+    .entete-actions { flex: 0 0 auto; }
+  }
+
+  .essayage { display: grid; gap: 20px; margin: 0 0 16px; }
   @media (min-width: 1024px) { .essayage { grid-template-columns: minmax(0, 65fr) minmax(0, 35fr); align-items: start; } }
-  .carte-scene { border: 1px solid var(--laiton); border-radius: 20px; padding: 16px; background: linear-gradient(160deg, var(--ivoire), #efe6d4 55%, #e7ddcb); box-shadow: var(--ombre); position: relative; overflow: hidden; }
-  .scene-haut { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
-  .bascule { display: inline-flex; border: 2px solid var(--vert); border-radius: 999px; overflow: hidden; background: var(--papier); }
-  .bascule button { min-height: 48px; border: 0; border-radius: 0; background: transparent; color: var(--encre); }
-  .bascule button.actif { background: var(--vert); color: #fff; }
-  .ombre-sol { height: 18px; margin: 4px 12% -6px; border-radius: 50%; background: radial-gradient(ellipse at center, rgb(30 26 23 / 0.22), transparent 70%); }
-  .tiroir { display: grid; gap: 0; min-width: 0; }
+  .carte-scene { border: 1px solid var(--bord); border-radius: 32px; padding: 20px; background: radial-gradient(ellipse at 50% 38%, #ffffff 0%, #edeef4 55%, #dddfea 100%); box-shadow: var(--ombre-petite); position: relative; min-width: 0; }
+  .scene-haut { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+  .onglets-vue { display: inline-flex; background: var(--carte); border: 1px solid var(--bord); border-radius: 999px; padding: 5px; gap: 2px; }
+  .onglets-vue button { min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: transparent; color: var(--encre); font-size: 14px; box-shadow: none; }
+  .onglets-vue button.actif { background: var(--encre); color: #fff; }
+  .bandeau-indicatif { align-self: center; font-size: 12px; font-weight: 700; line-height: 1.35; background: var(--peche-pastille); color: var(--peche-texte); border-radius: 16px; padding: 8px 14px; max-width: 220px; text-align: center; }
+  .loupe-scene { margin-left: auto; display: grid; justify-items: center; gap: 4px; }
+  .loupe-scene :global(figcaption) { background: var(--carte); border: 1px solid var(--bord); border-radius: 999px; padding: 4px 12px; }
+
+  .controles-zoom { display: flex; flex-direction: row; gap: 10px; margin: 14px 0 0; }
+  @media (min-width: 700px) { .controles-zoom { position: absolute; left: 20px; top: 92px; margin: 0; z-index: 2; flex-direction: column; } }
+  .controles-zoom button { width: 48px; height: 48px; min-width: 48px; padding: 0; border-radius: 999px; border: 1px solid var(--bord-fort); background: var(--carte); color: var(--encre); font-size: 20px; box-shadow: none; }
+  .controles-zoom button[disabled] { opacity: 0.45; }
+  .plat-defilant { overflow: auto; max-width: 100%; }
+  .plat-zoom { width: calc(100% * var(--zoom, 1)); max-width: none; margin: 0 auto; transition: width var(--transition); }
+  .barre-foi { margin-top: 16px; background: rgb(255 255 255 / 0.92); border: 1px solid var(--bord); border-radius: 24px; padding: 12px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; justify-content: space-between; }
+  .barre-foi-texte { display: flex; flex-direction: column; gap: 2px; max-width: 430px; }
+  .barre-foi-texte strong { font-size: 14px; font-weight: 800; }
+  .barre-foi-texte span { font-size: 13px; line-height: 1.45; color: var(--texte-secondaire); }
+  @media (min-width: 700px) {
+    .barre-foi { flex-wrap: nowrap; }
+    .barre-foi-texte { flex: 1 1 auto; min-width: 0; }
+    .barre-foi .bouton { flex: 0 0 auto; }
+  }
+  .aide-scene { font-size: 13px; color: var(--texte-secondaire); }
+
+  .tiroir { display: grid; gap: 18px; min-width: 0; align-content: start; }
+  .tiroir .carte { margin: 0; }
   .onglets-panneaux { display: none; gap: 8px; }
   .onglets-panneaux button { min-height: 48px; flex: 1; }
-  .onglets-panneaux button[aria-selected='true'] { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
-  .pastille-mesure { border: 1px solid var(--bord); border-top: 3px solid var(--laiton); border-radius: var(--rayon); padding: 12px; margin: 10px 0; background: var(--papier); display: grid; gap: 8px; }
-  .pastille-mesure label { font-weight: 700; }
-  .pastille-ligne { display: flex; gap: 8px; align-items: center; }
-  .pastille-ligne input { min-height: 48px; width: 7rem; max-width: 45%; font: inherit; padding: 8px; border: 2px solid var(--vert); border-radius: 10px; }
-  .pastille-mesure input[type='range'] { width: 100%; min-height: 48px; accent-color: var(--terracotta); }
-  .erreur-mesure { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--rouge-doux); font-weight: 600; }
-  .aide { font-weight: 400; font-size: 15px; }
+  .onglets-panneaux button[aria-selected='true'] { background: var(--encre); border-color: var(--encre); color: #fff; }
+  .carte-entete { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .panneau h2 { margin: 0 0 6px; font-size: 19px; font-weight: 800; }
+  .carte-entete h2 { margin: 0; }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 6px; }
+  .presets button { min-height: 38px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--bord-fort); background: var(--carte); color: var(--encre); font-size: 13px; box-shadow: none; }
+  .presets button.actif { background: var(--encre); border-color: var(--encre); color: #fff; }
+  .pastille-mesure { padding: 10px 0 4px; display: grid; gap: 6px; }
+  .pastille-ligne { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .pastille-ligne label { font-size: 14px; font-weight: 700; }
+  .pastille-valeur { display: inline-flex; align-items: center; gap: 6px; min-width: 96px; min-height: 38px; border-radius: 12px; background: var(--fond); padding: 2px 12px 2px 6px; font-weight: 800; font-size: 15px; }
+  .pastille-valeur input { width: 4.2rem; min-height: 34px; font: inherit; font-weight: 800; text-align: right; padding: 2px 4px; border: 0; background: transparent; color: var(--encre); }
+  .pastille-valeur input:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; border-radius: 8px; }
+  .pastille-mesure input[type='range'] { width: 100%; min-height: 44px; accent-color: var(--encre); margin: 0; }
+  .erreur-mesure { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--rouge-doux); font-weight: 600; }
+  .aide { font-weight: 400; font-size: 14px; color: var(--texte-secondaire); margin: 0 0 6px; }
+
   .pastilles-couleur { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
-  .pastille-couleur { width: 48px; height: 48px; min-width: 48px; border-radius: 999px; background: var(--pastille); border: 3px solid var(--bord); padding: 0; }
-  .pastille-couleur.actif { border-color: var(--terracotta); box-shadow: 0 0 0 3px var(--papier), 0 0 0 6px var(--terracotta); }
-  .matieres { display: flex; flex-wrap: wrap; gap: 8px; }
-  .matieres button { min-height: 48px; }
-  .matieres button.actif { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
-  .enregistrer { display: grid; gap: 12px; border-top: 3px solid var(--laiton); padding-top: 14px; margin-top: 14px; }
+  .pastille-couleur { width: 44px; height: 44px; min-width: 44px; border-radius: 999px; background: var(--pastille); border: 2px solid var(--bord-fort); padding: 0; box-shadow: none; }
+  .pastille-couleur.actif { border: 3px solid var(--encre); box-shadow: 0 0 0 3px var(--carte), 0 0 0 5px var(--bleu); }
+  .matieres { display: flex; background: var(--fond); border-radius: 999px; padding: 5px; gap: 2px; }
+  .matieres button { flex: 1; min-height: 42px; border: 0; border-radius: 999px; background: transparent; color: var(--encre); font-size: 14px; box-shadow: none; }
+  .matieres button.actif { background: var(--encre); color: #fff; }
+
+  .carte-sombre-panneau { background: var(--carte-sombre); color: #fff; border-color: var(--carte-sombre); }
+  .carte-sombre-panneau h2 { color: #fff; }
+  .puces-pieces { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+  .puce-piece { background: rgb(255 255 255 / 0.1); border-radius: 14px; padding: 10px 14px; font-size: 13px; font-weight: 600; }
+  .texte-sombre-doux { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: #b9b8d3; }
+  .piece-nom { margin: 10px 0 4px; font-size: 15px; color: #fff; }
+  .enregistrer { display: grid; gap: 12px; border-top: 1px solid rgb(255 255 255 / 0.22); padding-top: 14px; margin-top: 14px; }
   .enregistrer label { display: grid; gap: 6px; font-weight: 600; }
-  .enregistrer input { min-height: 48px; font: inherit; padding: 10px 12px; border: 2px solid var(--vert); border-radius: 10px; width: 100%; background: #fff; color: var(--encre); }
+  .enregistrer input { min-height: 48px; font: inherit; padding: 10px 12px; border: 2px solid var(--bord-fort); border-radius: 10px; width: 100%; background: #fff; color: var(--encre); }
   .enregistrer details { display: grid; gap: 10px; }
   .enregistrer summary { min-height: 48px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+  table { border-collapse: collapse; margin-bottom: 12px; }
+  th, td { border: 1px solid rgb(255 255 255 / 0.35); padding: 5px 10px; text-align: left; font-weight: 400; }
+  th { font-weight: 600; }
   @media (max-width: 760px) {
-    .essayage { grid-template-columns: minmax(0, 1fr); }
-    .onglets-panneaux { display: flex; position: sticky; top: 0; z-index: 2; background: var(--ivoire); padding: 6px 0; }
+    .onglets-panneaux { display: flex; position: sticky; top: 0; z-index: 2; background: var(--fond); padding: 6px 0; }
     .panneau { display: none; }
     .panneau.panneau-actif { display: block; }
+    .loupe-scene { margin-left: 0; }
+    .bandeau-indicatif { max-width: none; }
   }
-  table { border-collapse: collapse; margin-bottom: 12px; }
-  th, td { border: 1px solid #8a7d67; padding: 5px 10px; text-align: left; font-weight: 400; }
-  th { font-weight: 600; }
 </style>

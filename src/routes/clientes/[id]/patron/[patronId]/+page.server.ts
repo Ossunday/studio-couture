@@ -15,8 +15,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
   if (!estModelePatron(patron.modele)) throw error(404, 'Modèle inconnu.');
   const modele: ModelePatron = patron.modele;
+  const prenom = cliente.nom.trim().split(/\s+/)[0] ?? cliente.nom;
   return {
-    cliente: { id: cliente.id, nom: cliente.nom },
+    cliente: { id: cliente.id, nom: cliente.nom, prenom },
     patron: {
       id: patron.id,
       modele,

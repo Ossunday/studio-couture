@@ -111,6 +111,12 @@ test('design v3 salle : reproduction maquettes Salle et Salle3d à 1280 px et 39
   await page.getByRole('link', { name: /Pantalon large/ }).click();
   await expect(page.getByRole('heading', { name: 'Salle d’essayage — Awa' })).toBeVisible();
 
+  // Assistant IA : en mode démo mémoire, désactivé sans erreur, repli manuel annoncé.
+  await expect(page.getByRole('heading', { name: 'Assistant de modèle' })).toBeVisible();
+  await page.getByLabel('Modèle voulu').fill('pantalon très ample, pli marqué, ceinture fine');
+  await page.getByRole('button', { name: 'Proposer des paramètres' }).click();
+  await expect(page.getByText('Assistant désactivé en mode démo : réglez les options manuellement ci-dessous.')).toBeVisible();
+
   // Vue 1 (défaut) : onglets, chip brouillon, PatronCote coté, encart « fait foi ».
   await expect(page.getByRole('tab', { name: '1 · Patron à plat' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tab', { name: '2 · Vue 3D (aperçu)' })).toHaveAttribute('aria-selected', 'false');

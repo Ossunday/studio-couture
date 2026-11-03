@@ -1,6 +1,15 @@
 # HANDOFF — Studio Couture
 
-Dernière mise à jour : 2026-11-03 (Design v3 — phases 1 à 6 terminées).
+Dernière mise à jour : 2026-11-03 (Design v3 phases 1 à 6, puis phase 8 assistant IA).
+
+## Phase 8 — Assistant de modèle par IA (2026-11-03)
+
+- **Module serveur `src/lib/server/ia/suggestion-modele.ts`** : traduit une description libre (3–300 caractères) en **options du pantalon large uniquement** (`largeurBasPieceCm` 18–40, `profondeurPliCm` 0–8, `hauteurCeintureFinieCm` 3–6 — les plages de `lireOptionsPantalon`). Schéma strict (`validerSuggestionIa`) : objet JSON, valeurs numériques ramenées dans leur plage, clés inconnues ignorées (aucune cote ne peut entrer), réponse non conforme refusée. L’IA ne produit ni cote ni géométrie ; `PatronCote` et le moteur restent seuls à calculer. Le patron reste un **brouillon non validé** — l’assistant ne valide ni ne garantit rien.
+- **Appel modèle** : client compatible API Messages d’Anthropic (`POST {base}/v1/messages`, `x-api-key` + `anthropic-version`), délai court de 8 s (AbortController + course), aucun journal. Configuration par l’environnement serveur : `STUDIO_COUTURE_IA_API_KEY`, `STUDIO_COUTURE_IA_BASE_URL`, `STUDIO_COUTURE_IA_MODELE` (constantes ajoutées à `brand.ts`). Sans les trois : assistant désactivé, repli manuel, aucune erreur. **Seul le texte du modèle est envoyé** — aucune mesure, aucun nom, aucune donnée cliente.
+- **Endpoint `POST /api/suggestion-modele`** : connexion exigée (401 sinon), jeton CSRF vérifié comme `/deconnexion`, limite **20 suggestions/heure/atelier** en mémoire (`LimiteurSuggestionsIa`), statuts JSON explicites (`ok`, `invalide`, `indisponible`, `limite`, `refuse`) — jamais d’erreur bloquante. En mode dépôt mémoire (démo/tests e2e), l’assistant est désactivé proprement avec message de repli.
+- **Interface** : carte « Assistant de modèle » dans la salle d’essayage pantalon (après « Tissu ») — description libre, bouton « Proposer des paramètres », résultat affiché « Suggestion de l’IA, à vérifier : bas … · pli … · ceinture … », qui remplit les champs d’options existants (section ouverte automatiquement) ; le patron se recalcule en direct et reste modifiable avant génération/enregistrement. Échec ou absence de configuration : message de repli, formulaire manuel inchangé.
+- **Tests** : 13 unitaires avec faux client (aucun réseau) — plages ramenées (55→40, −3→0, 12→6), clés inconnues ignorées, réponses invalides refusées, panne et délai dépassé gérés sans exception, non-configuré sans appel, prompt limité au texte du modèle, limite par atelier. E2E salle : en mode mémoire, le clic affiche « Assistant désactivé en mode démo… » et la salle reste utilisable.
+- **Reste à faire par le propriétaire** : reporter dans `.env.example` (sans valeur) les trois noms `STUDIO_COUTURE_IA_API_KEY`, `STUDIO_COUTURE_IA_BASE_URL`, `STUDIO_COUTURE_IA_MODELE` — l’outil d’édition de cette session n’a pas l’autorisation d’écrire les fichiers `.env*` (même blocage que pour `BODY_SIZE_LIMIT` en 2026-10-28) ; puis renseigner les vraies valeurs dans l’environnement du serveur pour activer l’assistant. Aucun appel réel au modèle n’a été fait pendant le développement (tests sur faux client uniquement).
 
 ## Design v3 — Phase 6 : pages d’erreur et finitions (2026-11-03)
 

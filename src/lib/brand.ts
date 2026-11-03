@@ -21,6 +21,10 @@ export const BRAND_ENV_PREFIX = 'STUDIO_COUTURE_' as const;
 export const ENV_DATABASE_URL = `${BRAND_ENV_PREFIX}DATABASE_URL` as const;
 export const ENV_PHOTO_ENCRYPTION_KEY = `${BRAND_ENV_PREFIX}PHOTO_ENCRYPTION_KEY_BASE64` as const;
 export const ENV_SESSION_SECRET = `${BRAND_ENV_PREFIX}SESSION_SECRET` as const;
+/** Assistant de modèle IA (optionnel, serveur uniquement) : clé, endpoint compatible Anthropic, modèle. */
+export const ENV_IA_API_KEY = `${BRAND_ENV_PREFIX}IA_API_KEY` as const;
+export const ENV_IA_BASE_URL = `${BRAND_ENV_PREFIX}IA_BASE_URL` as const;
+export const ENV_IA_MODELE = `${BRAND_ENV_PREFIX}IA_MODELE` as const;
 
 /** Nom du cache du service worker pour une version donnée. */
 export function brandCacheName(version: string): string {

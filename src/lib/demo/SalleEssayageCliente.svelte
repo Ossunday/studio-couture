@@ -123,6 +123,60 @@
     erreurOptions = '';
   }
 
+  // --- Assistant de modèle IA (phase 8) : propose des OPTIONS, jamais de cotes.
+  // La réponse du serveur est déjà validée et bornée ; elle remplit les champs
+  // d'options existants, modifiables avant génération/enregistrement. En cas
+  // d'échec ou d'absence de configuration, le formulaire manuel reste seul maître.
+  let descriptionModele = $state('');
+  let suggestionEnCours = $state(false);
+  let messageIa = $state('');
+  let suggestionIaOk = $state(false);
+  let optionsOuvertes = $state(false);
+  const LIBELLES_SUGGESTION: { cle: keyof OptionsPantalonLarge; code: string; suffixe: string }[] = [
+    { cle: 'largeurBasPieceCm', code: 'largeur_bas_cm', suffixe: 'bas' },
+    { cle: 'profondeurPliCm', code: 'profondeur_pli_cm', suffixe: 'pli' },
+    { cle: 'hauteurCeintureFinieCm', code: 'hauteur_ceinture_cm', suffixe: 'ceinture' }
+  ];
+  async function demanderSuggestion() {
+    const texte = descriptionModele.trim();
+    if (texte.length < 3 || suggestionEnCours) return;
+    suggestionEnCours = true;
+    suggestionIaOk = false;
+    messageIa = 'Suggestion en cours…';
+    try {
+      const reponse = await fetch('/api/suggestion-modele', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
+        body: JSON.stringify({ texte })
+      });
+      const donnees: { statut?: string; message?: string; options?: OptionsPantalonLarge } = await reponse.json().catch(() => ({}));
+      if (donnees.statut === 'ok' && donnees.options) {
+        const retenues: string[] = [];
+        const nouvelles = { ...optionsTexte };
+        for (const { cle, code, suffixe } of LIBELLES_SUGGESTION) {
+          const v = donnees.options[cle];
+          if (typeof v === 'number' && Number.isFinite(v)) {
+            nouvelles[code] = fmt(v);
+            retenues.push(`${suffixe} ${fmt(v)} cm`);
+          }
+        }
+        optionsTexte = nouvelles;
+        verifierOptions();
+        optionsOuvertes = true;
+        suggestionIaOk = true;
+        messageIa = retenues.length
+          ? `Suggestion de l’IA, à vérifier : ${retenues.join(' · ')}. Ajustez dans « Options du modèle » si besoin — le moteur recalcule le patron, toujours brouillon non validé.`
+          : 'Suggestion de l’IA, à vérifier : aucune option retenue, réglez les options manuellement.';
+      } else {
+        messageIa = donnees.message ?? 'Assistant indisponible pour le moment : réglez les options manuellement, le patron reste calculé par le moteur.';
+      }
+    } catch {
+      messageIa = 'Assistant indisponible pour le moment : réglez les options manuellement, le patron reste calculé par le moteur.';
+    } finally {
+      suggestionEnCours = false;
+    }
+  }
+
   const couleurChoisie = $derived(couleurTissu(couleurId));
   const matiereLibelle = $derived(MATIERES.find((m) => m.id === matiere)?.libelle ?? matiere);
   const tissuTexte = $derived(`${couleurChoisie.libelle} · ${matiereLibelle}`);
@@ -368,6 +422,22 @@
       <p class="aide">La couleur remplit les pièces du patron à plat ; la loupe, dans la vue 3D, montre la matière en gros plan.</p>
     </section>
 
+    {#if modele === 'pantalon_large'}
+    <section class="carte panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label="Assistant de modèle">
+      <h2>Assistant de modèle</h2>
+      <p class="aide">Décrivez le pantalon voulu en quelques mots : l’assistant propose seulement les options du modèle (ampleur du bas, pli, ceinture). Il ne fournit aucune cote, ne dessine pas le patron et ne le valide pas — le moteur calcule, vous vérifiez.</p>
+      <label class="description-modele">Modèle voulu
+        <textarea bind:value={descriptionModele} rows="3" maxlength="300" placeholder="Ex. pantalon très ample et fluide, pli marqué, ceinture fine"></textarea>
+      </label>
+      <p class="actions-ia">
+        <button type="button" class="bouton bouton-secondaire" disabled={suggestionEnCours || descriptionModele.trim().length < 3} onclick={demanderSuggestion}>
+          {suggestionEnCours ? 'Suggestion en cours…' : 'Proposer des paramètres'}
+        </button>
+      </p>
+      {#if messageIa}<p class="message-ia" class:ok={suggestionIaOk} role="status" aria-live="polite">{messageIa}</p>{/if}
+    </section>
+    {/if}
+
     <section class="carte panneau carte-sombre-panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label="Votre patron">
       <h2>Votre patron</h2>
       {#if patronCote}
@@ -400,7 +470,7 @@
           <input name="nom_patron" value={nomInitial} required minlength="2" maxlength="80" />
         </label>
         {#if modele === 'pantalon_large'}
-          <details>
+          <details bind:open={optionsOuvertes}>
             <summary>Options du modèle (facultatif)</summary>
             <label>Largeur du bas par pièce (cm)
               <input name="largeur_bas_cm" inputmode="decimal" placeholder="calculée : jambe droite" bind:value={optionsTexte.largeur_bas_cm} oninput={verifierOptions} />
@@ -484,6 +554,11 @@
   .pastille-mesure input[type='range'] { width: 100%; min-height: 44px; accent-color: var(--encre); margin: 0; }
   .erreur-mesure { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--rouge-doux); font-weight: 600; }
   .aide { font-weight: 400; font-size: 14px; color: var(--texte-secondaire); margin: 0 0 6px; }
+  .description-modele { display: grid; gap: 6px; font-weight: 600; margin-top: 10px; }
+  .description-modele textarea { font: inherit; font-weight: 400; padding: 10px 12px; border: 1.5px solid var(--bord-fort); border-radius: 14px; width: 100%; background: #fff; color: var(--encre); resize: vertical; }
+  .actions-ia { margin: 10px 0 0; }
+  .message-ia { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--fond); font-weight: 600; font-size: 14px; line-height: 1.5; }
+  .message-ia.ok { background: var(--lavande-pastille); color: var(--lavande-texte); }
 
   .pastilles-couleur { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
   .pastille-couleur { width: 44px; height: 44px; min-width: 44px; border-radius: 999px; background: var(--pastille); border: 2px solid var(--bord-fort); padding: 0; box-shadow: none; }

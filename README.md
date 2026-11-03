@@ -42,9 +42,15 @@ npm run check
 - `/inscription` : « Créer mon atelier » (voir ci-dessus) ; `/connexion` : connexion à l’atelier ; `/installation` : création du tout premier atelier, seulement tant qu’aucun compte n’existe.
 - `/demo` (et `/demo/pdf`) : démo guidée publique, sans compte, rien n’est enregistré.
 - `/clientes`, `/clientes/nouvelle`, `/clientes/[id]` : fiches clientes (résumé, mesures, photos, patrons).
-- `/clientes/[id]/patron/nouveau` et `/clientes/[id]/patron/[patronId]` : salle d’essayage en deux vues — « 1 · Patron à plat » (fait foi) puis « 2 · Vue 3D (aperçu) », toujours « brouillon non validé ».
+- `/clientes/[id]/patron/nouveau` et `/clientes/[id]/patron/[patronId]` : salle d’essayage en deux vues — « 1 · Patron à plat » (fait foi) puis « 2 · Vue 3D (aperçu) », toujours « brouillon non validé ». Pour le pantalon, un assistant de modèle optionnel y propose des options (voir ci-dessous).
 - `/patron/mesures`, `/patron/apercu` : patron rapide sans fiche cliente ; `/profil` : compte connecté ; `/atelier/utilisatrices` : équipe (administratrice).
 - Toute route inconnue affiche la page d’erreur stylée (404 « Page introuvable », 500 « Un problème est survenu »), sans détail technique.
+
+## Assistant de modèle IA (optionnel, phase 8)
+
+- Dans la salle d’essayage du pantalon large, la couturière peut décrire le modèle voulu en quelques mots ; l’assistant propose uniquement les **options déjà exposées par le moteur** (largeur du bas 18–40 cm, profondeur du pli 0–8 cm, hauteur de ceinture 3–6 cm), affichées « Suggestion de l’IA, à vérifier » et modifiables avant génération. L’IA ne produit **jamais de cote ni de géométrie** et ne valide pas le patron : le moteur calcule, le patron reste un **brouillon non validé**.
+- Endpoint serveur `POST /api/suggestion-modele` (connexion + jeton CSRF exigés, limite de 20 suggestions/heure/atelier, délai court) ; seul le texte du modèle est envoyé au modèle, **aucune donnée cliente**. Réponse validée par un schéma strict : valeurs ramenées dans leur plage, clés inconnues ignorées, réponse invalide refusée.
+- Configuration **côté serveur uniquement** (jamais dans le navigateur, jamais journalisée) : `STUDIO_COUTURE_IA_API_KEY`, `STUDIO_COUTURE_IA_BASE_URL` (endpoint compatible API Messages d’Anthropic, `POST /v1/messages`) et `STUDIO_COUTURE_IA_MODELE`. Sans ces trois variables — ou en mode dépôt mémoire (`STUDIO_COUTURE_REPOSITORY=memoire`, démo et tests) — l’assistant est **désactivé sans erreur** et le formulaire manuel prend le relais. Ces trois noms sont à reporter dans `.env.example` (sans valeur) sur le poste du propriétaire : l’outil d’édition de cette session n’a pas l’autorisation d’écrire les fichiers `.env*`.
 
 ## État
 

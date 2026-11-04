@@ -1,70 +1,148 @@
 # Studio Couture
 
-Application web SSR (SvelteKit + TypeScript), installable en PWA, pour couturières et tailleurs au Bénin.
-Français d'abord, mobile d'abord, connexion lente.
+**From a client's measurements to a to-scale sewing pattern — without the hours of hand calculation.**
 
-Parcours : photo du modèle + photo complète de la cliente + tissu → rendu indicatif → mensurations validées par la couturière → patron calculé à l'échelle → tutoriel animé → fiche de montage → métrage et devis. (Aperçu 3D : plus tard.)
+Studio Couture is a server-rendered web app (SvelteKit + TypeScript, installable as a PWA) built for sewing workshops and tailors in Benin and West Africa — small ateliers where work is mobile-first, connections can be slow, and jobs are priced in FCFA. It is bilingual **French / English**, French first.
 
-## Règles non négociables (résumé)
+> **Honest status:** this is a working hackathon build, not a finished product. Every generated pattern is an **unvalidated draft** that a master tailor must review before cutting. See [Known limitations](#known-limitations).
 
-1. SSR, JS minimal, amélioration progressive. Pas de SPA.
-2. Patron **calculé** par un moteur paramétrique — jamais généré librement par une IA.
-3. Toute formule vit dans `src/lib/patterns/<modele>/formulas.ts` avec `source`, `hypotheses`, `aisanceCm`, `statut` (`a_valider` | `valide_par_tailleur`). **Aucune formule inventée.**
-4. Mensurations photo = estimations avec marge d'erreur, modifiables et validées par la couturière avant patron.
-5. Rendu IA toujours étiqueté **« rendu indicatif »**.
-6. Français d'abord, i18n prévue. Aucune langue locale publiée sans validation humaine.
-7. Mobile d'abord, plein soleil, gros éléments tactiles, budget de poids (`docs/BUDGET.md`).
-8. Photos clientes : consentement explicite, chiffrement serveur AES-256-GCM, suppression auto après 7 jours (configurable), jamais pour l'entraînement.
-9. IA derrière interfaces : `TryOnProvider`, `SegmentationProvider`, `MeasurementProvider` (`src/lib/ai/`). V1 = fournisseurs manuels.
-10. Chaque phase se termine par tests + note + incertitudes. On n'avance qu'avec « suite ».
+## The problem
 
-## Démarrer
+A tailor who takes a custom order repeats the same slow, error-prone work every time: take the client's measurements, do the pattern geometry by hand with pencil and paper, scale it, and only then cut. It takes hours per garment, mistakes are expensive (fabric is the client's money), and nothing is kept from one order to the next.
+
+## The solution
+
+1. Create the client record once, with her measurements (checked against allowed ranges).
+2. Pick one of **3 catalogue models** — **wide-leg trousers** (`pantalon_large`), **sheath dress** (`robe_fourreau`), **straight skirt** (`jupe_droite`) — or let the optional AI assistant recognize it (below).
+3. The **pattern engine computes** the flat, dimensioned pattern from the measurements. The seamstress adjusts, validates, and saves it to the client record.
+4. Export the **to-scale A4 PDF (1:1)** and cut. An indicative 3D preview exists for the trousers; the flat pattern is always the reference.
+
+## Demo — no database, no key, 2 commands
 
 ```bash
 npm install
-cp .env.example .env   # renseigner STUDIO_COUTURE_DATABASE_URL (base studio_couture ; DATABASE_URL accepté en repli), STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64 (openssl rand -base64 32), STUDIO_COUTURE_SESSION_SECRET
-psql "$STUDIO_COUTURE_DATABASE_URL" -f migrations/0001_init.sql
-npm run dev
-npm test
-npm run check
+npm run demo
 ```
 
-## Inscription publique
+Then open <http://127.0.0.1:3000>. The demo builds the app and starts it with an **in-memory repository only**: no PostgreSQL, no `.env`, no API key, temporary secrets generated in memory and never written to disk. It seeds a fictional workshop and a fictional client with complete measurements:
 
-- Route publique `/inscription` (« Créer mon atelier ») : crée l’atelier et son compte administrateur dans une transaction (mot de passe haché en scrypt, minimum 12 caractères), ouvre la session et redirige vers le tableau de bord. Champ piège anti-robots et limitation à 5 créations par heure et par IP (en mémoire, mono-instance).
-- Variable d’environnement optionnelle `INSCRIPTION_OUVERTE` : ouverte par défaut (`true`) ; la passer à `false` affiche « Les inscriptions sont fermées. » sur `/inscription` et refuse toute création. Ce n’est pas un secret.
-- Aucune vérification d’e-mail ni réinitialisation de mot de passe pour l’instant : voir `docs/A_FAIRE_AVANT_MISE_EN_LIGNE.md`.
-- Polices 100 % locales (`@fontsource/manrope`, `@fontsource/playfair-display` épinglés) : aucun CDN.
+| Demo account (fictional, local only) | |
+| --- | --- |
+| Login | `demo@exemple.bj` |
+| Password | `demo-studio-couture` |
 
-## ORIGIN et CSRF (production)
+Everything disappears when you stop the server (Ctrl+C). A public guided demo without an account is also available at `/demo`.
 
-- En production, la protection CSRF de SvelteKit compare l’en-tête `Origin` de chaque POST de formulaire à l’origine du serveur, qu’adapter-node déduit de la variable `ORIGIN`. **Sans `ORIGIN`, adapter-node suppose le schéma `https`** : l’origine attendue devient `https://127.0.0.1:3000` alors que le navigateur, en local, envoie `http://127.0.0.1:3000` — d’où « Cross-site POST form submissions are forbidden » sur `/inscription` et `/connexion`, même si tout le reste est correct. Ce n’est pas un problème de jeton : c’est le schéma (et, le cas échéant, l’hôte ou le port) qui diffère.
-- Définissez toujours `ORIGIN` en production, **avec le schéma et l’adresse réellement utilisée dans le navigateur** : `ORIGIN=http://127.0.0.1:3000` en local (build de production lancé à la main), `ORIGIN=https://votre-domaine` derrière un hébergeur. Naviguer via `localhost` quand `ORIGIN` dit `127.0.0.1` (ou l’inverse) provoque le même refus : hôte et port font partie de l’origine comparée.
-- Garde-fou : au démarrage d’un serveur de production sans `ORIGIN`, la console affiche un avertissement explicite (sans arrêter le serveur — voir `avertirSiOriginAbsent` dans `src/lib/server/config.ts`). La protection CSRF n’est jamais désactivée.
+**In demo mode the AI assistant is deliberately not configured**: the “AI” button is visible on every connected page and the chat honestly says “Assistant bientôt disponible” (“coming soon”) — no model call is made. The screenshots below show exactly that real state.
 
-## Routes principales
+## Screenshots (demo mode, via Playwright — `node scripts/captures.mjs`)
 
-- `/` : accueil public (visiteuse non connectée) ou tableau de bord de l’atelier (connectée).
-- `/inscription` : « Créer mon atelier » (voir ci-dessus) ; `/connexion` : connexion à l’atelier ; `/installation` : création du tout premier atelier, seulement tant qu’aucun compte n’existe.
-- `/demo` (et `/demo/pdf`) : démo guidée publique, sans compte, rien n’est enregistré.
-- `/clientes`, `/clientes/nouvelle`, `/clientes/[id]` : fiches clientes (résumé, mesures, photos, patrons).
-- `/clientes/[id]/patron/nouveau` et `/clientes/[id]/patron/[patronId]` : salle d’essayage en deux vues — « 1 · Patron à plat » (fait foi) puis « 2 · Vue 3D (aperçu) », toujours « brouillon non validé ». Le choix du modèle y reste manuel ; l’assistant IA est la boîte flottante présente sur toutes les pages connectées (voir ci-dessous), et pour le pantalon, un assistant de modèle optionnel propose aussi des options dans la salle.
-- `/patron/mesures`, `/patron/apercu` : patron rapide sans fiche cliente ; `/profil` : compte connecté ; `/atelier/utilisatrices` : équipe (administratrice).
-- Toute route inconnue affiche la page d’erreur stylée (404 « Page introuvable », 500 « Un problème est survenu »), sans détail technique.
+| | |
+| --- | --- |
+| ![Public home page](docs/captures/01-accueil.png) | ![Dashboard with the AI button](docs/captures/02-tableau-de-bord.png) |
+| Public home | Connected dashboard, floating “AI” button (bottom right) |
+| ![Chat box in demo mode](docs/captures/03-boite-chat.png) | ![Measurement form](docs/captures/04-formulaire-mesures.png) |
+| Chat box in demo mode: “coming soon”, no fake result | Client measurement form (demo client, 10/10 measures) |
+| ![Computed flat pattern](docs/captures/05-patron.png) | |
+| Fitting room: flat pattern computed by the engine, “unvalidated draft” | |
 
-## Assistant IA (optionnel, phases 8, 11 et 12)
+## Features (what actually works today)
 
-- **Salle d’essayage du pantalon large (phase 8)** : la couturière décrit le modèle voulu ; l’assistant propose uniquement les **options déjà exposées par le moteur** (largeur du bas 18–40 cm, profondeur du pli 0–8 cm, hauteur de ceinture 3–6 cm), affichées « Suggestion de l’IA, à vérifier » et modifiables avant génération.
-- **Boîte de chat flottante (phase 12)** : un bouton rond « AI » (étoile noire sur pastille lavande `#D8B4FE`) est visible en bas à droite de **toutes les pages connectées** et ouvre une petite boîte de chat blanche (~360 px, max 70 vh) — fermeture par croix, Échap ou re-clic, focus géré. On peut y **décrire un modèle**, **envoyer une photo** (bouton trombone) ou **poser une question** de couture/mesures. L’historique n’existe qu’en mémoire de la page. La grande carte de la page de création a disparu ; le choix manuel du modèle y reste.
-- **Conversation** : si la taille (cm) et la corpulence (petite/moyenne/forte) manquent, le chat les demande, puis l’IA propose des **mesures approximatives estimées** pour le modèle reconnu, affichées avec « Estimation indicative, à vérifier au mètre ruban. » Le bouton « Ouvrir le formulaire de mesures » préremplit le formulaire (cliente de la page, cliente choisie dans le sélecteur, ou patron rapide sans cliente via `/patron/mesures`) : mesures modifiables, étiquetées « estimation IA », **enregistrées dans la fiche seulement si la couturière valide le formulaire**. Hors catalogue : « pas encore disponible » honnête, sans repli vers un autre modèle, et l’assistant propose les trois modèles disponibles. Audio visible, désactivé, « Bientôt disponible ».
-- **Reconnaissance photo corrigée** : le prompt fait d’abord **décrire le vêtement visible** (champ `vetement_vu`, jamais affiché), puis appliquer des règles explicites — tout pantalon → `pantalon_large`, robe moulante/droite → `robe_fourreau`, jupe droite/crayon → `jupe_droite`, `hors_catalogue` seulement pour une autre catégorie claire ; hésitation entre modèles du catalogue → candidats proposés au toucher. Le script `scripts/diagnostic-assistant.mjs` (voir HANDOFF) affiche la réponse brute du modèle, `vetement_vu` compris.
-- **Photo** : JPEG, PNG ou WebP, 5 Mo maximum, type vérifié par la **signature du fichier** (jamais l’extension), traitée **en mémoire**, **jamais enregistrée ni journalisée**, métadonnées retirées avant envoi (segments APPn/COM, blocs texte/EXIF), réencodée sans métadonnées par le navigateur, envoyée uniquement au modèle IA configuré. Case de consentement renforcée avant l’envoi : « La photo est envoyée à un modèle d’IA de Meta pour une estimation, elle n’est pas conservée. Ne l’envoyez qu’avec l’accord de la personne photographiée. »
-- **Garanties inchangées** : l’IA ne produit **jamais de cote ni de géométrie** et ne valide pas le patron — le moteur calcule, le patron reste un **brouillon non validé**. Schéma JSON strict : modèle inconnu refusé sans substitution, options et estimations ramenées dans leurs plages (`definitionMensuration` pour les mesures), clés inconnues ignorées, conseil libre filtré (une phrase, 200 caractères, sans balise ni lien) — les bulles sont construites par l’application à partir du JSON validé. **Aucune donnée cliente n’est envoyée** : seuls le texte, la photo et la taille/corpulence déclarées dans le chat partent au modèle.
-- **Réponse du modèle configuré** (mesuré par le propriétaire avec la vraie clé) : l’endpoint compatible répond sur `/v1/messages`, d’abord un bloc `redacted_thinking` sans texte, puis un bloc `text`. Le client ne lit **que les blocs `text`**, envoie `max_tokens` = **1 500** et attend **30 secondes** ; aucun bloc texte exploitable → message de repli, jamais de crash.
-- **Endpoint** `POST /api/suggestion-modele` (connexion + jeton CSRF exigés, limite de 20 demandes/heure/atelier en mémoire) : flux JSON historique `{ texte }`, reconnaissance `{ reconnaissance: true, texte, tailleCm?, corpulence? }`, estimation `{ estimation: true, modele, tailleCm, corpulence }`, flux photo `multipart/form-data` (`photo` + `consentement`, taille/corpulence facultatives). Chaque statut a son message (correspondance testée dans `assistant-statut.test.ts` ; le cas par défaut n’est jamais « pas encore disponible »). IA non configurée, en panne ou délai dépassé : « Assistant bientôt disponible », parcours manuel intact, **aucune erreur technique**. En mode dépôt mémoire (`STUDIO_COUTURE_REPOSITORY=memoire`, démo et tests), l’assistant est désactivé sans erreur mais le bouton reste visible.
-- **Configuration côté serveur uniquement** (jamais dans le navigateur, jamais journalisée) : `STUDIO_COUTURE_IA_API_KEY`, `STUDIO_COUTURE_IA_BASE_URL` (endpoint compatible API Messages d’Anthropic, `POST /v1/messages`) et `STUDIO_COUTURE_IA_MODELE`. Les trois noms figurent dans `.env.example`, sans valeur.
-- **Diagnostic propriétaire** : `node --env-file="$HOME\studio-couture.env" scripts/diagnostic-assistant.mjs "un pantalon très ample"` (ou `--photo chemin\image.jpg`) charge le vrai code via le chargeur SSR de Vite et affiche prompt envoyé, types de blocs, texte brut, `vetement_vu`, résultat de validation et statut final — jamais la clé, jamais l’URL complète, jamais le base64.
+- **Client records**: measurements with per-measure allowed ranges, consented photos, saved patterns per client; data is strictly scoped per workshop.
+- **Pattern engine, 3 models**: wide-leg trousers, sheath dress, straight skirt — each with typed options (e.g. hem width, neckline, sleeves). Pieces are computed geometrically, dimensioned, and exported as a **to-scale A4 PDF**.
+- **Fitting room**: flat pattern (authoritative) + indicative 3D preview where available; every pattern is labelled an unvalidated draft.
+- **Quick pattern without a client** (`/patron/mesures` → `/patron/apercu` → PDF), and a public guided demo at `/demo`.
+- **Floating AI assistant** (optional, connected pages): describe a garment in **text**, attach a **photo** (JPEG/PNG/WebP ≤ 5 MB), or ask a question. It recognizes the catalogue model, proposes options, and — once you give height and build in the chat — **indicative estimated measurements**, always labelled *“Estimation indicative, à vérifier au mètre ruban.”* A button opens the measurement form prefilled with those editable estimates; **nothing is saved to a client record unless the seamstress submits the form**. Out-of-catalogue garments get an honest “not available yet”, with the 3 models offered instead.
+- **Bilingual FR/EN** throughout, mobile-first, works with plain form POSTs (progressive enhancement).
+- **Privacy by design**: assistant photos are processed in memory, stripped of metadata, **never stored and never logged**; client-record photos require explicit consent, are encrypted (AES-256-GCM), auto-deleted after 7 days, and never used for training. No client data is sent to the AI — only the garment text/photo and the height/build declared in the chat.
 
-## État
+## The AI never draws the pattern
 
-Voir `HANDOFF.md` et `docs/PHASE_0.md`. Nom, slug et description vivent dans `src/lib/brand.ts` (source unique, à modifier là pour un futur renommage ; `package.json`, `static/manifest.webmanifest` et `src/app.html`, statiques, en reprennent les valeurs). Premier patron visé : **jupe droite** (formules `a_valider` — bloquées tant qu'un maître tailleur ne les a pas validées), puis pantalon classique.
+The assistant only proposes a model, options inside the registry's ranges, and clamped indicative estimates. Its JSON is strictly validated (unknown model refused, never substituted; unknown keys dropped). **The TypeScript pattern engine always computes the geometry**, and the seamstress validates before anything is saved. See `docs/META_USAGE.md` for exactly how Meta technology is used, and `docs/ARCHITECTURE.md` for the short architecture.
+
+## Installation (production)
+
+Requirements: Node ≥ 20, PostgreSQL (database `studio_couture`).
+
+```bash
+npm install
+cp .env.example .env   # fill in the variables below — .env.example ships with NO secret values
+psql "$STUDIO_COUTURE_DATABASE_URL" -f migrations/0001_init.sql
+# apply the remaining migrations in order (0002 … 0004)
+npm run build && node build/index.js
+```
+
+### Environment variables (names only — set real values in your own `.env`, never commit it)
+
+| Variable | Purpose |
+| --- | --- |
+| `STUDIO_COUTURE_DATABASE_URL` | PostgreSQL connection (`DATABASE_URL` accepted as fallback) |
+| `STUDIO_COUTURE_PHOTO_ENCRYPTION_KEY_BASE64` | Exactly 32 bytes, base64 (`openssl rand -base64 32`) — client photos encryption |
+| `STUDIO_COUTURE_SESSION_SECRET` | ≥ 32 bytes — session/CSRF secret |
+| `ORIGIN` | Public origin actually used in the browser (scheme + host + port); required in production for CSRF checks |
+| `BODY_SIZE_LIMIT` | Request body cap, must cover 5 MB photos (e.g. `6M` in `.env.example`) |
+| `PHOTO_RETENTION_DAYS` | Client photo retention (default in `.env.example`; 7 days) |
+| `INSCRIPTION_OUVERTE` | Optional; `false` closes public sign-up (open by default) |
+| `STUDIO_COUTURE_REPOSITORY` | `memoire` for demo/tests only — never in production |
+| `STUDIO_COUTURE_IA_API_KEY` | Optional AI assistant key (server-side only, never logged) |
+| `STUDIO_COUTURE_IA_BASE_URL` | Optional AI endpoint (Meta API, `POST /v1/messages` compatible) |
+| `STUDIO_COUTURE_IA_MODELE` | Optional AI model name (see `docs/META_USAGE.md`) |
+
+Startup refuses to boot if the session secret or photo key is missing/invalid. Owner diagnostic for the assistant with a real key and a real photo (prints the raw model answer and what it reported seeing, never the key):
+
+```bash
+node --env-file="$HOME/studio-couture.env" scripts/diagnostic-assistant.mjs "un pantalon très ample"
+node --env-file="$HOME/studio-couture.env" scripts/diagnostic-assistant.mjs --photo path/to/photo.jpg
+```
+
+## Tests
+
+```bash
+npm test            # unit tests (Vitest, fake AI client — no network)
+npm run check       # svelte-check, 0 errors / 0 warnings expected
+npm run build       # production build
+npm run test:e2e    # Playwright against the in-memory repository
+```
+
+Last full run recorded in `HANDOFF.md`. At the phase-12 checkpoint: **187 unit tests passed / 6 skipped, check clean on 918 files, 38/38 Playwright**.
+
+## Architecture (short)
+
+SvelteKit SSR (TypeScript, adapter-node) → `Repository` interface → PostgreSQL in production, in-memory for demo/tests. The pattern registry (`src/lib/patterns/registre.ts`) is the single source of truth for the 3 models, their measurement ranges, and their options; pure geometry modules compute every piece and the A4 PDF. The optional AI assistant sits behind `POST /api/suggestion-modele` (session + CSRF + 20 req/h/workshop), strictly validated, and never computes geometry. Passwords use scrypt; client photos are AES-256-GCM encrypted and deleted after 7 days. Full version: `docs/ARCHITECTURE.md`.
+
+## Known limitations
+
+- Patterns are **drafts not yet validated by a master tailor** — do not cut fabric from them without professional review.
+- The 3D preview is indicative (generated from dimensions), not a drape simulation.
+- AI photo recognition: text recognition was verified with the real model; the corrected photo prompt is covered by fake-client unit tests and still deserves a real-photo re-check by the operator (diagnostic script above). AI estimates are indicative only.
+- No e-mail verification and no “forgotten password” flow yet; rate limiters are in-memory (single-instance).
+- Fabric quantity / quote (“métrage et devis”) is not implemented yet.
+- Before any real public launch: see `docs/A_FAIRE_AVANT_MISE_EN_LIGNE.md`.
+
+## Security notes for reviewers
+
+- Tracked files were audited for this submission: no `.env*` other than the value-free `.env.example`, no client PDFs, no client photos, no encrypted blobs, and `docs/references-locales/` / `docs/maquette/` are git-ignored and untracked.
+- The home-page garment photo (`static/img/accueil-pantalon-bleu.jpg`) was provided by the project owner, who confirms the rights; an earlier downloaded image was removed from the repository and its history.
+- Test fixtures use obviously fictional identities (`demo@exemple.bj`, “Cliente Démo”).
+
+## Built with Muse
+
+Studio Couture was built with **Muse** (Anthropic's CLI), driven by the project playbook in `CLAUDE.md`, the running state file `HANDOFF.md`, and the phase briefs in `docs/` (`PHASE_0.md`, `PROMPT_*.md`), with tests run after every phase. Product and design briefs were drafted with the help of another AI assistant (Claude by Anthropic); all code was written and tested by Muse Code.
+
+Meta usage — runtime and development — is detailed honestly in `docs/META_USAGE.md`.
+
+## License
+
+MIT — see `LICENSE`. Copyright (c) 2026 Sunday Oscar AMINTCHI.
+
+---
+
+## Résumé en français
+
+**Studio Couture** aide les ateliers de couture et les tailleurs (contexte Bénin / Afrique de l'Ouest, budgets en FCFA) à passer des mesures d'une cliente à un patron à l'échelle sans des heures de calcul au crayon.
+
+- **3 modèles** au catalogue : pantalon large, robe fourreau, jupe droite. Mesures de la cliente saisies une fois (bornes contrôlées), **patron à plat coté calculé par le moteur**, **PDF A4 à l'échelle 1:1**, aperçu 3D indicatif pour le pantalon.
+- **Assistant IA optionnel** (texte + photo) : il reconnaît le modèle du catalogue et propose des **mesures estimées indicatives** — toujours « à vérifier au mètre ruban ». **Le moteur calcule toujours le patron**, la couturière valide avant tout enregistrement. Photos de l'assistant **jamais conservées** (mémoire uniquement, métadonnées retirées) ; photos des fiches clientes chiffrées et supprimées après 7 jours.
+- **Bilingue FR/EN**, mobile d'abord, installable (PWA).
+- **Démo sans base ni clé** : `npm install` puis `npm run demo` → http://127.0.0.1:3000 (compte fictif `demo@exemple.bj` / `demo-studio-couture`). En démo, l'assistant annonce honnêtement « Assistant bientôt disponible ».
+- **Limites assumées** : patrons = brouillons non validés par un maître tailleur, pas de vérification d'e-mail ni de mot de passe oublié, métrage/devis pas encore implémenté. Détails dans la partie anglaise ci-dessus et `docs/A_FAIRE_AVANT_MISE_EN_LIGNE.md`.

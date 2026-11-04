@@ -2,64 +2,64 @@
   import '@fontsource/playfair-display/500.css';
   import '@fontsource/playfair-display/600.css';
   import '@fontsource/playfair-display/700.css';
-  import { BRAND_NAME } from '$lib/brand';
   import Avatar from '$lib/design/Avatar.svelte';
+  import BoutonLangue from '$lib/design/BoutonLangue.svelte';
   import PatronCote from '$lib/design/PatronCote.svelte';
   import IllustrationModele from '$lib/illustrations/IllustrationModele.svelte';
   import { MESURES_DEMONSTRATION, preparerPatronGenerique } from '$lib/design/patron-cote';
+  import { formatDate, t } from '$lib/i18n';
   import { REGISTRE_MODELES } from '$lib/patterns/registre';
   let { data } = $props();
   // Bloc robe de l'accueil public : patron CALCULÉ par le moteur (preset
   // « Moyenne » du registre), jamais le dessin de l'image de référence.
   const entreeRobe = REGISTRE_MODELES.robe_fourreau;
   const presetRobe = entreeRobe.presets.find((p) => p.id === 'moyenne') ?? entreeRobe.presets[0]!;
-  const patronRobe = preparerPatronGenerique(entreeRobe, { ...presetRobe.valeurs });
+  const patronRobe = $derived(preparerPatronGenerique(entreeRobe, { ...presetRobe.valeurs }, {}, data.lang));
   // La photo recadrée est ignorée par Git : si elle est absente, une
   // illustration SVG originale prend sa place, sans erreur d'affichage.
   let photoRobePresente = $state(true);
-  const dateFr = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   const tonsPriorite = ['priorite-lavande', 'priorite-peche', 'priorite-jaune'];
 </script>
 
-<svelte:head><title>{BRAND_NAME} — Mesurez-la une fois. Son patron est déjà là.</title></svelte:head>
+<svelte:head><title>{t(data.lang, 'accueil.titrePage')}</title></svelte:head>
 
 {#if data.connectee && data.tableau}
-  {@const t = data.tableau}
+  {@const tb = data.tableau}
   <main class="atelier">
     {#if data.bienvenue}
-      <p class="bienvenue" role="status">Votre atelier est prêt. Ajoutez votre première cliente. <a href="/clientes/nouvelle">Ajouter votre première cliente</a></p>
+      <p class="bienvenue" role="status">{t(data.lang, 'tableau.bienvenue')} <a href="/clientes/nouvelle">{t(data.lang, 'tableau.creerFiche')}</a></p>
     {/if}
     <header class="atelier-entete">
       <div>
-        <h1>Bonjour, <span class="prenom">{t.prenom}</span></h1>
-        <p>Voici l’état de votre atelier aujourd’hui.</p>
+        <h1>{t(data.lang, 'tableau.bonjour', { prenom: '' })}<span class="prenom">{tb.prenom}</span></h1>
+        <p>{t(data.lang, 'tableau.etat')}</p>
       </div>
       <div class="atelier-actions">
         <form method="get" action="/clientes" role="search" class="recherche-atelier">
-          <label class="sr-only" for="recherche-atelier">Rechercher une cliente</label>
-          <input id="recherche-atelier" name="q" placeholder="Rechercher une cliente" />
+          <label class="sr-only" for="recherche-atelier">{t(data.lang, 'tableau.rechercher')}</label>
+          <input id="recherche-atelier" name="q" placeholder={t(data.lang, 'tableau.rechercher')} />
         </form>
-        <a class="bouton-noir" href="/clientes/nouvelle">+ Nouvelle cliente</a>
+        <a class="bouton-noir" href="/clientes/nouvelle">{t(data.lang, 'tableau.nouvelleCliente')}</a>
       </div>
     </header>
 
     <section class="priorite" aria-labelledby="priorite-titre">
       <div class="priorite-gauche">
-        <p class="priorite-surtitre">À faire en priorité</p>
-        <h2 id="priorite-titre">{#if t.nbIncompletes === 0}Toutes vos clientes ont leurs mesures complètes{:else if t.nbIncompletes === 1}1 cliente a encore des mesures à compléter{:else}{t.nbIncompletes} clientes ont encore des mesures à compléter{/if}</h2>
-        <p><a class="bouton-blanc" href="/clientes">Voir la liste <span aria-hidden="true">↗</span></a></p>
+        <p class="priorite-surtitre">{t(data.lang, 'tableau.priorite')}</p>
+        <h2 id="priorite-titre">{#if tb.nbIncompletes === 0}{t(data.lang, 'tableau.toutesCompletes')}{:else if tb.nbIncompletes === 1}{t(data.lang, 'tableau.uneIncomplete')}{:else}{t(data.lang, 'tableau.plusieursIncompletes', { n: tb.nbIncompletes })}{/if}</h2>
+        <p><a class="bouton-blanc" href="/clientes">{t(data.lang, 'tableau.voirListe')} <span aria-hidden="true">↗</span></a></p>
       </div>
       <div class="priorite-cartes">
-        {#each t.incompletes as cliente, i}
+        {#each tb.incompletes as cliente, i}
           <a class="priorite-carte {tonsPriorite[i % 3]}" href="/clientes/{cliente.id}?onglet=mesures">
             <span class="priorite-num">0{i + 1}</span>
             <Avatar nom={cliente.nom} taille={44} />
             <strong>{cliente.nom}</strong>
-            <span>{cliente.nbMesures} mesures sur {cliente.total}</span>
+            <span>{t(data.lang, 'tableau.mesuresSur', { fait: cliente.nbMesures, total: cliente.total })}</span>
             <span class="barre" aria-hidden="true"><span style="width:{Math.round((cliente.nbMesures / cliente.total) * 100)}%"></span></span>
           </a>
         {:else}
-          <p class="priorite-vide">Aucune mesure en attente : créez une fiche cliente pour commencer.</p>
+          <p class="priorite-vide">{t(data.lang, 'tableau.aucuneAttente')}</p>
         {/each}
       </div>
     </section>
@@ -67,23 +67,23 @@
     <div class="atelier-grille">
       <div class="colonne-principale">
         <div class="stats">
-          <article class="stat"><span>Clientes</span><strong>{t.stats.clientes}</strong></article>
-          <article class="stat"><span>Patrons</span><strong>{t.stats.patrons}</strong><small>tous en brouillon</small></article>
-          <article class="stat"><span>Mesures complètes</span><strong>{t.stats.pourcentage}%</strong><span class="barre claire" aria-hidden="true"><span style="width:{t.stats.pourcentage}%"></span></span><small>{t.stats.completes} clientes sur {t.stats.clientes}</small></article>
+          <article class="stat"><span>{t(data.lang, 'tableau.clientes')}</span><strong>{tb.stats.clientes}</strong></article>
+          <article class="stat"><span>{t(data.lang, 'tableau.patrons')}</span><strong>{tb.stats.patrons}</strong><small>{t(data.lang, 'tableau.tousBrouillon')}</small></article>
+          <article class="stat"><span>{t(data.lang, 'tableau.mesuresCompletes')}</span><strong>{tb.stats.pourcentage}%</strong><span class="barre claire" aria-hidden="true"><span style="width:{tb.stats.pourcentage}%"></span></span><small>{t(data.lang, 'tableau.clientesSur', { fait: tb.stats.completes, total: tb.stats.clientes })}</small></article>
         </div>
 
         <section class="carte-bloc" aria-labelledby="recentes-titre">
-          <header><h2 id="recentes-titre">Clientes récentes</h2><a href="/clientes">Tout voir</a></header>
-          {#if t.recentes.length === 0}
-            <p class="vide-texte">Aucune cliente pour le moment. <a href="/clientes/nouvelle">Créer une fiche cliente</a></p>
+          <header><h2 id="recentes-titre">{t(data.lang, 'tableau.recentes')}</h2><a href="/clientes">{t(data.lang, 'commun.toutVoir')}</a></header>
+          {#if tb.recentes.length === 0}
+            <p class="vide-texte">{t(data.lang, 'tableau.aucuneCliente')} <a href="/clientes/nouvelle">{t(data.lang, 'tableau.creerFiche')}</a></p>
           {:else}
             <ul class="liste-recentes">
-              {#each t.recentes as cliente}
+              {#each tb.recentes as cliente}
                 <li>
                   <a href="/clientes/{cliente.id}">
                     <Avatar nom={cliente.nom} taille={48} />
-                    <span class="flex"><strong>{cliente.nom}</strong><small>{cliente.telephone ?? 'Téléphone non renseigné'}</small></span>
-                    {#if cliente.nbPatrons > 0}<span class="puce-bleue">{cliente.nbPatrons} patron{cliente.nbPatrons > 1 ? 's' : ''}</span>{:else if cliente.nbMesures < cliente.total}<span class="puce-peche">Mesures à compléter</span>{:else}<span class="puce-bleue">Mesures complètes</span>{/if}
+                    <span class="flex"><strong>{cliente.nom}</strong><small>{cliente.telephone ?? t(data.lang, 'tableau.telephoneNonRenseigne')}</small></span>
+                    {#if cliente.nbPatrons > 0}<span class="puce-bleue">{t(data.lang, cliente.nbPatrons > 1 ? 'tableau.patronsPlusieurs' : 'tableau.patronUn', { n: cliente.nbPatrons })}</span>{:else if cliente.nbMesures < cliente.total}<span class="puce-peche">{t(data.lang, 'tableau.aCompleter')}</span>{:else}<span class="puce-bleue">{t(data.lang, 'tableau.mesuresCompletes')}</span>{/if}
                   </a>
                 </li>
               {/each}
@@ -94,16 +94,16 @@
 
       <div class="colonne-laterale">
         <section class="carte-bloc" aria-labelledby="derniers-titre">
-          <header><h2 id="derniers-titre">Derniers patrons</h2><a href="/clientes">Tout voir</a></header>
-          {#if t.derniersPatrons.length === 0}
-            <p class="vide-texte">Aucun patron enregistré pour le moment.</p>
+          <header><h2 id="derniers-titre">{t(data.lang, 'tableau.derniersPatrons')}</h2><a href="/clientes">{t(data.lang, 'commun.toutVoir')}</a></header>
+          {#if tb.derniersPatrons.length === 0}
+            <p class="vide-texte">{t(data.lang, 'tableau.aucunPatron')}</p>
           {:else}
             <ul class="liste-derniers">
-              {#each t.derniersPatrons as patron, i}
+              {#each tb.derniersPatrons as patron, i}
                 <li>
                   <a href="/clientes/{patron.clienteId}/patron/{patron.id}">
-                    <span class="vignette">{#if patron.vignette}<PatronCote generique={patron.vignette} variante="mini" remplissage={['#dce5fa', '#ffdfb8', '#e3dbff'][i % 3]} uid="dash-{patron.id}" />{/if}</span>
-                    <span class="flex"><strong>{patron.titreModele} — {patron.clienteNom}</strong><small>{patron.texte}</small><span class="puce-peche">Brouillon à valider</span></span>
+                    <span class="vignette">{#if patron.vignette}<PatronCote generique={patron.vignette} lang={data.lang} variante="mini" remplissage={['#dce5fa', '#ffdfb8', '#e3dbff'][i % 3]} uid="dash-{patron.id}" />{/if}</span>
+                    <span class="flex"><strong>{patron.titreModele} — {patron.clienteNom}</strong><small>{patron.texte}</small><span class="puce-peche">{t(data.lang, 'commun.brouillonAValider')}</span></span>
                   </a>
                 </li>
               {/each}
@@ -113,40 +113,40 @@
 
         <section class="carte-sombre-bloc">
           <span class="coche-jaune" aria-hidden="true">✓</span>
-          <div><h2>Patrons à valider</h2><p>Un maître tailleur doit les relire avant toute coupe.</p></div>
-          <a class="bouton-blanc petit" href="/clientes">Voir</a>
+          <div><h2>{t(data.lang, 'tableau.patronsAValider')}</h2><p>{t(data.lang, 'tableau.patronsAValiderTexte')}</p></div>
+          <a class="bouton-blanc petit" href="/clientes">{t(data.lang, 'commun.voir')}</a>
         </section>
 
-        <a class="bouton-jaune" href="/patron/mesures?modele=pantalon_large">Créer un patron <span aria-hidden="true">→</span></a>
+        <a class="bouton-jaune" href="/patron/mesures?modele=pantalon_large">{t(data.lang, 'commun.creerPatron')} <span aria-hidden="true">→</span></a>
       </div>
     </div>
 
-    {#if t.dernierPatron}
-      {@const dp = t.dernierPatron}
+    {#if tb.dernierPatron}
+      {@const dp = tb.dernierPatron}
       <section class="dernier-patron" aria-labelledby="dernier-titre">
         <div class="dernier-dessin">
           {#if dp.mesuresPantalon}
-            <PatronCote mesures={dp.mesuresPantalon} variante="complet" uid="dernier" />
+            <PatronCote mesures={dp.mesuresPantalon} lang={data.lang} variante="complet" uid="dernier" />
           {:else if dp.generique}
-            <PatronCote generique={dp.generique} variante="complet" uid="dernier" />
+            <PatronCote generique={dp.generique} lang={data.lang} variante="complet" uid="dernier" />
           {/if}
         </div>
         <div class="dernier-infos">
-          <h2 id="dernier-titre">Dernier patron — {dp.prenomCliente} <span class="puce-peche">Brouillon à valider</span></h2>
-          <p>{dp.titreModele} · créé le {dateFr(dp.creeLe)}. Les mesures sont écrites directement sur le dessin.</p>
+          <h2 id="dernier-titre">{t(data.lang, 'tableau.dernierPatronTitre', { prenom: dp.prenomCliente })} <span class="puce-peche">{t(data.lang, 'commun.brouillonAValider')}</span></h2>
+          <p>{t(data.lang, 'tableau.dernierTexte', { modele: dp.titreModele, date: formatDate(data.lang, dp.creeLe) })}</p>
           <ul class="lignes-mesures">
             {#each dp.lignes as ligne}<li><span><span class="point-mesure"></span>{ligne.libelle}</span><strong>{ligne.valeur}</strong></li>{/each}
           </ul>
           <p class="hero-actions">
-            <a class="bouton-noir" href={dp.hrefSalle}>Ouvrir la salle d’essayage</a>
-            <a class="bouton-bord" href={dp.hrefPdf} download>Télécharger le PDF A4</a>
+            <a class="bouton-noir" href={dp.hrefSalle}>{t(data.lang, 'commun.ouvrirSalle')}</a>
+            <a class="bouton-bord" href={dp.hrefPdf} download>{t(data.lang, 'commun.telechargerPdf')}</a>
           </p>
         </div>
       </section>
     {:else}
       <section class="carte-bloc">
-        <h2>Dernier patron</h2>
-        <p class="vide-texte">Aucun patron pour le moment. <a href="/patron/mesures?modele=pantalon_large">Créer un patron</a></p>
+        <h2>{t(data.lang, 'tableau.dernierPatron')}</h2>
+        <p class="vide-texte">{t(data.lang, 'tableau.aucunPatronTexte')} <a href="/patron/mesures?modele=pantalon_large">{t(data.lang, 'commun.creerPatron')}</a></p>
       </section>
     {/if}
   </main>
@@ -155,39 +155,40 @@
     <!-- Hero bleu nuit, en-tête intégré (maquette Accueil) -->
     <section class="hero">
       <header class="hero-entete">
-        <a class="logo" href="/" aria-label="Studio Couture — Accueil">
+        <a class="logo" href="/" aria-label={t(data.lang, 'nav.logoAccueil')}>
           <svg width="40" height="40" viewBox="0 0 38 38" aria-hidden="true"><rect width="38" height="38" rx="19" fill="#C9A77C" /><path d="M12 25c2 2.2 5 2.8 7.5 1.8 2.6-1 3-4 .6-5.2l-3.4-1.6c-2.4-1.2-2-4.2.6-5.2 2.4-1 5.3-.4 7.2 1.6" fill="none" stroke="#23223A" stroke-width="2.6" stroke-linecap="round" /></svg>
-          <span>Studio Couture</span>
+          <span>{t(data.lang, 'app.nom')}</span>
         </a>
-        <nav aria-label="Navigation du site" class="hero-nav">
-          <a href="#fonctionnalites">Fonctionnalités</a>
-          <a href="#comment-ca-marche">Comment ça marche</a>
-          <a href="/demo">Salle d’essayage</a>
-          <a href="/demo">Démo</a>
+        <nav aria-label={t(data.lang, 'nav.site')} class="hero-nav">
+          <a href="#fonctionnalites">{t(data.lang, 'nav.fonctionnalites')}</a>
+          <a href="#comment-ca-marche">{t(data.lang, 'nav.comment')}</a>
+          <a href="/demo">{t(data.lang, 'nav.salle')}</a>
+          <a href="/demo">{t(data.lang, 'nav.demo')}</a>
         </nav>
         <div class="hero-compte">
-          <a class="lien-connexion" href="/connexion">Se connecter</a>
-          <a class="bouton-dore" href="/inscription">Créer mon atelier</a>
+          <a class="lien-connexion" href="/connexion">{t(data.lang, 'commun.seConnecter')}</a>
+          <a class="bouton-dore" href="/inscription">{t(data.lang, 'commun.creerAtelier')}</a>
+          <BoutonLangue lang={data.lang} csrfToken={data.csrfLangue} />
         </div>
       </header>
 
       <div class="hero-grille">
         <div class="hero-texte">
-          <p class="sur-titre">Pour les ateliers qui veulent gagner des heures</p>
-          <h1>Mesurez-la une fois. <em>Son patron est déjà là.</em></h1>
-          <p class="hero-p">Fini les heures de calcul au crayon. Saisissez les mesures de votre cliente, regardez le vêtement prendre forme sur mannequin, puis imprimez son patron à l’échelle, prêt à couper.</p>
+          <p class="sur-titre">{t(data.lang, 'accueil.surtitre')}</p>
+          <h1>{t(data.lang, 'accueil.h1a')} <em>{t(data.lang, 'accueil.h1b')}</em></h1>
+          <p class="hero-p">{t(data.lang, 'accueil.heroTexte')}</p>
           <p class="hero-actions">
-            <a class="bouton-dore gros" href="/demo">Voir mon premier patron <span aria-hidden="true">→</span></a>
-            <a class="bouton-contour" href="/demo">Tester gratuitement, sans compte</a>
+            <a class="bouton-dore gros" href="/demo">{t(data.lang, 'accueil.premierPatron')} <span aria-hidden="true">→</span></a>
+            <a class="bouton-contour" href="/demo">{t(data.lang, 'accueil.testerGratuit')}</a>
           </p>
         </div>
         <div class="hero-visuels">
           <figure class="carte-vetement">
-            <img src="/img/accueil-pantalon-bleu.jpg" alt="Pantalon de tailleur bleu roi, vu de trois quarts et de dos" />
-            <figcaption>Le vêtement</figcaption>
+            <img src="/img/accueil-pantalon-bleu.jpg" alt={t(data.lang, 'accueil.altPantalon')} />
+            <figcaption>{t(data.lang, 'accueil.vetement')}</figcaption>
           </figure>
           <figure class="carte-hero-patron">
-            <PatronCote mesures={MESURES_DEMONSTRATION} variante="complet" uid="hero" />
+            <PatronCote mesures={MESURES_DEMONSTRATION} lang={data.lang} variante="complet" uid="hero" />
           </figure>
         </div>
       </div>
@@ -197,26 +198,26 @@
     <section class="section robe-accueil" aria-labelledby="robe-accueil-titre">
       <div class="robe-grille">
         <div class="robe-texte">
-          <p class="sur-titre clair">Un troisième modèle</p>
-          <h2 class="serif" id="robe-accueil-titre">La robe fourreau, du tour de poitrine à la longueur choisie</h2>
-          <p>Six mesures suffisent pour tracer le devant et le dos : poitrine, taille, hanches, nuque-taille, longueur de robe et épaules. Encolure ronde ou fendue en V, sans manches ou avec une petite manche courte, fermeture dos à glissière.</p>
-          <p>Comme le pantalon large et la jupe droite, ce patron est un <strong>brouillon non validé</strong> : il se relit et s’ajuste à l’atelier avant toute coupe. Aucune coupe n’est promise sans cet essayage.</p>
+          <p class="sur-titre clair">{t(data.lang, 'accueil.robe.surtitre')}</p>
+          <h2 class="serif" id="robe-accueil-titre">{t(data.lang, 'accueil.robe.titre')}</h2>
+          <p>{t(data.lang, 'accueil.robe.texte')}</p>
+          <p>{t(data.lang, 'accueil.robe.honnete')}</p>
           <p class="hero-actions">
-            <a class="bouton-nuit" href="/demo">Essayer la robe dans la démo <span aria-hidden="true">→</span></a>
+            <a class="bouton-nuit" href="/demo">{t(data.lang, 'accueil.robe.essayer')} <span aria-hidden="true">→</span></a>
           </p>
         </div>
         <div class="robe-visuels">
           <figure class="carte-vetement carte-robe">
             {#if photoRobePresente}
-              <img src="/img/accueil-robe-photo.jpg" alt="Robe fourreau portée : encolure ronde fendue en V, petites manches courtes, longueur au genou" onerror={() => (photoRobePresente = false)} />
+              <img src="/img/accueil-robe-photo.jpg" alt={t(data.lang, 'accueil.robe.alt')} onerror={() => (photoRobePresente = false)} />
             {:else}
               <div class="repli-robe"><IllustrationModele modele="robe_fourreau" /></div>
             {/if}
-            <figcaption>Le vêtement</figcaption>
+            <figcaption>{t(data.lang, 'accueil.vetement')}</figcaption>
           </figure>
           <figure class="carte-hero-patron carte-robe-patron">
-            <PatronCote generique={patronRobe} variante="complet" uid="accueil-robe" />
-            <figcaption>Le patron calculé — brouillon non validé</figcaption>
+            <PatronCote generique={patronRobe} lang={data.lang} variante="complet" uid="accueil-robe" />
+            <figcaption>{t(data.lang, 'accueil.robe.patronCalcule')}</figcaption>
           </figure>
         </div>
       </div>
@@ -224,28 +225,28 @@
 
     <!-- Ce que vous obtenez -->
     <section class="section services" id="fonctionnalites">
-      <p class="sur-titre clair">Ce que vous obtenez</p>
-      <h2 class="serif">Ce que vous faisiez en une journée, en dix minutes</h2>
+      <p class="sur-titre clair">{t(data.lang, 'accueil.obtenez')}</p>
+      <h2 class="serif">{t(data.lang, 'accueil.obtenezTitre')}</h2>
       <div class="cercles">
         <article>
           <span class="cercle lavande"><svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><path d="M6 36h44M6 36v8h44v-8M12 36v-5M20 36v-3M28 36v-5M36 36v-3M44 36v-5" fill="none" stroke="#2A2940" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /><circle cx="28" cy="16" r="6" fill="none" stroke="#2A2940" stroke-width="2.6" /></svg></span>
-          <h3 class="serif">Fiches clientes</h3>
-          <p>Mesures, consentement et photos de chaque cliente, retrouvées à la prochaine visite.</p>
+          <h3 class="serif">{t(data.lang, 'accueil.fiches.titre')}</h3>
+          <p>{t(data.lang, 'accueil.fiches.texte')}</p>
         </article>
         <article>
           <span class="cercle peche"><svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><g fill="none" stroke="#2A2940" stroke-width="2.6" stroke-linejoin="round"><path d="M8 6h18l2 12c1 10 2 20 1 32H14c-1-12-2-24-6-34z" /><path d="M32 6h16l-1 14c-2 10-3 20-2 30H34c1-14 0-26-2-36z" /></g></svg></span>
-          <h3 class="serif">Patron généré</h3>
-          <p>Devant, dos et ceinture calculés depuis les mesures, avec la fourche en J.</p>
+          <h3 class="serif">{t(data.lang, 'accueil.patronGenere.titre')}</h3>
+          <p>{t(data.lang, 'accueil.patronGenere.texte')}</p>
         </article>
         <article>
           <span class="cercle bleu"><svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><g fill="none" stroke="#2A2940" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M28 6l18 10v20L28 46 10 36V16z" /><path d="M10 16l18 10 18-10M28 26v20" /></g></svg></span>
-          <h3 class="serif">Salle d’essayage</h3>
-          <p>Mannequin en 3D, tissu au choix et aperçu en trois images : face, perspective, dos.</p>
+          <h3 class="serif">{t(data.lang, 'accueil.salle.titre')}</h3>
+          <p>{t(data.lang, 'accueil.salle.texte')}</p>
         </article>
         <article>
           <span class="cercle jaune"><svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><g fill="none" stroke="#2A2940" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M14 6h20l10 10v34H14z" /><path d="M34 6v10h10M22 30h14M22 38h14" /></g></svg></span>
-          <h3 class="serif">PDF A4 à l’échelle</h3>
-          <p>À imprimer sans mise à l’échelle, avec un carré de 10 cm pour contrôler à la règle.</p>
+          <h3 class="serif">{t(data.lang, 'accueil.pdf.titre')}</h3>
+          <p>{t(data.lang, 'accueil.pdf.texte')}</p>
         </article>
       </div>
     </section>
@@ -254,17 +255,17 @@
     <section class="section patron-lisible">
       <div class="deux-colonnes">
         <div>
-          <p class="sur-titre clair">Un patron qu’on comprend d’un coup d’œil</p>
-          <h2 class="serif">Devant, dos et ceinture. Chaque mesure écrite sur la pièce.</h2>
-          <p>Plus besoin de deviner : la taille, les hanches, la fourche et la longueur sont cotées directement sur le dessin, comme sur un patron de maison de couture.</p>
+          <p class="sur-titre clair">{t(data.lang, 'accueil.lisible.surtitre')}</p>
+          <h2 class="serif">{t(data.lang, 'accueil.lisible.titre')}</h2>
+          <p>{t(data.lang, 'accueil.lisible.texte')}</p>
           <ul class="legende-liste">
-            <li><span class="point orange"></span><span><strong>Cotes en orange</strong><br />Taille, hanches, fourche, longueur, bas : lisibles en un regard.</span></li>
-            <li><span class="point nuit"></span><span><strong>Contour et sens du droit-fil</strong><br />Pour poser le tissu dans le bon sens avant de couper.</span></li>
-            <li><span class="point dore"></span><span><strong>Marge de couture 1 cm</strong><br />Le trait pointillé montre où coudre.</span></li>
+            <li><span class="point orange"></span><span><strong>{t(data.lang, 'accueil.lisible.cotes')}</strong><br />{t(data.lang, 'accueil.lisible.cotesTexte')}</span></li>
+            <li><span class="point nuit"></span><span><strong>{t(data.lang, 'accueil.lisible.droitFil')}</strong><br />{t(data.lang, 'accueil.lisible.droitFilTexte')}</span></li>
+            <li><span class="point dore"></span><span><strong>{t(data.lang, 'accueil.lisible.marge')}</strong><br />{t(data.lang, 'accueil.lisible.margeTexte')}</span></li>
           </ul>
         </div>
         <div class="carte-patron-blanche">
-          <PatronCote mesures={MESURES_DEMONSTRATION} variante="complet" uid="lisible" />
+          <PatronCote mesures={MESURES_DEMONSTRATION} lang={data.lang} variante="complet" uid="lisible" />
         </div>
       </div>
     </section>
@@ -273,42 +274,42 @@
     <section class="section" id="comment-ca-marche">
       <div class="bandeau-marche">
         <div class="marche-texte">
-          <p class="sur-titre clair">Comment ça marche</p>
-          <h2 class="serif">Trois gestes, et la cliente se voit déjà dans son pantalon</h2>
+          <p class="sur-titre clair">{t(data.lang, 'accueil.marche.surtitre')}</p>
+          <h2 class="serif">{t(data.lang, 'accueil.marche.titre')}</h2>
           <ol class="gestes">
-            <li><span class="numero">1</span><span><strong>Mesurez</strong><br />Saisissez les neuf mesures. Elles restent sur la fiche de la cliente.</span></li>
-            <li><span class="numero">2</span><span><strong>Essayez</strong><br />Ajustez, choisissez le tissu et regardez le rendu sous trois angles.</span></li>
-            <li><span class="numero">3</span><span><strong>Imprimez</strong><br />Téléchargez le PDF, assemblez les feuilles, vérifiez le carré, coupez.</span></li>
+            <li><span class="numero">1</span><span><strong>{t(data.lang, 'accueil.marche1.titre')}</strong><br />{t(data.lang, 'accueil.marche1.texte')}</span></li>
+            <li><span class="numero">2</span><span><strong>{t(data.lang, 'accueil.marche2.titre')}</strong><br />{t(data.lang, 'accueil.marche2.texte')}</span></li>
+            <li><span class="numero">3</span><span><strong>{t(data.lang, 'accueil.marche3.titre')}</strong><br />{t(data.lang, 'accueil.marche3.texte')}</span></li>
           </ol>
         </div>
-        <div class="marche-apercu" role="img" aria-label="Aperçu du tableau de bord : clientes à compléter, compteurs et dernières clientes">
-          <div class="apercu-sombre"><span>À faire en priorité</span><strong>3 clientes ont encore des mesures à compléter</strong></div>
-          <div class="apercu-chiffres"><div><span>Clientes</span><strong>12</strong></div><div><span>Patrons</span><strong>8</strong></div><div class="violet"><span>À valider</span><strong>8</strong></div></div>
-          <div class="apercu-cliente"><span class="mini-avatar">AW</span><span class="flex">Awa</span><span class="mini-puce">2 patrons</span></div>
+        <div class="marche-apercu" role="img" aria-label={t(data.lang, 'accueil.apercu.alt')}>
+          <div class="apercu-sombre"><span>{t(data.lang, 'accueil.apercu.priorite')}</span><strong>{t(data.lang, 'accueil.apercu.prioriteTexte')}</strong></div>
+          <div class="apercu-chiffres"><div><span>{t(data.lang, 'accueil.apercu.clientes')}</span><strong>12</strong></div><div><span>{t(data.lang, 'accueil.apercu.patrons')}</span><strong>8</strong></div><div class="violet"><span>{t(data.lang, 'accueil.apercu.aValider')}</span><strong>8</strong></div></div>
+          <div class="apercu-cliente"><span class="mini-avatar">AW</span><span class="flex">Awa</span><span class="mini-puce">{t(data.lang, 'accueil.apercu.patrons2')}</span></div>
         </div>
       </div>
     </section>
 
     <!-- Honnêteté -->
     <section class="section honnetete">
-      <p class="sur-titre">Notre engagement</p>
-      <h2 class="serif">Nous ne vous promettons pas la magie. Nous vous promettons un vrai point de départ.</h2>
-      <p>Chaque patron est présenté comme un brouillon tant qu’un professionnel ne l’a pas relu. Le rendu 3D montre un volume à partir des cotes, pas une simulation de drapé. Les photos sont chiffrées et supprimées après sept jours.</p>
+      <p class="sur-titre">{t(data.lang, 'accueil.engagement')}</p>
+      <h2 class="serif">{t(data.lang, 'accueil.engagementTitre')}</h2>
+      <p>{t(data.lang, 'accueil.engagementTexte')}</p>
     </section>
 
     <!-- Appel final -->
     <section class="section cta">
-      <h2 class="serif">Votre prochaine cliente mérite mieux qu’un patron à la main</h2>
-      <p>Deux minutes pour ouvrir votre atelier. Aucune carte bancaire, aucune installation.</p>
+      <h2 class="serif">{t(data.lang, 'accueil.cta.titre')}</h2>
+      <p>{t(data.lang, 'accueil.cta.texte')}</p>
       <p class="hero-actions centre">
-        <a class="bouton-nuit" href="/inscription">Créer mon atelier</a>
-        <a class="bouton-contour-nuit" href="/demo">Voir la démo d’abord</a>
+        <a class="bouton-nuit" href="/inscription">{t(data.lang, 'commun.creerAtelier')}</a>
+        <a class="bouton-contour-nuit" href="/demo">{t(data.lang, 'accueil.cta.demo')}</a>
       </p>
     </section>
 
     <footer class="pied-accueil">
-      <span class="serif">Studio Couture</span>
-      <span>Brouillons à valider par un maître tailleur avant toute coupe réelle.</span>
+      <span class="serif">{t(data.lang, 'app.nom')}</span>
+      <span>{t(data.lang, 'accueil.pied')}</span>
     </footer>
   </div>
 {/if}
@@ -328,7 +329,7 @@
   .logo { display: inline-flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; font-family: var(--serif-display); font-size: 22px; font-weight: 600; min-height: 48px; }
   .hero-nav { display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: 14px; font-weight: 600; color: #d9d9e4; }
   .hero-nav a, .lien-connexion { color: inherit; text-decoration: none; display: inline-flex; align-items: center; min-height: 48px; }
-  .hero-compte { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700; }
+  .hero-compte { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; font-size: 14px; font-weight: 700; }
   .bouton-dore { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 24px; border-radius: 999px; background: var(--dore); color: var(--nuit); text-decoration: none; font-weight: 800; }
   .bouton-dore.gros { min-height: 58px; padding: 14px 32px; font-size: 16px; }
   .hero-grille { max-width: 1152px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 40px 48px; padding-top: 28px; }

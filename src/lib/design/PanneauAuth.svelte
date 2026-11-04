@@ -1,29 +1,32 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  let { children }: { children: Snippet } = $props();
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
+  let { children, lang = 'fr' }: { children: Snippet; lang?: Lang } = $props();
+  const tr = (k: TranslationKey) => t(lang, k);
+  const benefices: TranslationKey[] = ['panneau.benefice1', 'panneau.benefice2', 'panneau.benefice3'];
 </script>
 
 <div class="auth-coque">
-  <section class="auth-panneau" aria-label="Studio Couture">
+  <section class="auth-panneau" aria-label={tr('app.nom')}>
     <div class="auth-logo">
       <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><rect width="38" height="38" rx="11" fill="#B9C8F5" /><path d="M12 25c2 2.2 5 2.8 7.5 1.8 2.6-1 3-4 .6-5.2l-3.4-1.6c-2.4-1.2-2-4.2.6-5.2 2.4-1 5.3-.4 7.2 1.6" fill="none" stroke="#2A2940" stroke-width="2.6" stroke-linecap="round" /></svg>
-      <span>Studio Couture</span>
+      <span>{tr('app.nom')}</span>
     </div>
 
     <div class="auth-accroche">
-      <h2>Votre prochaine cliente repart avec un patron sur mesure.</h2>
-      <p>Enregistrez vos clientes, prenez leurs mesures et obtenez un patron coté à imprimer, avec un aperçu en 3 vues sur mannequin.</p>
+      <h2>{tr('panneau.titre')}</h2>
+      <p>{tr('panneau.texte')}</p>
       <ul>
-        {#each ['Mesures de chaque cliente, toujours retrouvées', 'Patron A4 à l’échelle 1:1, carré de contrôle inclus', 'Photos chiffrées, supprimées après 7 jours'] as benefice}
+        {#each benefices as cle}
           <li>
             <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="13" fill="#B9C8F5" /><path d="M8 13.4l3.2 3.2L18 9.8" fill="none" stroke="#2A2940" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            {benefice}
+            {tr(cle)}
           </li>
         {/each}
       </ul>
     </div>
 
-    <p class="auth-mention">Brouillon à valider par un maître tailleur avant toute coupe réelle.</p>
+    <p class="auth-mention">{tr('panneau.mention')}</p>
   </section>
 
   <section class="auth-formulaire">

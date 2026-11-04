@@ -1,21 +1,45 @@
+import { randomBytes } from 'node:crypto';
 import type { Handle, ServerInit } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { SESSION_COOKIE, hacherJeton, jetonCsrf } from '$lib/server/auth';
 import { validerConfigurationDemarrage } from '$lib/server/config';
 import { getRepository } from '$lib/server/repository';
 import { ENV_SESSION_SECRET } from '$lib/brand';
+import { LANG_COOKIE, lireLangue, t } from '$lib/i18n';
+import { COOKIE_CSRF_LANGUE, jetonLangue } from '$lib/server/langue';
 
-/**
- * Démarrage du serveur : secrets obligatoires (session ≥ 32 octets, clé photo
- * exactement 32 octets). Sans eux, le serveur refuse de démarrer — y compris
- * en mode dépôt mémoire (tests/Playwright fournissent des secrets de test).
- */
+export { COOKIE_CSRF_LANGUE };
+
 export const init: ServerInit = async () => {
-  validerConfigurationDemarrage();
+  // `dev` est figé au build : en production, prévient si ORIGIN manque (CSRF).
+  validerConfigurationDemarrage(process.env, !dev);
 };
 
-/** SSR uniquement, français d'abord. Session serveur + en-têtes vie privée. */
+/** SSR uniquement. Langue (cookie « lang »), session serveur + en-têtes vie privée. */
 export const handle: Handle = async ({ event, resolve }) => {
-  event.locals.locale = 'fr';
+  const lang = lireLangue(event.cookies.get(LANG_COOKIE));
+  event.locals.lang = lang;
+  event.locals.locale = lang;
+
+  // Jeton CSRF anonyme pour le seul formulaire public POST /langue.
+  try {
+    let valeur = event.cookies.get(COOKIE_CSRF_LANGUE);
+    if (!valeur) {
+      valeur = randomBytes(24).toString('base64url');
+      if (typeof event.cookies.set === 'function') {
+        event.cookies.set(COOKIE_CSRF_LANGUE, valeur, {
+          path: '/',
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 365 * 24 * 60 * 60
+        });
+      }
+    }
+    event.locals.csrfLangue = jetonLangue(valeur, process.env[ENV_SESSION_SECRET]);
+  } catch {
+    event.locals.csrfLangue = undefined;
+  }
 
   const jeton = event.cookies.get(SESSION_COOKIE);
   if (jeton) {
@@ -26,20 +50,17 @@ export const handle: Handle = async ({ event, resolve }) => {
         event.locals.csrfToken = jetonCsrf(jeton, process.env[ENV_SESSION_SECRET]);
       }
     } catch {
-      // Base indisponible : on reste anonyme, les gardes redirigeront vers /connexion.
       event.locals.utilisatrice = undefined;
     }
   }
 
-  const response = await resolve(event);
+  const description = t(lang, 'app.descriptionLongue').replace(/"/g, '&quot;');
+  const response = await resolve(event, {
+    transformPageChunk: ({ html }) => html.replace('%lang%', lang).replace('%description%', description)
+  });
   response.headers.set('x-content-type-options', 'nosniff');
-  // « same-origin » et non « no-referrer » : avec no-referrer, Chromium envoie
-  // « Origin: null » sur les POST de formulaire, ce que le contrôle CSRF/Origin
-  // de SvelteKit rejette (vérifié par scripts/diagnostic/debug-proxy.mjs). same-origin
-  // ne divulgue toujours aucune URL aux sites externes.
   response.headers.set('referrer-policy', 'same-origin');
   response.headers.set('x-frame-options', 'DENY');
-  // Les photos clientes ne doivent jamais transiter par un cache partagé.
   if (event.url.pathname.startsWith('/photos-clientes') || event.url.pathname.includes('/photos/')) {
     response.headers.set('cache-control', 'private, no-store');
   }

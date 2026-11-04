@@ -1,19 +1,22 @@
 <script lang="ts">
   import Carte from '$lib/design/Carte.svelte';
   import ChampTexte from '$lib/design/ChampTexte.svelte';
+  import { t } from '$lib/i18n';
   let { data, form } = $props();
 </script>
 
+<svelte:head><title>{t(data.lang, 'cliente.nouvelle.titre')}</title></svelte:head>
+
 <main>
-  <p><a href="/clientes">← Toutes les clientes</a></p>
-  <h1>Nouvelle cliente</h1>
+  <p><a href="/clientes">← {t(data.lang, 'cliente.retourListe')}</a></p>
+  <h1>{t(data.lang, 'cliente.nouvelle.titre')}</h1>
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
   <Carte>
     <form method="post" class="grille-form">
       <input type="hidden" name="_csrf" value={data.csrfToken} />
-      <ChampTexte label="Nom de la cliente" name="nom" requis autocomplete="name" aide="Nom complet, tel qu’il apparaîtra sur ses patrons." />
-      <ChampTexte label="Téléphone (optionnel)" name="telephone" type="tel" autocomplete="tel" />
-      <button type="submit">Créer la fiche cliente</button>
+      <ChampTexte label={t(data.lang, 'cliente.nom')} name="nom" requis autocomplete="name" />
+      <ChampTexte label={t(data.lang, 'cliente.telephone')} name="telephone" type="tel" autocomplete="tel" />
+      <button type="submit">{t(data.lang, 'cliente.creerFiche')}</button>
     </form>
   </Carte>
 </main>

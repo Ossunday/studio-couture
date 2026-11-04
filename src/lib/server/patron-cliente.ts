@@ -5,6 +5,7 @@ import {
   type OptionsModele
 } from '$lib/patterns/registre';
 import { validerMesuresPatron, type ModelePatron } from '$lib/patterns/saisie-patron';
+import { MessageError } from '$lib/i18n';
 
 /**
  * Validation serveur d'un patron enregistré depuis la salle d'essayage
@@ -28,17 +29,17 @@ export function validerPatronEnregistre(
   const entree = exigerEntreeModele(modele);
   const nom = (lire('nom_patron') ?? '').trim().replace(/\s+/g, ' ');
   if (nom.length < 2 || nom.length > 80) {
-    throw new Error('Vérifiez : le nom du patron doit faire entre 2 et 80 caractères.');
+    throw new MessageError('validation.nomPatron');
   }
   const mesures = validerMesuresPatron(modele, lire);
   const options = entree.lireOptions(lire);
   const couleurId = (lire('couleur_id') ?? '').trim();
   if (!COULEURS_TISSU.some((c) => c.id === couleurId)) {
-    throw new Error('Vérifiez : choisissez une couleur de tissu proposée.');
+    throw new MessageError('validation.couleurTissu');
   }
   const matiereId = (lire('matiere_id') ?? '').trim();
   if (!MATIERES.some((m) => m.id === matiereId)) {
-    throw new Error('Vérifiez : choisissez une matière proposée (denim, lin ou satin).');
+    throw new MessageError('validation.matiereTissu');
   }
   return { nom, mesures, options, tissu: { couleurId, matiereId } };
 }

@@ -1,8 +1,10 @@
+import type { TranslationKey } from '../i18n';
+
 /** Tissus de la salle d'essayage : couleurs et matières dessinées par code (aucune image externe). */
 
 export interface CouleurTissu {
   id: string;
-  libelle: string;
+  libelleCle: TranslationKey;
   hex: string;
   /** Couleur de fil contrastante pour la trame dessinée. */
   fil: string;
@@ -10,22 +12,22 @@ export interface CouleurTissu {
 export type MatiereId = 'denim' | 'lin' | 'satin';
 export interface Matiere {
   id: MatiereId;
-  libelle: string;
+  libelleCle: TranslationKey;
 }
 
 export const COULEURS_TISSU: readonly CouleurTissu[] = [
-  { id: 'ivoire', libelle: 'Ivoire', hex: '#f3ead8', fil: '#d8cbb4' },
-  { id: 'sable', libelle: 'Sable', hex: '#d9bd93', fil: '#b99c6d' },
-  { id: 'terracotta', libelle: 'Terracotta', hex: '#b5532f', fil: '#8f3e20' },
-  { id: 'vert-profond', libelle: 'Vert profond', hex: '#1f3d36', fil: '#356355' },
-  { id: 'bleu-denim', libelle: 'Bleu denim', hex: '#33536e', fil: '#597d9c' },
-  { id: 'noir', libelle: 'Noir', hex: '#23201d', fil: '#4a453f' }
+  { id: 'ivoire', libelleCle: 'tissu.ivoire', hex: '#f3ead8', fil: '#d8cbb4' },
+  { id: 'sable', libelleCle: 'tissu.sable', hex: '#d9bd93', fil: '#b99c6d' },
+  { id: 'terracotta', libelleCle: 'tissu.terracotta', hex: '#b5532f', fil: '#8f3e20' },
+  { id: 'vert-profond', libelleCle: 'tissu.vert-profond', hex: '#1f3d36', fil: '#356355' },
+  { id: 'bleu-denim', libelleCle: 'tissu.bleu-denim', hex: '#33536e', fil: '#597d9c' },
+  { id: 'noir', libelleCle: 'tissu.noir', hex: '#23201d', fil: '#4a453f' }
 ] as const;
 
 export const MATIERES: readonly Matiere[] = [
-  { id: 'denim', libelle: 'Denim' },
-  { id: 'lin', libelle: 'Lin' },
-  { id: 'satin', libelle: 'Satin' }
+  { id: 'denim', libelleCle: 'matiere.denim' },
+  { id: 'lin', libelleCle: 'matiere.lin' },
+  { id: 'satin', libelleCle: 'matiere.satin' }
 ] as const;
 
 export function couleurTissu(id: string): CouleurTissu {

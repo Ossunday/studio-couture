@@ -1,27 +1,29 @@
 <script lang="ts">
   import Carte from '$lib/design/Carte.svelte';
   import ChampTexte from '$lib/design/ChampTexte.svelte';
-  import { BRAND_NAME } from '$lib/brand';
-  let { form } = $props();
+  import { t, type TranslationKey } from '$lib/i18n';
+  let { data, form } = $props();
+  const lang = $derived(data.lang);
+  const tr = (k: TranslationKey, p?: Record<string, string | number>) => t(lang, k, p);
 </script>
 
-<svelte:head><title>{BRAND_NAME} — Créer l’atelier</title></svelte:head>
+<svelte:head><title>{tr('auth.installation.titrePage')}</title></svelte:head>
 
 <main class="installation">
   <div class="installation-entete">
-    <p class="sur-titre">Première installation</p>
-    <h1>Créer l’atelier</h1>
-    <p>Cette page disparaît dès que le premier compte est créé.</p>
+    <p class="sur-titre">{tr('auth.installation.surtitre')}</p>
+    <h1>{tr('auth.installation.titre')}</h1>
+    <p>{tr('auth.installation.texte')}</p>
   </div>
 
   <Carte>
     {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
     <form method="post" class="grille-form">
-      <ChampTexte label="Nom de l’atelier" name="nom_atelier" requis autocomplete="organization" />
-      <ChampTexte label="Votre nom" name="nom" requis autocomplete="name" />
-      <ChampTexte label="Adresse e-mail ou numéro de téléphone" name="identifiant" requis autocomplete="username" />
-      <ChampTexte label="Mot de passe (10 caractères minimum)" name="mot_de_passe" type="password" requis autocomplete="new-password" aide="Choisissez un mot de passe long, différent de vos autres comptes." />
-      <button type="submit" class="plein">Créer l’atelier et le compte administratrice</button>
+      <ChampTexte label={tr('auth.nomAtelier')} name="nom_atelier" requis autocomplete="organization" />
+      <ChampTexte label={tr('auth.votreNom')} name="nom" requis autocomplete="name" />
+      <ChampTexte label={tr('auth.identifiant')} name="identifiant" requis autocomplete="username" />
+      <ChampTexte label={tr('auth.installation.motDePasse')} name="mot_de_passe" type="password" requis autocomplete="new-password" aide={tr('auth.installation.aide')} />
+      <button type="submit" class="plein">{tr('auth.installation.bouton')}</button>
     </form>
   </Carte>
 </main>

@@ -1,13 +1,11 @@
 <script lang="ts">
   import type { ModelePatron } from '$lib/patterns/registre';
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
   // Illustration originale (SVG, aucune image externe) : vignette du modèle.
-  let { modele }: { modele: ModelePatron } = $props();
-  const TITRES: Record<ModelePatron, string> = {
-    pantalon_large: 'Illustration : pantalon large, taille haute, jambes amples',
-    jupe_droite: 'Illustration : jupe droite, longueur genou',
-    robe_fourreau: 'Illustration : robe fourreau, encolure ronde, longueur genou'
-  };
-  const titre = $derived(TITRES[modele]);
+  let { modele, lang = 'fr' }: { modele: ModelePatron; lang?: Lang } = $props();
+  const titre = $derived(
+    t(lang, 'illustration.modeleAlt', { modele: t(lang, `modele.${modele}.titre` as TranslationKey) })
+  );
 </script>
 
 <svg viewBox="0 0 120 150" role="img" aria-label={titre} class="vignette">

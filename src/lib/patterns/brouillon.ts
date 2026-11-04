@@ -8,13 +8,15 @@
  * porte la bannière « brouillon non validé ». Le moteur de production
  * (engine.ts, tenterGenerationPatron) reste bloqué, inchangé.
  */
+import { t, type Lang, type TranslationKey } from '../i18n';
+
 export interface Point {
   x: number;
   y: number;
 }
 
 export interface CotePiece {
-  libelle: string;
+  libelleCle: TranslationKey;
   valeurCm: number;
   /** Segment de cotation dessiné (cm, repère local). */
   de: Point;
@@ -25,7 +27,9 @@ export interface CotePiece {
 
 export interface PieceBrouillon {
   id: string;
-  nom: string;
+  nomCle: TranslationKey;
+  quantite: number;
+  detailCle?: TranslationKey;
   /** Trait de couture (cm, repère local de la pièce, y vers le bas). Courbes échantillonnées en points. */
   couture: Point[];
   /** Trait de coupe = couture + marges (1 cm, ourlet 2 cm en bas). */
@@ -41,7 +45,14 @@ export interface PieceBrouillon {
   /** Lignes de construction (hanches, genou…) en tirets légers. */
   lignesConstruction?: Point[][];
   /** Mesures calculées de la pièce, pour le tableau « Mesures du patron ». */
-  mesuresPatron?: { libelle: string; valeurCm: number }[];
+  mesuresPatron?: { libelleCle: TranslationKey; valeurCm: number }[];
+}
+
+/** Nom affiché d’une pièce : « Devant (×1 au pli) » — le détail traduit porte son séparateur (« au pli », «, milieu dos »…). */
+export function nomPiece(lang: Lang, piece: Pick<PieceBrouillon, 'nomCle' | 'quantite' | 'detailCle'>): string {
+  const base = t(lang, piece.nomCle);
+  const detail = piece.detailCle ? t(lang, piece.detailCle) : '';
+  return `${base} (×${piece.quantite}${detail})`;
 }
 
 export interface PiecePlacee extends PieceBrouillon {

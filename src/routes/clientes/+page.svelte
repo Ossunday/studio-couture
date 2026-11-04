@@ -3,29 +3,30 @@
   import Bouton from '$lib/design/Bouton.svelte';
   import EtatVide from '$lib/design/EtatVide.svelte';
   import Puce from '$lib/design/Puce.svelte';
+  import { formatDateComplete, t } from '$lib/i18n';
   let { data } = $props();
-
-  const dateFr = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 </script>
+
+<svelte:head><title>{t(data.lang, 'clientes.titrePage')}</title></svelte:head>
 
 <main>
   <div class="entete-liste">
-    <h1>Clientes</h1>
-    <Bouton variante="action" href="/clientes/nouvelle">Nouvelle cliente</Bouton>
+    <h1>{t(data.lang, 'clientes.titre')}</h1>
+    <Bouton variante="action" href="/clientes/nouvelle">{t(data.lang, 'clientes.nouvelle')}</Bouton>
   </div>
 
   <form method="get" class="recherche" role="search">
-    <label class="sr-only" for="recherche-clientes">Rechercher une cliente (nom ou téléphone)</label>
-    <input id="recherche-clientes" name="q" value={data.recherche} placeholder="Rechercher un nom ou un téléphone…" />
-    <button type="submit">Rechercher</button>
+    <label class="sr-only" for="recherche-clientes">{t(data.lang, 'clientes.rechercherPlaceholder')}</label>
+    <input id="recherche-clientes" name="q" value={data.recherche} placeholder={t(data.lang, 'clientes.rechercherPlaceholder')} />
+    <button type="submit">{t(data.lang, 'clientes.rechercher')}</button>
   </form>
 
   {#if data.clientes.length === 0}
     {#if data.recherche}
-      <EtatVide titre="Aucune cliente trouvée" texte="Aucune cliente ne correspond à « {data.recherche} ». Essayez un autre nom ou créez une nouvelle fiche." />
+      <EtatVide titre={t(data.lang, 'clientes.aucunResultat')} texte={t(data.lang, 'clientes.aucunResultatTexte')} />
     {:else}
-      <EtatVide titre="Aucune cliente pour le moment" texte="Créez la première fiche cliente : ses mesures et ses patrons y seront gardés.">
-        <Bouton variante="action" href="/clientes/nouvelle">Créer la première cliente</Bouton>
+      <EtatVide titre={t(data.lang, 'clientes.aucune')} texte={t(data.lang, 'clientes.aucuneTexte')}>
+        <Bouton variante="action" href="/clientes/nouvelle">{t(data.lang, 'clientes.creerPremiere')}</Bouton>
       </EtatVide>
     {/if}
   {:else}
@@ -36,10 +37,10 @@
             <Avatar nom={cliente.nom} taille={52} />
             <span class="infos">
               <strong>{cliente.nom}</strong>
-              <span class="meta">{cliente.telephone ?? 'Téléphone non renseigné'} · fiche créée le {dateFr(cliente.creeeLe)}</span>
-              {#if cliente.dernierPatronLe}<span class="meta">dernier patron le {dateFr(cliente.dernierPatronLe)}</span>{/if}
+              <span class="meta">{cliente.telephone ?? t(data.lang, 'tableau.telephoneNonRenseigne')} · {formatDateComplete(data.lang, cliente.creeeLe)}</span>
+              {#if cliente.dernierPatronLe}<span class="meta">{t(data.lang, 'tableau.dernierPatron')} · {formatDateComplete(data.lang, cliente.dernierPatronLe)}</span>{/if}
             </span>
-            <Puce ton={cliente.nbPatrons > 0 ? 'vert' : 'neutre'}>{cliente.nbPatrons} patron{cliente.nbPatrons > 1 ? 's' : ''}</Puce>
+            <Puce ton={cliente.nbPatrons > 0 ? 'vert' : 'neutre'}>{t(data.lang, 'clientes.patronsSur', { n: cliente.nbPatrons })}</Puce>
           </a>
         </li>
       {/each}

@@ -6,8 +6,8 @@ import type { Consentement } from './types';
 describe('fiche cliente', () => {
   it('valide et nettoie le nom', () => {
     expect(validerNomCliente('  Awa Diop  ')).toBe('Awa Diop');
-    expect(() => validerNomCliente('A')).toThrow(/2 et 80/);
-    expect(() => validerNomCliente('   ')).toThrow(/2 et 80/);
+    expect(() => validerNomCliente('A')).toThrowError(expect.objectContaining({ cle: 'validation.nomClienteBornes' }));
+    expect(() => validerNomCliente('   ')).toThrowError(expect.objectContaining({ cle: 'validation.nomClienteBornes' }));
   });
 });
 
@@ -17,7 +17,7 @@ describe('consentement photo signé (règle n°8)', () => {
     expect(() => assertConsentementPhoto(actif)).not.toThrow();
   });
   it('refuse absent ou révoqué', () => {
-    expect(() => assertConsentementPhoto(undefined)).toThrow(/requis/);
-    expect(() => assertConsentementPhoto({ ...actif, revoqueLe: new Date() })).toThrow(/révoqué/);
+    expect(() => assertConsentementPhoto(undefined)).toThrowError(expect.objectContaining({ cle: 'validation.consentementRequis' }));
+    expect(() => assertConsentementPhoto({ ...actif, revoqueLe: new Date() })).toThrowError(expect.objectContaining({ cle: 'validation.consentementRevoque' }));
   });
 });

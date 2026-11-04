@@ -20,8 +20,11 @@ test('inscription : créer mon atelier → tableau de bord → ajout d’une cli
 
   // Tableau de bord (accueil connecté pour l’instant, refondu en phase 4).
   await expect(page.getByText('Votre atelier est prêt. Ajoutez votre première cliente.')).toBeVisible();
+  // Pastille de langue en haut à droite, à côté de l’avatar : FR par défaut.
+  await expect(page.locator('.barre-haut .langue-bascule')).toContainText('FR');
+  await expect(page.locator('.barre-haut .langue-bascule')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Ajouter votre première cliente' }).click();
+  await page.getByRole('link', { name: 'Créer une fiche cliente' }).first().click();
   await expect(page.getByRole('heading', { name: 'Nouvelle cliente' })).toBeVisible();
   await page.locator('input[name="nom"]').fill('Cliente Inscription E2E');
   await page.getByRole('button', { name: 'Créer la fiche cliente' }).click();

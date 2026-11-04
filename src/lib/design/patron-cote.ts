@@ -2,6 +2,7 @@ import { analyserPantalonLarge, genererPatronPantalonLarge, type MesuresPantalon
 import { agencerPieces, pointsEnAttribut, type PieceBrouillon } from '../patterns/brouillon';
 import { preparerPiece, type PieceRendue } from '../patterns/apercu-rendu';
 import { assertJamais, resumeMesures, type EntreeModele, type OptionsModele } from '../patterns/registre';
+import { formatCm, t, type Lang } from '../i18n';
 
 export type MesuresPatronCote = MesuresPantalonLarge;
 
@@ -12,10 +13,7 @@ export const MESURES_DEMONSTRATION: MesuresPatronCote = {
   longueurPantalonCm: 105
 };
 
-const fmt = (v: number) => {
-  const r = Math.round(v * 10) / 10;
-  return Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ',');
-};
+const fmt = (v: number, lang: Lang = 'fr') => formatCm(lang, v);
 
 function boite(piece: PieceBrouillon) {
   const xs = piece.coupe.map((p) => p.x);
@@ -25,7 +23,7 @@ function boite(piece: PieceBrouillon) {
 
 export interface PieceCotePreparee {
   id: string;
-  nomCourt: 'DEVANT' | 'DOS';
+  nomCourt: string;
   coupe: string;
   couture: string;
   traits: string[];
@@ -44,7 +42,7 @@ export interface PieceCotePreparee {
  * contours réels des pièces, ceinture au-dessus, valeurs des cotes relues
  * dans l'analyse et les mesures calculées des pièces.
  */
-export function preparerPatronCote(mesures: MesuresPatronCote, options: OptionsPantalonLarge = {}) {
+export function preparerPatronCote(mesures: MesuresPatronCote, options: OptionsPantalonLarge = {}, lang: Lang = 'fr') {
   const analyse = analyserPantalonLarge(mesures, options);
   const pieces = genererPatronPantalonLarge(mesures, options);
   const devantBrut = pieces.find((p) => p.id === 'devant')!;
@@ -70,7 +68,7 @@ export function preparerPatronCote(mesures: MesuresPatronCote, options: OptionsP
   const yLegende = yBasCotes + 9;
   const hauteurTotale = yLegende + 5;
 
-  const placer = (piece: PieceBrouillon, b: ReturnType<typeof boite>, x: number, nomCourt: 'DEVANT' | 'DOS', bas: number): PieceCotePreparee => {
+  const placer = (piece: PieceBrouillon, b: ReturnType<typeof boite>, x: number, nomCourt: string, bas: number): PieceCotePreparee => {
     const dx = x - b.minX;
     const dy = yJambes - b.minY;
     const yHanchesLocale = piece.lignesConstruction?.[0]?.[0]?.y ?? 18;
@@ -87,12 +85,12 @@ export function preparerPatronCote(mesures: MesuresPatronCote, options: OptionsP
       hauteur: b.hauteur,
       centreX: x + b.largeur / 2,
       yHanches: yHanchesLocale + dy,
-      basValeur: fmt(bas)
+      basValeur: fmt(bas, lang)
     };
   };
 
-  const devant = placer(devantBrut, bDev, xJambes, 'DEVANT', analyse.devant.largeurBasCm);
-  const dos = placer(dosBrut, bDos, xJambes + bDev.largeur + ecart, 'DOS', analyse.dos.largeurBasCm);
+  const devant = placer(devantBrut, bDev, xJambes, t(lang, 'patronCote.devant'), analyse.devant.largeurBasCm);
+  const dos = placer(dosBrut, bDos, xJambes + bDev.largeur + ecart, t(lang, 'patronCote.dos'), analyse.dos.largeurBasCm);
   const ceinture = {
     x: xCeinture,
     y: yCeinture,
@@ -103,12 +101,12 @@ export function preparerPatronCote(mesures: MesuresPatronCote, options: OptionsP
   };
 
   const valeurs = {
-    ceinture: fmt(analyse.longueurCeintureCm),
-    ceintureHauteur: fmt(analyse.hauteurCeintureFinieCm),
-    taille: fmt(mesures.tourTailleCm),
-    hanches: fmt(mesures.tourHanchesCm),
-    fourche: fmt(mesures.hauteurFourcheCm),
-    longueur: fmt(mesures.longueurPantalonCm),
+    ceinture: fmt(analyse.longueurCeintureCm, lang),
+    ceintureHauteur: fmt(analyse.hauteurCeintureFinieCm, lang),
+    taille: fmt(mesures.tourTailleCm, lang),
+    hanches: fmt(mesures.tourHanchesCm, lang),
+    fourche: fmt(mesures.hauteurFourcheCm, lang),
+    longueur: fmt(mesures.longueurPantalonCm, lang),
     basDevant: devant.basValeur,
     basDos: dos.basValeur
   };
@@ -125,7 +123,7 @@ export function preparerPatronCote(mesures: MesuresPatronCote, options: OptionsP
     hauteurJambes,
     yBasCotes,
     yLegende,
-    ariaLabel: `Patron du pantalon, brouillon à valider : devant, dos et ceinture. Taille ${valeurs.taille} centimètres, hanches ${valeurs.hanches} centimètres, fourche ${valeurs.fourche} centimètres, longueur ${valeurs.longueur} centimètres, ceinture ${valeurs.ceinture} centimètres sur ${valeurs.ceintureHauteur} centimètres.`
+    ariaLabel: t(lang, 'patronCote.ariaPantalon', { taille: valeurs.taille, hanches: valeurs.hanches, fourche: valeurs.fourche, longueur: valeurs.longueur, ceinture: valeurs.ceinture, ceintureHauteur: valeurs.ceintureHauteur })
   };
 }
 
@@ -147,16 +145,17 @@ export interface PatronGeneriquePrepare {
 export function preparerPatronGenerique(
   entree: EntreeModele,
   mesures: Record<string, number>,
-  options: OptionsModele = {}
+  options: OptionsModele = {},
+  lang: Lang = 'fr'
 ): PatronGeneriquePrepare {
   const { pieces, largeur, hauteur } = agencerPieces(entree.genererPieces(mesures, options));
-  const rendues = pieces.map(preparerPiece);
+  const rendues = pieces.map((piece) => preparerPiece(piece, lang));
   return {
     pieces: rendues,
     largeur: Math.ceil(largeur),
     hauteur: Math.ceil(hauteur),
-    titre: `Patron ${entree.titre.toLowerCase()} — brouillon à valider`,
-    ariaLabel: `Patron du modèle ${entree.titre}, brouillon à valider : ${rendues.map((p) => p.nom).join(', ')}.`
+    titre: t(lang, 'patronCote.titreGenerique', { modele: t(lang, entree.titreCle) }),
+    ariaLabel: t(lang, 'patronCote.ariaGenerique', { modele: t(lang, entree.titreCle), pieces: rendues.map((p) => p.nom).join(', ') })
   };
 }
 
@@ -174,7 +173,7 @@ export interface CartePatronPreparee {
  * dessin spécialisé historique ; les autres modèles passent par la
  * cotation générique du registre.
  */
-export function preparerCartePatron(entree: EntreeModele, mesures: Record<string, number>, options: OptionsModele = {}): CartePatronPreparee {
+export function preparerCartePatron(entree: EntreeModele, mesures: Record<string, number>, options: OptionsModele = {}, lang: Lang = 'fr'): CartePatronPreparee {
   switch (entree.id) {
     case 'pantalon_large': {
       const m: MesuresPatronCote = {
@@ -183,17 +182,17 @@ export function preparerCartePatron(entree: EntreeModele, mesures: Record<string
         hauteurFourcheCm: mesures['hauteur_fourche_cm']!,
         longueurPantalonCm: mesures['longueur_pantalon_cm']!
       };
-      const prepare = preparerPatronCote(m, options as OptionsPantalonLarge);
+      const prepare = preparerPatronCote(m, options as OptionsPantalonLarge, lang);
       return {
         mesuresPantalon: m,
         generique: null,
         lignes: [
-          { libelle: 'Ceinture', valeur: `${prepare.valeurs.ceinture} cm × ${prepare.valeurs.ceintureHauteur} cm` },
-          { libelle: 'Taille', valeur: `${prepare.valeurs.taille} cm` },
-          { libelle: 'Hanches', valeur: `${prepare.valeurs.hanches} cm` },
-          { libelle: 'Fourche', valeur: `${prepare.valeurs.fourche} cm` },
-          { libelle: 'Longueur', valeur: `${prepare.valeurs.longueur} cm` },
-          { libelle: 'Bas', valeur: `${prepare.valeurs.basDevant} cm` }
+          { libelle: t(lang, 'patronCote.ceinture'), valeur: `${prepare.valeurs.ceinture} cm × ${prepare.valeurs.ceintureHauteur} cm` },
+          { libelle: t(lang, 'cote.taille'), valeur: `${prepare.valeurs.taille} cm` },
+          { libelle: t(lang, 'cote.hanches'), valeur: `${prepare.valeurs.hanches} cm` },
+          { libelle: t(lang, 'cote.fourche'), valeur: `${prepare.valeurs.fourche} cm` },
+          { libelle: t(lang, 'cote.longueur'), valeur: `${prepare.valeurs.longueur} cm` },
+          { libelle: t(lang, 'cote.bas'), valeur: `${prepare.valeurs.basDevant} cm` }
         ]
       };
     }
@@ -201,8 +200,8 @@ export function preparerCartePatron(entree: EntreeModele, mesures: Record<string
     case 'robe_fourreau':
       return {
         mesuresPantalon: null,
-        generique: preparerPatronGenerique(entree, mesures, options),
-        lignes: resumeMesures(entree, mesures).map((x) => ({ libelle: x.libelle, valeur: `${String(x.valeur).replace('.', ',')} cm` }))
+        generique: preparerPatronGenerique(entree, mesures, options, lang),
+        lignes: resumeMesures(entree, mesures).map((x) => ({ libelle: t(lang, x.libelleCle), valeur: `${formatCm(lang, x.valeur)} cm` }))
       };
     default:
       return assertJamais(entree.id, 'preparerCartePatron');

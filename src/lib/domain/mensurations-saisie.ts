@@ -1,3 +1,5 @@
+import { MessageError, type TranslationKey } from '../i18n';
+
 /**
  * Saisie manuelle des mensurations par la couturière (en centimètres).
  * Ce fichier ne contient aucune formule de patron : uniquement une liste de
@@ -6,27 +8,27 @@
  */
 export interface DefinitionMensuration {
   code: string;
-  libelle: string;
+  libelleCle: TranslationKey;
   minCm: number;
   maxCm: number;
 }
 
 export const DEFINITIONS_MENSURATIONS: readonly DefinitionMensuration[] = [
-  { code: 'tour_poitrine_cm', libelle: 'Tour de poitrine (cm)', minCm: 50, maxCm: 200 },
-  { code: 'tour_taille_cm', libelle: 'Tour de taille (cm)', minCm: 40, maxCm: 200 },
-  { code: 'tour_hanches_cm', libelle: 'Tour de hanches (cm)', minCm: 50, maxCm: 220 },
-  { code: 'longueur_dos_cm', libelle: 'Longueur dos (cm)', minCm: 20, maxCm: 80 },
-  { code: 'largeur_epaules_cm', libelle: 'Largeur d’épaules (cm)', minCm: 25, maxCm: 70 },
-  { code: 'longueur_manche_cm', libelle: 'Longueur de manche (cm)', minCm: 20, maxCm: 90 },
-  { code: 'longueur_jupe_cm', libelle: 'Longueur de jupe (cm)', minCm: 20, maxCm: 150 },
-  { code: 'longueur_robe_cm', libelle: 'Longueur de robe (cm)', minCm: 40, maxCm: 180 },
-  { code: 'hauteur_fourche_cm', libelle: 'Hauteur de fourche (cm)', minCm: 15, maxCm: 45 },
-  { code: 'longueur_pantalon_cm', libelle: 'Longueur de pantalon (cm)', minCm: 40, maxCm: 150 }
+  { code: 'tour_poitrine_cm', libelleCle: 'mesure.tour_poitrine_cm', minCm: 50, maxCm: 200 },
+  { code: 'tour_taille_cm', libelleCle: 'mesure.tour_taille_cm', minCm: 40, maxCm: 200 },
+  { code: 'tour_hanches_cm', libelleCle: 'mesure.tour_hanches_cm', minCm: 50, maxCm: 220 },
+  { code: 'longueur_dos_cm', libelleCle: 'mesure.longueur_dos_cm', minCm: 20, maxCm: 80 },
+  { code: 'largeur_epaules_cm', libelleCle: 'mesure.largeur_epaules_cm', minCm: 25, maxCm: 70 },
+  { code: 'longueur_manche_cm', libelleCle: 'mesure.longueur_manche_cm', minCm: 20, maxCm: 90 },
+  { code: 'longueur_jupe_cm', libelleCle: 'mesure.longueur_jupe_cm', minCm: 20, maxCm: 150 },
+  { code: 'longueur_robe_cm', libelleCle: 'mesure.longueur_robe_cm', minCm: 40, maxCm: 180 },
+  { code: 'hauteur_fourche_cm', libelleCle: 'mesure.hauteur_fourche_cm', minCm: 15, maxCm: 45 },
+  { code: 'longueur_pantalon_cm', libelleCle: 'mesure.longueur_pantalon_cm', minCm: 40, maxCm: 150 }
 ] as const;
 
 export function definitionMensuration(code: string): DefinitionMensuration {
   const def = DEFINITIONS_MENSURATIONS.find((d) => d.code === code);
-  if (!def) throw new Error(`Mensuration inconnue : « ${code} ».`);
+  if (!def) throw new MessageError('validation.mesurationInconnue', { code });
   return def;
 }
 
@@ -35,11 +37,11 @@ export function validerMensurationSaisie(code: string, brut: string): number {
   const def = definitionMensuration(code);
   const texte = brut.trim().replace(',', '.');
   if (!/^\d+(\.\d{1,2})?$/.test(texte)) {
-    throw new Error(`${def.libelle} : entrez un nombre en centimètres (ex. 82,5).`);
+    throw new MessageError('validation.mesureNombre', { min: def.minCm, max: def.maxCm }, def.libelleCle);
   }
   const valeur = Number(texte);
   if (!Number.isFinite(valeur) || valeur < def.minCm || valeur > def.maxCm) {
-    throw new Error(`${def.libelle} : valeur plausible entre ${def.minCm} et ${def.maxCm} cm.`);
+    throw new MessageError('validation.mesureBornes', { min: def.minCm, max: def.maxCm }, def.libelleCle);
   }
   return valeur;
 }

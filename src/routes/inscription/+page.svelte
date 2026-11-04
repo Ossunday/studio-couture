@@ -1,49 +1,52 @@
 <script lang="ts">
   import ChampTexte from '$lib/design/ChampTexte.svelte';
   import PanneauAuth from '$lib/design/PanneauAuth.svelte';
+  import { t, type TranslationKey } from '$lib/i18n';
   let { data, form } = $props();
+  const lang = $derived(data.lang);
+  const tr = (k: TranslationKey, p?: Record<string, string | number>) => t(lang, k, p);
 </script>
 
-<svelte:head><title>Studio Couture — Créer mon atelier</title></svelte:head>
+<svelte:head><title>{tr('auth.inscription.titrePage')}</title></svelte:head>
 
 {#if data.fermee}
   <main class="fermee">
-    <h1>Les inscriptions sont fermées.</h1>
-    <p>Vous avez déjà un compte ? <a href="/connexion">Se connecter</a> — ou <a href="/demo">essayer la démo guidée, sans compte</a>.</p>
+    <h1>{tr('auth.inscription.fermeeTitre')}</h1>
+    <p>{tr('auth.inscription.fermeeTexte')} <a href="/connexion">{tr('commun.seConnecter')}</a> — {tr('commun.ou')} <a href="/demo">{tr('auth.inscription.ouEssayer')}</a>.</p>
   </main>
 {:else}
-  <PanneauAuth>
-    <p class="deja">Déjà un compte ? <a href="/connexion">Se connecter</a></p>
+  <PanneauAuth {lang}>
+    <p class="deja">{tr('auth.inscription.deja')} <a href="/connexion">{tr('commun.seConnecter')}</a></p>
     <div class="titre">
-      <h1>Ouvrez votre atelier en 2 minutes</h1>
-      <p>Vos clientes et vos patrons restent privés, visibles seulement par votre équipe.</p>
+      <h1>{tr('auth.inscription.titre')}</h1>
+      <p>{tr('auth.inscription.texte')}</p>
     </div>
 
     {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
 
     <form method="post" class="grille-form">
-      <ChampTexte label="Nom de l’atelier" name="nom_atelier" requis placeholder="Atelier Awa" valeur={form?.nomAtelier ?? ''} minlength={2} maxlength={80} />
-      <ChampTexte label="Votre nom" name="nom" requis placeholder="Awa Diallo" autocomplete="name" valeur={form?.nom ?? ''} />
-      <ChampTexte label="Adresse e-mail" name="email" type="email" requis placeholder="awa@atelier.com" autocomplete="email" valeur={form?.email ?? ''} />
-      <ChampTexte label="Mot de passe" name="mot_de_passe" type="password" requis placeholder="12 caractères minimum" autocomplete="new-password" aide="Utilisez une phrase facile à retenir, longue de préférence." />
-      <ChampTexte label="Confirmez le mot de passe" name="mot_de_passe_confirmation" type="password" requis autocomplete="new-password" />
+      <ChampTexte label={tr('auth.nomAtelier')} name="nom_atelier" requis placeholder="Atelier Awa" valeur={form?.nomAtelier ?? ''} minlength={2} maxlength={80} />
+      <ChampTexte label={tr('auth.votreNom')} name="nom" requis placeholder="Awa Diallo" autocomplete="name" valeur={form?.nom ?? ''} />
+      <ChampTexte label={tr('auth.email')} name="email" type="email" requis placeholder="awa@atelier.com" autocomplete="email" valeur={form?.email ?? ''} />
+      <ChampTexte label={tr('auth.motDePasse')} name="mot_de_passe" type="password" requis placeholder={tr('auth.motDePassePlaceholder')} autocomplete="new-password" aide={tr('auth.motDePasseAide')} />
+      <ChampTexte label={tr('auth.confirmer')} name="mot_de_passe_confirmation" type="password" requis autocomplete="new-password" />
 
       <div class="consentement">
         <input id="consentement" name="consentement" type="checkbox" required />
-        <label for="consentement">Je m’engage à recueillir le consentement explicite de mes clientes avant toute photo ou mesure.</label>
+        <label for="consentement">{tr('auth.consentement')}</label>
       </div>
 
       <!-- Champ piège anti-robots : invisible et hors tabulation, à laisser vide. -->
       <div class="piege" aria-hidden="true">
-        <label for="site_web">Site web</label>
+        <label for="site_web">{tr('auth.siteWeb')}</label>
         <input id="site_web" name="site_web" type="text" tabindex="-1" autocomplete="off" />
       </div>
 
-      <button type="submit" class="plein">Créer mon atelier</button>
+      <button type="submit" class="plein">{tr('auth.inscription.bouton')}</button>
     </form>
 
-    <div class="separateur" aria-hidden="true"><span></span><span class="ou">ou</span><span></span></div>
-    <a class="bouton-demo" href="/demo">Essayer la démo guidée, sans compte</a>
+    <div class="separateur" aria-hidden="true"><span></span><span class="ou">{tr('commun.ou')}</span><span></span></div>
+    <a class="bouton-demo" href="/demo">{tr('commun.demoSansCompte')}</a>
   </PanneauAuth>
 {/if}
 

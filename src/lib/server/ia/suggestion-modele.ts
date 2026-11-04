@@ -62,11 +62,11 @@ export function validerSuggestionIa(brut: unknown): OptionsPantalonLarge {
     try {
       valeur = JSON.parse(texte);
     } catch {
-      throw new SuggestionInvalideError('Réponse de l’assistant illisible.');
+      throw new SuggestionInvalideError('suggestion_illisible');
     }
   }
   if (!valeur || typeof valeur !== 'object' || Array.isArray(valeur)) {
-    throw new SuggestionInvalideError('Réponse de l’assistant au mauvais format.');
+    throw new SuggestionInvalideError('suggestion_format_invalide');
   }
   const enregistrement = valeur as Record<string, unknown>;
   const options: OptionsPantalonLarge = {};
@@ -75,13 +75,13 @@ export function validerSuggestionIa(brut: unknown): OptionsPantalonLarge {
     const v = enregistrement[cle];
     if (v === undefined) continue;
     if (typeof v !== 'number' || !Number.isFinite(v)) {
-      throw new SuggestionInvalideError(`Option « ${LIBELLES_OPTIONS_IA[cle]} » non numérique.`);
+      throw new SuggestionInvalideError(`suggestion_option_non_numerique:${cle}`);
     }
     options[cle] = ramenerDansPlage(cle, v);
     trouvees += 1;
   }
   if (trouvees === 0) {
-    throw new SuggestionInvalideError('Aucune option reconnue dans la réponse de l’assistant.');
+    throw new SuggestionInvalideError('suggestion_aucune_option');
   }
   return options;
 }
@@ -93,7 +93,8 @@ export const SYSTEME_SUGGESTION = [
   '- "profondeurPliCm" : profondeur du pli devant, entre 0 (aucun pli marqué) et 8 (pli très marqué) ;',
   '- "hauteurCeintureFinieCm" : hauteur finie de la ceinture, entre 3 (fine) et 6 (haute).',
   'Réponds UNIQUEMENT par un objet JSON contenant une à trois de ces clés avec des nombres, sans texte autour, sans mesure de personne, sans cote de patron : le moteur calcule toutes les cotes lui-même.',
-  'Si la description ne dit rien d’une option, omets sa clé.'
+  'Si la description ne dit rien d’une option, omets sa clé.',
+  'La description peut être en français ou en anglais : comprends-la dans l’une ou l’autre langue.'
 ].join('\n');
 
 export function construirePromptUtilisateur(texteModele: string): string {

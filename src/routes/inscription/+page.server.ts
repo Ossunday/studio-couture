@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { MessageError, t, traduireErreur } from '$lib/i18n';
 import { SESSION_COOKIE, expirationSession, genererJetonSession, hacherJeton, optionsCookieSession } from '$lib/server/auth';
-import { MESSAGE_DOUBLON, inscriptionOuverte, inscrireAtelier, limiteurInscriptions, piegeRempli } from '$lib/server/inscription';
+import { inscriptionOuverte, inscrireAtelier, limiteurInscriptions, piegeRempli } from '$lib/server/inscription';
 import { getRepository } from '$lib/server/repository';
 
 /**
@@ -16,9 +17,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ request, cookies, getClientAddress }) => {
+  default: async ({ request, cookies, getClientAddress, locals }) => {
     if (!inscriptionOuverte()) {
-      return fail(403, { erreur: 'Les inscriptions sont fermées.', nomAtelier: '', nom: '', email: '' });
+      return fail(403, { erreur: t(locals.lang, 'validation.inscriptionsFermees'), nomAtelier: '', nom: '', email: '' });
     }
     const data = await request.formData();
     const brut = {
@@ -37,7 +38,7 @@ export const actions: Actions = {
 
     const ip = getClientAddress();
     if (!limiteurInscriptions.autoriser(ip)) {
-      return fail(429, { ...retour, erreur: 'Trop de créations depuis cette connexion. Réessayez dans une heure.' });
+      return fail(429, { ...retour, erreur: t(locals.lang, 'validation.tropCreations') });
     }
 
     const repo = getRepository();
@@ -45,13 +46,15 @@ export const actions: Actions = {
     try {
       compte = await inscrireAtelier(repo, brut);
     } catch (e) {
-      const message = e instanceof Error ? e.message : '';
-      // Seul le doublon est nommé ; tout le reste reste générique, sans fuite.
-      if (message === MESSAGE_DOUBLON) return fail(400, { ...retour, erreur: MESSAGE_DOUBLON });
-      if (message.startsWith('Nom de l’atelier') || message.startsWith('Votre nom') || message.startsWith('Adresse e-mail') || message.startsWith('Mot de passe') || message.startsWith('Les deux mots') || message.startsWith('Cochez')) {
-        return fail(400, { ...retour, erreur: message });
+      // Seul le doublon est nommé comme tel ; les autres MessageError portent
+      // leur propre clé de validation, tout le reste reste générique, sans fuite.
+      if (e instanceof MessageError && e.cle === 'validation.doublon') {
+        return fail(400, { ...retour, erreur: traduireErreur(locals.lang, e) });
       }
-      return fail(400, { ...retour, erreur: 'Création impossible. Réessayez.' });
+      if (e instanceof MessageError) {
+        return fail(400, { ...retour, erreur: traduireErreur(locals.lang, e) });
+      }
+      return fail(400, { ...retour, erreur: t(locals.lang, 'validation.creationImpossible') });
     }
 
     limiteurInscriptions.enregistrer(ip);

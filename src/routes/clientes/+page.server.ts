@@ -9,6 +9,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const clientes = await repo.listerClientes(u.atelierId, recherche);
   const resumes = await repo.resumerPatronsParCliente(u.atelierId);
   return {
+    lang: locals.lang,
     clientes: clientes.map((c) => ({
       id: c.id,
       nom: c.nom,

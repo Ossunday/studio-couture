@@ -50,8 +50,8 @@ describe('robe fourreau — géométrie brouillon (valeurs recalculées indépen
     const coteDevant = longueur(devant.couture.slice(iDev));
     const coteDos = longueur(dos.couture.slice(iDos));
     expect(Math.abs(coteDevant - coteDos)).toBeLessThanOrEqual(0.3);
-    const epauleDev = devant.cotes!.find((c) => c.libelle === 'Épaule')!;
-    const epauleDos = dos.cotes!.find((c) => c.libelle === 'Épaule')!;
+    const epauleDev = devant.cotes!.find((c) => c.libelleCle === 'cote.epaule')!;
+    const epauleDos = dos.cotes!.find((c) => c.libelleCle === 'cote.epaule')!;
     expect(Math.abs(epauleDev.valeurCm - epauleAttendue)).toBeLessThanOrEqual(0.15);
     expect(Math.abs(epauleDev.valeurCm - epauleDos.valeurCm)).toBeLessThanOrEqual(0.3);
     // Courbes échantillonnées : aucun coude (angle intérieur > 100°) sur encolure + emmanchure + côté.
@@ -69,13 +69,13 @@ describe('robe fourreau — géométrie brouillon (valeurs recalculées indépen
   it('moyenne : cotes recalculées depuis les mensurations brutes', () => {
     const m = JEUX['moyenne']!;
     const [devant] = genererPatronRobeFourreau(m) as [PieceBrouillon];
-    const cote = (libelle: string) => devant.cotes!.find((c) => c.libelle === libelle)!.valeurCm;
-    expect(cote('Poitrine')).toBeCloseTo((92 + 6) / 4, 5);
-    expect(cote('Taille')).toBeCloseTo((76 + 2) / 4, 5);
-    expect(cote('Hanches')).toBeCloseTo((100 + 4) / 4, 5);
-    expect(cote('Nuque-taille')).toBe(40);
-    expect(cote('Longueur robe')).toBe(100);
-    expect(cote('Encolure')).toBeGreaterThan(5);
+    const cote = (libelleCle: string) => devant.cotes!.find((c) => c.libelleCle === libelleCle)!.valeurCm;
+    expect(cote('cote.poitrine')).toBeCloseTo((92 + 6) / 4, 5);
+    expect(cote('cote.taille')).toBeCloseTo((76 + 2) / 4, 5);
+    expect(cote('cote.hanches')).toBeCloseTo((100 + 4) / 4, 5);
+    expect(cote('cote.nuqueTaille')).toBe(40);
+    expect(cote('cote.longueurRobe')).toBe(100);
+    expect(cote('cote.encolure')).toBeGreaterThan(5);
   });
 
   it('options : manche courte ajoute la pièce ×2, fente en V tracée sur le devant seul', () => {
@@ -84,7 +84,7 @@ describe('robe fourreau — géométrie brouillon (valeurs recalculées indépen
     expect(sans.map((p) => p.id)).toEqual(['devant', 'dos']);
     const avec = genererPatronRobeFourreau(m, { encolure: 'fendue_v', manches: 'manche_courte', fermetureDos: 'glissiere' });
     expect(avec.map((p) => p.id)).toEqual(['devant', 'dos', 'manche']);
-    expect(avec[2]!.nom).toContain('×2');
+    expect(avec[2]!.quantite).toBe(2); expect(avec[2]!.nomCle).toBe('piece.manche');
     expect(avec[0]!.traitsInterieurs!.length).toBeGreaterThan(sans[0]!.traitsInterieurs!.length);
   });
 
@@ -93,7 +93,7 @@ describe('robe fourreau — géométrie brouillon (valeurs recalculées indépen
       validerMesuresPatron('robe_fourreau', (code) =>
         ({ tour_poitrine_cm: '300', tour_taille_cm: '76', tour_hanches_cm: '100', longueur_dos_cm: '40', longueur_robe_cm: '100', largeur_epaules_cm: '38' })[code]
       )
-    ).toThrow(/tour de poitrine/i);
+    ).toThrow('validation.verifiezMesureNombre');
     expect(() => genererPatronRobeFourreau({ ...JEUX['moyenne']!, longueurRobeCm: 60 })).toThrow(/longueur de robe/);
     expect(() => genererPatronRobeFourreau({ ...JEUX['moyenne']!, tourHanchesCm: 50 })).toThrow(/tour de hanches/);
     expect(REGISTRE_MODELES.robe_fourreau.presets.map((p) => p.id)).toEqual(['petite', 'moyenne', 'forte']);

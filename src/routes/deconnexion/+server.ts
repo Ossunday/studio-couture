@@ -3,12 +3,13 @@ import type { RequestHandler } from './$types';
 import { SESSION_COOKIE, hacherJeton, verifierCsrf } from '$lib/server/auth';
 import { getRepository } from '$lib/server/repository';
 import { ENV_SESSION_SECRET } from '$lib/brand';
+import { t } from '$lib/i18n';
 
-export const POST: RequestHandler = async ({ cookies, request }) => {
+export const POST: RequestHandler = async ({ cookies, request, locals }) => {
   const jeton = cookies.get(SESSION_COOKIE);
   const data = await request.formData().catch(() => null);
   if (!verifierCsrf(jeton, data?.get('_csrf')?.toString() ?? null, process.env[ENV_SESSION_SECRET])) {
-    return new Response('Jeton CSRF invalide.', { status: 403 });
+    return new Response(t(locals.lang, 'erreur.csrf'), { status: 403 });
   }
   if (jeton) await getRepository().supprimerSession(hacherJeton(jeton));
   cookies.delete(SESSION_COOKIE, { path: '/' });

@@ -10,7 +10,7 @@ export function exigerConnexion(utilisatrice: UtilisatriceSession | undefined): 
 
 export function exigerAdmin(utilisatrice: UtilisatriceSession | undefined): UtilisatriceSession {
   const u = exigerConnexion(utilisatrice);
-  if (u.role !== 'admin') throw error(403, 'Réservé à l’administratrice de l’atelier.');
+  if (u.role !== 'admin') throw error(403, 'erreur.adminSeule');
   return u;
 }
 
@@ -21,6 +21,6 @@ export function exigerAdmin(utilisatrice: UtilisatriceSession | undefined): Util
  */
 export function assertCsrf(attendu: string | undefined, fourni: FormDataEntryValue | null): void {
   if (!attendu || !fourni || fourni.toString() !== attendu) {
-    throw error(403, 'Jeton CSRF invalide. Rechargez la page et réessayez.');
+    throw error(403, 'erreur.csrf');
   }
 }

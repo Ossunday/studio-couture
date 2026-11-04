@@ -1,4 +1,5 @@
-import type { PieceBrouillon, Point } from './brouillon';
+import { nomPiece, type PieceBrouillon, type Point } from './brouillon';
+import { t, type Lang } from '../i18n';
 
 /**
  * Export PDF 1:1 du patron brouillon, découpé en pages A4.
@@ -23,7 +24,7 @@ function textePdf(texte: string): string {
     });
 }
 
-function pagesPourPiece(piece: PieceBrouillon, titreModele: string, nomCliente: string): string[] {
+function pagesPourPiece(piece: PieceBrouillon, titreModele: string, nomCliente: string, lang: Lang): string[] {
   const xs = piece.coupe.map((p) => p.x);
   const ys = piece.coupe.map((p) => p.y);
   const minX = Math.min(...xs);
@@ -82,23 +83,24 @@ function pagesPourPiece(piece: PieceBrouillon, titreModele: string, nomCliente: 
         const tx = (cote.texte.x - decalageX) * PT_PAR_CM + MARGE;
         const ty = PAGE_H - ((cote.texte.y - decalageY) * PT_PAR_CM + MARGE);
         if (tx > MARGE && tx < PAGE_L - MARGE && ty > MARGE && ty < PAGE_H - MARGE) {
-          const etiquette = `${cote.libelle} ${cote.valeurCm.toFixed(1).replace('.', ',')} cm`;
+          const valeurPdf = lang === 'en' ? cote.valeurCm.toFixed(1) : cote.valeurCm.toFixed(1).replace('.', ',');
+          const etiquette = `${t(lang, cote.libelleCle)} ${valeurPdf} cm`;
           ops.push(`BT /F1 8 Tf ${(tx - etiquette.length * 2).toFixed(1)} ${ty.toFixed(1)} Td (${textePdf(etiquette)}) Tj ET`);
         }
       }
       ops.push('BT /F1 9 Tf 28 782 Td');
-      ops.push(`(${textePdf('Marge de couture incluse (1 cm, ourlet 2 cm)')}) Tj ET`);
+      ops.push(`(${textePdf(t(lang, 'pdf.marge'))}) Tj ET`);
       ops.push('Q');
       ops.push('BT /F1 13 Tf 28 818 Td');
-      ops.push(`(${textePdf(`${titreModele} — ${piece.nom} — ${nomCliente}`)}) Tj ET`);
+      ops.push(`(${textePdf(`${titreModele} — ${nomPiece(lang, piece)} — ${nomCliente}`)}) Tj ET`);
       ops.push('BT /F1 11 Tf 28 800 Td');
       ops.push(
-        `(${textePdf(`Colonne ${colonne + 1}/${colonnes}, ligne ${ligne + 1}/${lignes} — BROUILLON NON VALIDE`)}) Tj ET`
+        `(${textePdf(t(lang, 'pdf.colonneLigne', { colonne: colonne + 1, colonnes, ligne: ligne + 1, lignes }))}) Tj ET`
       );
       if (colonne === 0 && ligne === 0) {
         const c = 10 * PT_PAR_CM;
         ops.push(`28 ${PAGE_H - 90 - c} ${c} ${c} re S`);
-        ops.push(`BT /F1 11 Tf 28 ${PAGE_H - 80} Td (${textePdf('Carré de contrôle : 10 cm × 10 cm — vérifiez à la règle avant de couper')}) Tj ET`);
+        ops.push(`BT /F1 11 Tf 28 ${PAGE_H - 80} Td (${textePdf(t(lang, 'pdf.carreControle'))}) Tj ET`);
       }
       pages.push(ops.join('\n'));
     }
@@ -106,8 +108,8 @@ function pagesPourPiece(piece: PieceBrouillon, titreModele: string, nomCliente: 
   return pages;
 }
 
-export function genererPdfPatron(titreModele: string, nomCliente: string, pieces: PieceBrouillon[]): Buffer {
-  const contenus = pieces.flatMap((p) => pagesPourPiece(p, titreModele, nomCliente));
+export function genererPdfPatron(titreModele: string, nomCliente: string, pieces: PieceBrouillon[], lang: Lang = 'fr'): Buffer {
+  const contenus = pieces.flatMap((p) => pagesPourPiece(p, titreModele, nomCliente, lang));
   // Objets : 1=Catalog, 2=Pages, 3=Font, puis par page : flux, page.
   const objets = new Map<number, Buffer>();
   objets.set(3, Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>', 'latin1'));

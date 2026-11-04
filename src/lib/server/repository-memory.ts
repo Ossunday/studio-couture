@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Cliente, Consentement, Mensuration, PatronCliente, PhotoCliente } from '../domain/types';
 import type { CompteUtilisatrice, PhotoAvecDonnees, Repository, SessionTrouvee } from './repository';
+import { MessageError } from '$lib/i18n';
 
 /** Implémentation mémoire — tests unitaires et Playwright uniquement (aucune persistance). */
 export class RepositoryMemoire implements Repository {
@@ -19,7 +20,7 @@ export class RepositoryMemoire implements Repository {
   async creerAtelierEtAdmin(e: { nomAtelier: string; nom: string; identifiant: string; motDePasseHash: string }) {
     // Même contrainte d'unicité de l'identifiant que la base PostgreSQL.
     if (this.comptes.some((c) => c.identifiant === e.identifiant)) {
-      throw new Error('Cette adresse est déjà utilisée. Connectez-vous.');
+      throw new MessageError('validation.doublon');
     }
     const compte: CompteUtilisatrice = {
       id: randomUUID(),
@@ -193,7 +194,7 @@ export class RepositoryMemoire implements Repository {
 
   async creerPatron(atelierId: string, e: Parameters<Repository['creerPatron']>[1]) {
     const cliente = await this.trouverCliente(atelierId, e.clienteId);
-    if (!cliente) throw new Error('Cliente introuvable pour cet atelier.');
+    if (!cliente) throw new MessageError('erreur.clienteIntrouvable');
     const patron: PatronCliente = {
       id: randomUUID(),
       clienteId: e.clienteId,

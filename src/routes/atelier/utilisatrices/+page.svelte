@@ -1,23 +1,29 @@
 <script lang="ts">
+  import { t, type TranslationKey } from '$lib/i18n';
   let { data, form } = $props();
+
+  /** Clé pas encore dans fr.ts/en.ts : proposée dans le rapport du lot (clé=FR=EN). */
+  const txt = (k: string, params?: Record<string, string | number>) => t(data.lang, k as TranslationKey, params);
 </script>
 
+<svelte:head><title>{t(data.lang, 'equipe.titrePage')}</title></svelte:head>
+
 <main>
-  <h1>Équipe de l’atelier</h1>
-  <p>Réservé à l’administratrice : créer un compte couturière ou administratrice.</p>
+  <h1>{t(data.lang, 'equipe.titre')}</h1>
+  <p>{txt('equipe.adminTexte')}</p>
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
-  {#if form?.cree}<p role="status">Compte créé. La personne peut se connecter.</p>{/if}
+  {#if form?.cree}<p role="status">{txt('equipe.compteCree')}</p>{/if}
   <form method="post" class="grille">
     <input type="hidden" name="_csrf" value={data.csrfToken} />
-    <label>Nom <input name="nom" required autocomplete="name" /></label>
-    <label>Adresse e-mail ou numéro de téléphone <input name="identifiant" required autocomplete="username" /></label>
-    <label>Mot de passe (10 caractères minimum) <input name="mot_de_passe" type="password" required autocomplete="new-password" /></label>
-    <label>Rôle
+    <label>{t(data.lang, 'equipe.nom')} <input name="nom" required autocomplete="name" /></label>
+    <label>{t(data.lang, 'equipe.identifiant')} <input name="identifiant" required autocomplete="username" /></label>
+    <label>{txt('equipe.motDePasse10')} <input name="mot_de_passe" type="password" required autocomplete="new-password" /></label>
+    <label>{txt('equipe.role')}
       <select name="role">
-        <option value="couturiere">Couturière</option>
-        <option value="admin">Administratrice</option>
+        <option value="couturiere">{t(data.lang, 'profil.couturiere')}</option>
+        <option value="admin">{t(data.lang, 'profil.admin')}</option>
       </select>
     </label>
-    <button type="submit">Créer le compte</button>
+    <button type="submit">{t(data.lang, 'equipe.creer')}</button>
   </form>
 </main>

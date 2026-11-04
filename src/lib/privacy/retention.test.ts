@@ -12,9 +12,9 @@ describe('vie privée — règle n°8', () => {
     expect(estExpiree({ expireLe }, new Date('2026-10-07T00:00:00Z'))).toBe(false);
   });
   it('refuse absence de consentement et consentement révoqué', () => {
-    expect(() => assertConsentementPhoto(undefined)).toThrow(/requis/);
+    expect(() => assertConsentementPhoto(undefined)).toThrowError(expect.objectContaining({ cle: 'validation.consentementRequis' }));
     expect(() =>
       assertConsentementPhoto({ id: '1', clienteId: 'c', donneLe: new Date(), revoqueLe: new Date(), usageRenduIa: true, usageEntrainementIa: false })
-    ).toThrow(/révoqué/);
+    ).toThrowError(expect.objectContaining({ cle: 'validation.consentementRevoque' }));
   });
 });

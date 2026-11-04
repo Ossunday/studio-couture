@@ -248,26 +248,26 @@ function construireJambe(
     ]);
   }
   const cotes: CotePiece[] = [
-    { libelle: 'Taille', valeurCm: waistEff, de: { x: A.x, y: 10.5 }, a: { x: waistEff, y: 10.5 }, texte: { x: waistEff / 2, y: 10.5 } },
-    { libelle: 'Hanches', valeurCm: largeurHanches, de: { x: dos ? J.x * (partage.yHip / Math.max(1, yFork)) : 0, y: partage.yHip }, a: B2, texte: { x: B2.x / 2 - 1, y: partage.yHip - 1.8 } },
-    { libelle: 'Genou', valeurCm: largeurGenou, de: kneeInseam, a: kneeSide, texte: { x: (kneeInseam.x + kneeSide.x) / 2, y: partage.yGenou - 2.2 } },
-    { libelle: 'Bas', valeurCm: opts.largeurBasPieceCm, de: X2, a: X1, texte: { x: O.x, y: m.longueurPantalonCm - 2.2 } },
-    { libelle: 'Fourche', valeurCm: yFork, de: { x: A.x + 2.5, y: dos ? 0 : 0 }, a: { x: A.x + 2.5, y: yFork }, texte: { x: A.x + 11.5, y: yFork - 2.5 } },
-    { libelle: 'Côté', valeurCm: longueurCote, de: { x: B.x - 3, y: B.y }, a: { x: X1.x - 3, y: X1.y }, texte: { x: (B.x + X1.x) / 2 - 8, y: (B.y + X1.y) / 2 } },
-    { libelle: 'Entrejambe', valeurCm: longueurEntrejambe, de: { x: fork.x + 3, y: fork.y }, a: { x: X2.x + 3, y: X2.y }, texte: { x: O.x, y: (fork.y + X2.y) / 2 + 8 } }
+    { libelleCle: 'cote.taille', valeurCm: waistEff, de: { x: A.x, y: 10.5 }, a: { x: waistEff, y: 10.5 }, texte: { x: waistEff / 2, y: 10.5 } },
+    { libelleCle: 'cote.hanches', valeurCm: largeurHanches, de: { x: dos ? J.x * (partage.yHip / Math.max(1, yFork)) : 0, y: partage.yHip }, a: B2, texte: { x: B2.x / 2 - 1, y: partage.yHip - 1.8 } },
+    { libelleCle: 'cote.genou', valeurCm: largeurGenou, de: kneeInseam, a: kneeSide, texte: { x: (kneeInseam.x + kneeSide.x) / 2, y: partage.yGenou - 2.2 } },
+    { libelleCle: 'cote.bas', valeurCm: opts.largeurBasPieceCm, de: X2, a: X1, texte: { x: O.x, y: m.longueurPantalonCm - 2.2 } },
+    { libelleCle: 'cote.fourche', valeurCm: yFork, de: { x: A.x + 2.5, y: dos ? 0 : 0 }, a: { x: A.x + 2.5, y: yFork }, texte: { x: A.x + 11.5, y: yFork - 2.5 } },
+    { libelleCle: 'cote.cote', valeurCm: longueurCote, de: { x: B.x - 3, y: B.y }, a: { x: X1.x - 3, y: X1.y }, texte: { x: (B.x + X1.x) / 2 - 8, y: (B.y + X1.y) / 2 } },
+    { libelleCle: 'cote.entrejambe', valeurCm: longueurEntrejambe, de: { x: fork.x + 3, y: fork.y }, a: { x: X2.x + 3, y: X2.y }, texte: { x: O.x, y: (fork.y + X2.y) / 2 + 8 } }
   ];
   const mesuresPatron = [
-    { libelle: dos ? 'Taille (pince fermée)' : 'Taille (pli fermé)', valeurCm: waistEff },
-    { libelle: 'Hanches', valeurCm: largeurHanches },
-    { libelle: 'Genou', valeurCm: largeurGenou },
-    { libelle: 'Bas', valeurCm: opts.largeurBasPieceCm },
-    { libelle: 'Hauteur de fourche', valeurCm: yFork },
-    { libelle: 'Longueur de côté', valeurCm: longueurCote },
-    { libelle: 'Entrejambe', valeurCm: longueurEntrejambe }
-  ].map((mm) => ({ libelle: mm.libelle, valeurCm: Math.round(mm.valeurCm * 10) / 10 }));
+    { libelleCle: dos ? 'cote.taillePince' : 'cote.taillePli', valeurCm: waistEff },
+    { libelleCle: 'cote.hanches', valeurCm: largeurHanches },
+    { libelleCle: 'cote.genou', valeurCm: largeurGenou },
+    { libelleCle: 'cote.bas', valeurCm: opts.largeurBasPieceCm },
+    { libelleCle: 'cote.hauteurFourche', valeurCm: yFork },
+    { libelleCle: 'cote.longueurCote', valeurCm: longueurCote },
+    { libelleCle: 'cote.entrejambe', valeurCm: longueurEntrejambe }
+  ].map((mm) => ({ libelleCle: mm.libelleCle as CotePiece['libelleCle'], valeurCm: Math.round(mm.valeurCm * 10) / 10 }));
   const piece = construirePiece({
     id: dos ? 'dos' : 'devant',
-    nom: dos ? 'Dos (×2)' : 'Devant (×2)',
+    nomCle: dos ? 'piece.dos' : 'piece.devant', quantite: 2,
     couture,
     filDroit: { de: { x: xFil, y: 10 }, a: { x: xFil, y: m.longueurPantalonCm - 10 } },
     crans: [B2, kneeSide, B],
@@ -341,7 +341,7 @@ function construireAvecOptions(m: MesuresPantalonLarge, opts: OptionsResolues): 
   const hauteurCoupee = opts.hauteurCeintureFinieCm * 2;
   const ceinture = construirePiece({
     id: 'ceinture',
-    nom: 'Ceinture (×1)',
+    nomCle: 'piece.ceinture', quantite: 1,
     couture: [
       { x: 0, y: 0 },
       { x: longueurCeinture, y: 0 },
@@ -351,12 +351,12 @@ function construireAvecOptions(m: MesuresPantalonLarge, opts: OptionsResolues): 
     filDroit: { de: { x: 4, y: hauteurCoupee / 2 }, a: { x: longueurCeinture - 4, y: hauteurCoupee / 2 } },
     crans: [{ x: Ww / 2, y: 0 }, { x: Ww, y: 0 }],
     cotes: [
-      { libelle: 'Longueur ceinture', valeurCm: longueurCeinture, de: { x: 0, y: hauteurCoupee / 2 }, a: { x: longueurCeinture, y: hauteurCoupee / 2 }, texte: { x: longueurCeinture / 2, y: hauteurCoupee / 2 - 2 } },
-      { libelle: 'Hauteur finie', valeurCm: opts.hauteurCeintureFinieCm, de: { x: longueurCeinture - 3, y: 0 }, a: { x: longueurCeinture - 3, y: hauteurCoupee }, texte: { x: longueurCeinture - 16, y: hauteurCoupee / 2 + 3 } }
+      { libelleCle: 'cote.longueurCeinture', valeurCm: longueurCeinture, de: { x: 0, y: hauteurCoupee / 2 }, a: { x: longueurCeinture, y: hauteurCoupee / 2 }, texte: { x: longueurCeinture / 2, y: hauteurCoupee / 2 - 2 } },
+      { libelleCle: 'cote.hauteurFinie', valeurCm: opts.hauteurCeintureFinieCm, de: { x: longueurCeinture - 3, y: 0 }, a: { x: longueurCeinture - 3, y: hauteurCoupee }, texte: { x: longueurCeinture - 16, y: hauteurCoupee / 2 + 3 } }
     ],
     mesuresPatron: [
-      { libelle: 'Longueur de ceinture (avec recouvrement)', valeurCm: longueurCeinture },
-      { libelle: 'Hauteur finie (coupée ×2)', valeurCm: opts.hauteurCeintureFinieCm }
+      { libelleCle: 'cote.longueurCeintureRecouvrement', valeurCm: longueurCeinture },
+      { libelleCle: 'cote.hauteurFinieCoupee2', valeurCm: opts.hauteurCeintureFinieCm }
     ]
   });
   return {

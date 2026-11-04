@@ -5,21 +5,26 @@ import { DEFINITIONS_MENSURATIONS, validerMensurationSaisie } from '$lib/domain/
 import { preparerPiece } from '$lib/patterns/apercu-rendu';
 import { estModelePatron, genererPiecesPlacees } from '$lib/patterns/saisie-patron';
 import { preparerPatronGenerique, type PatronGeneriquePrepare } from '$lib/design/patron-cote';
-import { REGISTRE_MODELES, texteResumeMesures } from '$lib/patterns/registre';
+import { REGISTRE_MODELES } from '$lib/patterns/registre';
 import { couleurTissu } from '$lib/demo/tissus';
 import { assertConsentementPhoto, calculerExpiration } from '$lib/privacy/retention';
 import { chiffrer, clePhotoDepuisEnv, validerPhoto } from '$lib/server/crypto';
 import { assertCsrf, exigerConnexion } from '$lib/server/garde';
 import { parametresDepuisPatron } from '$lib/server/patron-cliente';
 import { getRepository } from '$lib/server/repository';
+import { formatCm, t, traduireErreur, MessageError, type TranslationKey } from '$lib/i18n';
 
 const ONGLETS = ['resume', 'mesures', 'photos', 'patrons'] as const;
 
+/** Clé pas encore dans fr.ts/en.ts : proposée dans le rapport du lot (clé=FR=EN). */
+const cle = (k: string) => k as TranslationKey;
+
 export const load: PageServerLoad = async ({ locals, params, url }) => {
+  const lang = locals.lang;
   const u = exigerConnexion(locals.utilisatrice);
   const repo = getRepository();
   const cliente = await repo.trouverCliente(u.atelierId, params.id);
-  if (!cliente) throw error(404, 'Cliente introuvable.');
+  if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
   const consentement = await repo.consentementActif(cliente.id);
   // Suppression automatique à échéance : purge opportuniste à chaque ouverture de fiche.
   await repo.purgerPhotosExpirees(new Date());
@@ -37,7 +42,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
       try {
         const placees = genererPiecesPlacees(p.modele as typeof entree.id, p.mesures, p.options);
         miniature = {
-          pieces: placees.pieces.map(preparerPiece),
+          pieces: placees.pieces.map((p) => preparerPiece(p, lang)),
           largeur: Math.ceil(placees.largeur),
           hauteur: Math.ceil(placees.hauteur)
         };
@@ -53,16 +58,21 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     return {
       id: p.id,
       modele: p.modele,
-      titreModele: entree ? entree.titre : 'Modèle indisponible',
+      titreModele: entree ? t(lang, entree.titreCle) : t(lang, 'modele.indisponible'),
       nom: p.nom,
       creeLe: p.createdAt.toISOString(),
       modifieLe: p.updatedAt.toISOString(),
       vignette,
-      mesuresResume: entree ? texteResumeMesures(entree, p.mesures) : '',
+      mesuresResume: entree
+        ? entree.mesures
+            .filter((m) => p.mesures[m.code] !== undefined)
+            .map((m) => `${t(lang, m.courtCle)} ${formatCm(lang, p.mesures[m.code]!)}`)
+            .join(' · ')
+        : '',
       mesuresTexte: entree
         ? entree.mesures
             .filter((m) => p.mesures[m.code] !== undefined)
-            .map((m) => `${m.libelle} : ${String(p.mesures[m.code]).replace('.', ',')} cm`)
+            .map((m) => `${t(lang, m.libelleCle)} : ${formatCm(lang, p.mesures[m.code]!)} ${t(lang, 'commun.cm')}`)
             .join(' · ')
         : '',
       tissuHex: couleurTissu(p.tissu.couleurId).hex,
@@ -73,6 +83,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   const ongletBrut = url.searchParams.get('onglet') ?? 'resume';
   const onglet = (ONGLETS as readonly string[]).includes(ongletBrut) ? ongletBrut : 'resume';
   return {
+    lang,
     cliente: { id: cliente.id, nom: cliente.nom, telephone: cliente.telephone ?? null, creeeLe: cliente.createdAt.toISOString() },
     prenom: cliente.nom.trim().split(/\s+/)[0] ?? cliente.nom,
     onglet,
@@ -89,7 +100,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
       : null,
     mensurations: DEFINITIONS_MENSURATIONS.map((d) => ({
       code: d.code,
-      libelle: d.libelle,
+      libelleCle: `mesure.${d.code}` as TranslationKey,
       minCm: d.minCm,
       maxCm: d.maxCm,
       valeurCm: valeurs.get(d.code) ?? null
@@ -101,43 +112,46 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
 export const actions: Actions = {
   consentement: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     const signature = String(data.get('signature_nom') ?? '').trim();
-    if (signature.length < 2) return fail(400, { erreur: 'Le nom signé de la cliente est requis pour le consentement photo.' });
-    if (data.get('accord_photo') !== 'on') return fail(400, { erreur: 'Cochez l’accord explicite de la cliente avant d’enregistrer le consentement.' });
+    if (signature.length < 2) return fail(400, { erreur: t(lang, cle('fiche.consentementNomRequis')) });
+    if (data.get('accord_photo') !== 'on') return fail(400, { erreur: t(lang, cle('fiche.consentementAccordRequis')) });
     await repo.donnerConsentement(cliente.id, signature, data.get('usage_rendu_ia') === 'on');
     return { consentementEnregistre: true };
   },
   revoquer: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     await repo.revoquerConsentement(cliente.id);
     return { consentementRevoque: true };
   },
   televerserPhoto: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     try {
       const consentement = await repo.consentementActif(cliente.id);
       assertConsentementPhoto(consentement);
       const fichier = data.get('photo');
-      if (!(fichier instanceof File) || fichier.size === 0) throw new Error('Choisissez une photo à envoyer.');
+      if (!(fichier instanceof File) || fichier.size === 0) throw new MessageError(cle('fiche.photoChoisir'));
       validerPhoto(fichier.type, fichier.size);
       const type = String(data.get('type_photo') ?? 'cliente_complete');
-      if (type !== 'modele' && type !== 'cliente_complete' && type !== 'tissu') throw new Error('Type de photo invalide.');
+      if (type !== 'modele' && type !== 'cliente_complete' && type !== 'tissu') throw new MessageError(cle('fiche.photoTypeInvalide'));
       const clair = Buffer.from(await fichier.arrayBuffer());
       const blob = chiffrer(clair, clePhotoDepuisEnv());
       const maintenant = new Date();
@@ -153,27 +167,29 @@ export const actions: Actions = {
         expireLe: calculerExpiration(maintenant)
       });
     } catch (e) {
-      return fail(400, { erreur: e instanceof Error ? e.message : 'Envoi de la photo impossible.' });
+      return fail(400, { erreur: traduireErreur(lang, e, cle('fiche.photoEnvoiImpossible')) });
     }
     return { photoAjoutee: true };
   },
   supprimerPhoto: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     await repo.supprimerPhoto(cliente.id, String(data.get('photo_id') ?? ''));
     return { photoSupprimee: true };
   },
   mensurations: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     try {
       let saisies = 0;
       for (const def of DEFINITIONS_MENSURATIONS) {
@@ -183,37 +199,39 @@ export const actions: Actions = {
         await repo.enregistrerMensuration({ clienteId: cliente.id, code: def.code, valeurCm, saisiePar: u.id });
         saisies++;
       }
-      if (saisies === 0) throw new Error('Entrez au moins une mensuration en centimètres.');
+      if (saisies === 0) throw new MessageError(cle('fiche.mesureAuMoinsUne'));
     } catch (e) {
-      return fail(400, { erreur: e instanceof Error ? e.message : 'Saisie des mensurations impossible.' });
+      return fail(400, { erreur: traduireErreur(lang, e, cle('fiche.mensurationsImpossible')) });
     }
     return { mensurationsEnregistrees: true };
   },
   supprimer: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
-    if (!peut(u.role, 'cliente.supprimer')) throw error(403, 'Seule l’administratrice peut supprimer une cliente.');
+    if (!peut(u.role, 'cliente.supprimer')) throw error(403, t(lang, 'erreur.adminSeule'));
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     if (data.get('confirme_suppression') !== 'on') {
-      return fail(400, { erreur: 'Cochez la confirmation avant de supprimer définitivement cette cliente.' });
+      return fail(400, { erreur: t(lang, cle('fiche.confirmerSuppressionRequis')) });
     }
     // Cascade : patrons, mensurations, photos et consentements partent avec la cliente.
     await getRepository().supprimerCliente(u.atelierId, params.id);
     throw redirect(303, '/clientes');
   },
   dupliquerPatron: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     const patron = await repo.trouverPatron(u.atelierId, String(data.get('patron_id') ?? ''));
-    if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
+    if (!patron || patron.clienteId !== cliente.id) throw error(404, t(lang, cle('erreur.patronIntrouvable')));
     await repo.creerPatron(u.atelierId, {
       clienteId: cliente.id,
       modele: patron.modele,
-      nom: `${patron.nom} (copie)`.slice(0, 80),
+      nom: `${patron.nom}${t(lang, cle('fiche.copieSuffixe'))}`.slice(0, 80),
       mesures: patron.mesures,
       options: patron.options,
       tissu: patron.tissu,
@@ -222,17 +240,18 @@ export const actions: Actions = {
     throw redirect(303, `/clientes/${cliente.id}?onglet=patrons&patron=duplique`);
   },
   renommerPatron: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     const patron = await repo.trouverPatron(u.atelierId, String(data.get('patron_id') ?? ''));
-    if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
+    if (!patron || patron.clienteId !== cliente.id) throw error(404, t(lang, cle('erreur.patronIntrouvable')));
     const nouveauNom = String(data.get('nouveau_nom') ?? '').trim().replace(/\s+/g, ' ');
     if (nouveauNom.length < 2 || nouveauNom.length > 80) {
-      return fail(400, { erreur: 'Vérifiez : le nom du patron doit faire entre 2 et 80 caractères.' });
+      return fail(400, { erreur: t(lang, 'validation.nomPatron') });
     }
     await repo.modifierPatron(u.atelierId, patron.id, {
       nom: nouveauNom,
@@ -243,16 +262,17 @@ export const actions: Actions = {
     throw redirect(303, `/clientes/${cliente.id}?onglet=patrons&patron=renomme`);
   },
   supprimerPatron: async ({ request, locals, params }) => {
+    const lang = locals.lang;
     const u = exigerConnexion(locals.utilisatrice);
     const data = await request.formData();
     assertCsrf(locals.csrfToken, data.get('_csrf'));
     const repo = getRepository();
     const cliente = await repo.trouverCliente(u.atelierId, params.id);
-    if (!cliente) throw error(404, 'Cliente introuvable.');
+    if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
     const patron = await repo.trouverPatron(u.atelierId, String(data.get('patron_id') ?? ''));
-    if (!patron || patron.clienteId !== cliente.id) throw error(404, 'Patron introuvable.');
+    if (!patron || patron.clienteId !== cliente.id) throw error(404, t(lang, cle('erreur.patronIntrouvable')));
     if (data.get('confirme_suppression_patron') !== 'on') {
-      return fail(400, { erreur: 'Cochez la confirmation avant de supprimer ce patron.' });
+      return fail(400, { erreur: t(lang, cle('fiche.confirmerSuppressionPatronRequis')) });
     }
     await repo.supprimerPatron(u.atelierId, patron.id);
     throw redirect(303, `/clientes/${cliente.id}?onglet=patrons&patron=supprime`);

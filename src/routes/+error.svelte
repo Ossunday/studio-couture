@@ -1,14 +1,18 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { BRAND_NAME } from '$lib/brand';
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
 
+  const lang = $derived<Lang>((page.data as { lang?: unknown }).lang === 'en' ? 'en' : 'fr');
+  const tr = (k: TranslationKey) => t(lang, k);
   const introuvable = $derived(page.status === 404);
-  const titre = $derived(introuvable ? 'Page introuvable' : 'Un problème est survenu');
-  const message = $derived(
-    introuvable
-      ? 'La page que vous cherchez n’existe pas ou a été déplacée. Vérifiez l’adresse, ou revenez à l’accueil.'
-      : 'Nous n’avons pas pu terminer cette demande. Vous pouvez revenir à l’accueil, puis réessayer dans un instant.'
-  );
+  // Le moteur et les gardes lèvent des clés (« erreur.csrf », « erreur.adminSeule »), jamais du texte.
+  const cleMessage = $derived.by<TranslationKey | null>(() => {
+    const brut = page.error?.message ?? '';
+    return /^[a-z]+(\.[a-zA-Z]+)+$/.test(brut) ? (brut as TranslationKey) : null;
+  });
+  const titre = $derived(tr(introuvable ? 'erreur.404.titre' : 'erreur.500.titre'));
+  const message = $derived(cleMessage ? tr(cleMessage) : tr(introuvable ? 'erreur.404.message' : 'erreur.500.message'));
 </script>
 
 <svelte:head><title>{BRAND_NAME} — {titre}</title></svelte:head>
@@ -16,11 +20,11 @@
 <main class="erreur-main">
   <section class="erreur-carte" aria-labelledby="titre-erreur">
     <p class="erreur-code" aria-hidden="true">{page.status}</p>
-    <p class="erreur-puce">{introuvable ? 'Adresse introuvable' : 'Demande interrompue'}</p>
+    <p class="erreur-puce">{tr(introuvable ? 'erreur.404.puce' : 'erreur.500.puce')}</p>
     <h1 id="titre-erreur">{titre}</h1>
     <p class="erreur-message">{message}</p>
     <p class="erreur-actions">
-      <a class="bouton bouton-action" href="/">Retour à l’accueil</a>
+      <a class="bouton bouton-action" href="/">{tr('commun.retourAccueil')}</a>
     </p>
   </section>
 </main>

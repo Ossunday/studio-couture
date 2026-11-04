@@ -177,7 +177,8 @@ function moitie(m: MesuresRobeFourreau, base: Base, dos: boolean, options: Optio
   const fermeture = Boolean(options.fermetureDos);
   return construirePiece({
     id: dos ? 'dos' : 'devant',
-    nom: dos ? `Dos (×2, ${fermeture ? 'fermeture milieu dos' : 'milieu dos'})` : 'Devant (×1 au pli)',
+    nomCle: dos ? 'piece.dos' : 'piece.devant', quantite: dos ? 2 : 1,
+    detailCle: dos ? (fermeture ? 'piece.detail.fermetureMilieuDos' : 'piece.detail.milieuDos') : 'piece.detail.auPli',
     couture,
     filDroit: { de: { x: base.quartHanches / 2, y: base.yPoitrine + 6 }, a: { x: base.quartHanches / 2, y: m.longueurRobeCm - 10 } },
     crans: [
@@ -200,26 +201,26 @@ function moitie(m: MesuresRobeFourreau, base: Base, dos: boolean, options: Optio
       ]
     ],
     cotes: [
-      { libelle: 'Poitrine', valeurCm: base.quartPoitrine, de: { x: 0, y: base.yPoitrine }, a: { x: base.quartPoitrine, y: base.yPoitrine }, texte: { x: base.quartPoitrine / 2, y: base.yPoitrine } },
-      { libelle: 'Taille', valeurCm: base.quartTaille, de: { x: 0, y: base.yTaille - 3.5 }, a: { x: base.quartTaille, y: base.yTaille - 3.5 }, texte: { x: base.quartTaille / 2, y: base.yTaille - 3.5 } },
-      { libelle: 'Hanches', valeurCm: base.quartHanches, de: { x: 0, y: base.yHanches }, a: { x: base.quartHanches, y: base.yHanches }, texte: { x: base.quartHanches / 2, y: base.yHanches } },
-      { libelle: 'Nuque-taille', valeurCm: m.longueurDosCm, de: { x: 2.2, y: 0 }, a: { x: 2.2, y: base.yTaille }, texte: { x: 2.2, y: base.yTaille / 2 } },
+      { libelleCle: 'cote.poitrine', valeurCm: base.quartPoitrine, de: { x: 0, y: base.yPoitrine }, a: { x: base.quartPoitrine, y: base.yPoitrine }, texte: { x: base.quartPoitrine / 2, y: base.yPoitrine } },
+      { libelleCle: 'cote.taille', valeurCm: base.quartTaille, de: { x: 0, y: base.yTaille - 3.5 }, a: { x: base.quartTaille, y: base.yTaille - 3.5 }, texte: { x: base.quartTaille / 2, y: base.yTaille - 3.5 } },
+      { libelleCle: 'cote.hanches', valeurCm: base.quartHanches, de: { x: 0, y: base.yHanches }, a: { x: base.quartHanches, y: base.yHanches }, texte: { x: base.quartHanches / 2, y: base.yHanches } },
+      { libelleCle: 'cote.nuqueTaille', valeurCm: m.longueurDosCm, de: { x: 2.2, y: 0 }, a: { x: 2.2, y: base.yTaille }, texte: { x: 2.2, y: base.yTaille / 2 } },
       {
-        libelle: 'Longueur robe',
+        libelleCle: 'cote.longueurRobe',
         valeurCm: m.longueurRobeCm,
         de: { x: base.largeurBas + 1.6, y: 0 },
         a: { x: base.largeurBas + 1.6, y: m.longueurRobeCm },
         texte: { x: base.largeurBas + 1.6, y: m.longueurRobeCm / 2 }
       },
       {
-        libelle: 'Épaule',
+        libelleCle: 'cote.epaule',
         valeurCm: Math.round(base.epaule.longueur * 10) / 10,
         de: base.epaule.de,
         a: base.epaule.a,
         texte: { x: (base.epaule.de.x + base.epaule.a.x) / 2, y: -1.2 }
       },
       {
-        libelle: 'Encolure',
+        libelleCle: 'cote.encolure',
         valeurCm: Math.round(longueurEncolure * 10) / 10,
         de: departEncolure,
         a: base.epaule.de,
@@ -227,13 +228,13 @@ function moitie(m: MesuresRobeFourreau, base: Base, dos: boolean, options: Optio
       }
     ],
     mesuresPatron: [
-      { libelle: 'Poitrine (quart)', valeurCm: base.quartPoitrine },
-      { libelle: 'Taille (quart, pince à résorber)', valeurCm: base.quartTaille },
-      { libelle: 'Hanches (quart)', valeurCm: base.quartHanches },
-      { libelle: 'Nuque-taille', valeurCm: m.longueurDosCm },
-      { libelle: 'Longueur de robe', valeurCm: m.longueurRobeCm },
-      { libelle: 'Épaule', valeurCm: Math.round(base.epaule.longueur * 10) / 10 },
-      { libelle: 'Encolure (demi)', valeurCm: Math.round(longueurEncolure * 10) / 10 }
+      { libelleCle: 'cote.poitrineQuart', valeurCm: base.quartPoitrine },
+      { libelleCle: 'cote.tailleQuartPince', valeurCm: base.quartTaille },
+      { libelleCle: 'cote.hanchesQuart', valeurCm: base.quartHanches },
+      { libelleCle: 'cote.nuqueTaille', valeurCm: m.longueurDosCm },
+      { libelleCle: 'cote.longueurDeRobe', valeurCm: m.longueurRobeCm },
+      { libelleCle: 'cote.epaule', valeurCm: Math.round(base.epaule.longueur * 10) / 10 },
+      { libelleCle: 'cote.encolureDemi', valeurCm: Math.round(longueurEncolure * 10) / 10 }
     ]
   });
 }
@@ -245,7 +246,7 @@ function mancheCourte(base: Base): PieceBrouillon {
   const cap = bezier({ x: 0, y: hauteurTete }, { x: demiLargeur * 0.25, y: 0 }, { x: demiLargeur * 0.75, y: 0 }, { x: demiLargeur, y: hauteurTete }, 12);
   return construirePiece({
     id: 'manche',
-    nom: 'Manche courte (×2)',
+    nomCle: 'piece.manche', quantite: 2,
     couture: [
       { x: 0, y: hauteurTete },
       ...cap,
@@ -256,14 +257,14 @@ function mancheCourte(base: Base): PieceBrouillon {
     crans: [{ x: demiLargeur / 2, y: 0.8 }],
     cotes: [
       {
-        libelle: 'Longueur manche',
+        libelleCle: 'cote.longueurManche',
         valeurCm: c.longueurMancheCourteCm,
         de: { x: demiLargeur - 3.4, y: hauteurTete },
         a: { x: demiLargeur - 3.4, y: hauteurTete + c.longueurMancheCourteCm },
         texte: { x: demiLargeur - 3.4, y: hauteurTete + c.longueurMancheCourteCm / 2 }
       },
       {
-        libelle: 'Largeur manche',
+        libelleCle: 'cote.largeurManche',
         valeurCm: demiLargeur,
         de: { x: 0, y: hauteurTete + c.longueurMancheCourteCm },
         a: { x: demiLargeur - 1.5, y: hauteurTete + c.longueurMancheCourteCm },
@@ -271,8 +272,8 @@ function mancheCourte(base: Base): PieceBrouillon {
       }
     ],
     mesuresPatron: [
-      { libelle: 'Longueur de manche finie', valeurCm: c.longueurMancheCourteCm },
-      { libelle: 'Demi-largeur de manche', valeurCm: demiLargeur }
+      { libelleCle: 'cote.longueurMancheFinie', valeurCm: c.longueurMancheCourteCm },
+      { libelleCle: 'cote.demiLargeurManche', valeurCm: demiLargeur }
     ]
   });
 }

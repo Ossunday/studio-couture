@@ -7,19 +7,28 @@
   import '@fontsource/manrope/800.css';
   import { page } from '$app/state';
   import { BRAND_NAME } from '$lib/brand';
+  import Avatar from '$lib/design/Avatar.svelte';
+  import BoutonLangue from '$lib/design/BoutonLangue.svelte';
   import Rail from '$lib/design/Rail.svelte';
+  import { t, type TranslationKey } from '$lib/i18n';
   let { children, data } = $props();
+  const lang = $derived(data.lang);
+  const tr = (k: TranslationKey, p?: Record<string, string | number>) => t(lang, k, p);
   // L'accueil public porte son propre en-tête bleu nuit et son pied (maquette Accueil).
   const estAccueil = $derived(page.url.pathname === '/');
 </script>
 
 {#if data.utilisatrice}
   <div class="coque">
-    <Rail nom={data.utilisatrice.nom} role={data.utilisatrice.role} csrfToken={data.csrfToken} />
+    <Rail nom={data.utilisatrice.nom} role={data.utilisatrice.role} csrfToken={data.csrfToken} {lang} />
     <div class="contenu">
+      <div class="barre-haut">
+        <BoutonLangue {lang} csrfToken={data.csrfLangue} />
+        <Avatar nom={data.utilisatrice.nom} taille={42} />
+      </div>
       {@render children()}
       <footer>
-        <p>{BRAND_NAME} — Patron brouillon à valider par un maître tailleur. Photos clientes (espace atelier) : consentement explicite, chiffrées, supprimées automatiquement après 7 jours, jamais utilisées pour l’entraînement.</p>
+        <p>{tr('commun.pied')}</p>
       </footer>
     </div>
   </div>
@@ -29,16 +38,17 @@
   <header class="entete-public">
     <div class="barre-publique">
       <p class="marque"><a href="/">{BRAND_NAME}</a></p>
-      <nav aria-label="Public">
-        <a href="/demo">Démo guidée</a>
-        <a href="/inscription">Créer mon atelier</a>
-        <a class="bouton bouton-petit" href="/connexion">Espace atelier</a>
+      <nav aria-label={tr('nav.public')}>
+        <a href="/demo">{tr('commun.demoGuidee')}</a>
+        <a href="/inscription">{tr('commun.creerAtelier')}</a>
+        <a class="bouton bouton-petit" href="/connexion">{tr('commun.espaceAtelier')}</a>
+        <BoutonLangue {lang} csrfToken={data.csrfLangue} />
       </nav>
     </div>
   </header>
   {@render children()}
   <footer class="pied-public">
-    <p>{BRAND_NAME} — Patron brouillon à valider par un maître tailleur. Photos clientes (espace atelier) : consentement explicite, chiffrées, supprimées automatiquement après 7 jours, jamais utilisées pour l’entraînement.</p>
+    <p>{tr('commun.pied')}</p>
   </footer>
 {/if}
 
@@ -48,6 +58,8 @@
 
   /* --- Coque connectée : Rail à gauche (bureau) / barre basse (mobile) --- */
   .contenu { padding-bottom: 92px; }
+  /* Pastille de langue en haut à droite, à côté de l'avatar (tableau de bord et écrans connectés). */
+  .barre-haut { max-width: 1120px; margin: 0 auto; padding: 16px 16px 0; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
   .contenu footer { max-width: 1120px; margin: 0 auto; padding: 12px 16px 24px; font-size: 15px; color: var(--texte-secondaire); }
   @media (min-width: 1024px) {
     .contenu { margin-left: 108px; padding-bottom: 0; }

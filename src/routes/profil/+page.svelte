@@ -2,16 +2,21 @@
   import Avatar from '$lib/design/Avatar.svelte';
   import Carte from '$lib/design/Carte.svelte';
   import Puce from '$lib/design/Puce.svelte';
+  import { t, type TranslationKey } from '$lib/i18n';
   let { data } = $props();
+  const lang = $derived(data.lang);
+  const tr = (k: TranslationKey, p?: Record<string, string | number>) => t(lang, k, p);
 
-  const roleLibelle = $derived(data.role === 'admin' ? 'Administratrice de l’atelier' : 'Couturière');
+  const roleLibelle = $derived(data.role === 'admin' ? tr('profil.admin') : tr('profil.couturiere'));
 </script>
+
+<svelte:head><title>{tr('profil.titrePage')}</title></svelte:head>
 
 <main class="profil">
   <div class="profil-entete">
-    <p class="sur-titre">Mon compte</p>
-    <h1>Profil</h1>
-    <p>Vos informations de connexion à l’atelier.</p>
+    <p class="sur-titre">{tr('profil.surtitre')}</p>
+    <h1>{tr('profil.titre')}</h1>
+    <p>{tr('profil.texte')}</p>
   </div>
 
   <Carte>
@@ -24,13 +29,13 @@
     </div>
 
     {#if data.role === 'admin'}
-      <p class="action-equipe"><a class="bouton bouton-secondaire" href="/atelier/utilisatrices">Gérer l’équipe de l’atelier</a></p>
+      <p class="action-equipe"><a class="bouton bouton-secondaire" href="/atelier/utilisatrices">{tr('profil.gererEquipe')}</a></p>
     {/if}
 
     <hr class="separateur" />
     <form method="post" action="/deconnexion">
       <input type="hidden" name="_csrf" value={data.csrfToken} />
-      <button type="submit" class="bouton-secondaire">Se déconnecter</button>
+      <button type="submit" class="bouton-secondaire">{tr('commun.seDeconnecter')}</button>
     </form>
   </Carte>
 </main>

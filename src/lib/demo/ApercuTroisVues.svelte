@@ -1,14 +1,17 @@
 <script lang="ts">
   import { LIBELLES_VUES, composerPlanche, telechargerPlanche, type VuesApercu } from './planche';
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
 
   let {
     vues,
     mesuresTexte,
     tissuTexte,
-    afficherPlanche = false
-  }: { vues: VuesApercu; mesuresTexte: string; tissuTexte: string; afficherPlanche?: boolean } = $props();
+    afficherPlanche = false,
+    lang = 'fr'
+  }: { vues: VuesApercu; mesuresTexte: string; tissuTexte: string; afficherPlanche?: boolean; lang?: Lang } = $props();
 
-  const entrees = $derived(LIBELLES_VUES.map((v) => ({ ...v, src: vues[v.cle] })));
+  const cle = (k: string) => k as TranslationKey;
+  const entrees = $derived(LIBELLES_VUES.map((v) => ({ ...v, src: vues[v.cle], libelle: t(lang, v.libelleCle as TranslationKey) })));
   let dialogue = $state<HTMLDialogElement | null>(null);
   let indexOuvert = $state(0);
   let plancheUrl = $state('');
@@ -16,7 +19,7 @@
   $effect(() => {
     if (!afficherPlanche) return;
     let annule = false;
-    composerPlanche(vues, mesuresTexte, tissuTexte)
+    composerPlanche(vues, mesuresTexte, tissuTexte, lang)
       .then((url) => { if (!annule) plancheUrl = url; })
       .catch(() => { if (!annule) plancheUrl = ''; });
     return () => { annule = true; };
@@ -36,31 +39,31 @@
   }
 </script>
 
-<section class="apercu-3" aria-label="Aperçu en 3 images">
-  <h3>Aperçu en 3 images</h3>
+<section class="apercu-3" aria-label={t(lang, cle('troisVues.titre'))}>
+  <h3>{t(lang, cle('troisVues.titre'))}</h3>
   {#if afficherPlanche && plancheUrl}
-    <img class="planche" src={plancheUrl} alt="Planche de l’aperçu : pantalon large vu de face, en perspective et de dos" />
+    <img class="planche" src={plancheUrl} alt={t(lang, cle('troisVues.altPlanche'))} />
   {:else}
     <div class="vignettes">
       {#each entrees as vue, i}
-        <button type="button" class="vignette" onclick={() => ouvrir(i)} aria-label="Agrandir la vue {vue.libelle}">
-          <img src={vue.src} alt="Pantalon large, vue {vue.libelle.toLowerCase()}" data-vue={vue.cle} />
+        <button type="button" class="vignette" onclick={() => ouvrir(i)} aria-label={t(lang, 'troisVues.agrandir', { vue: vue.libelle })}>
+          <img src={vue.src} alt={t(lang, 'troisVues.alt', { vue: vue.libelle.toLowerCase() })} data-vue={vue.cle} />
           <span>{vue.libelle}</span>
         </button>
       {/each}
     </div>
   {/if}
-  <p><button type="button" class="bouton bouton-action" onclick={() => telechargerPlanche(vues, mesuresTexte, tissuTexte)}>Télécharger l’aperçu (PNG)</button></p>
+  <p><button type="button" class="bouton bouton-action" onclick={() => telechargerPlanche(vues, mesuresTexte, tissuTexte, lang)}>{t(lang, 'troisVues.telecharger')}</button></p>
 
-  <dialog bind:this={dialogue} class="dialogue-vue" aria-label="Vue agrandie de l’aperçu" onkeydown={touches}>
+  <dialog bind:this={dialogue} class="dialogue-vue" aria-label={t(lang, cle('troisVues.vueAgrandie'))} onkeydown={touches}>
     <div class="dialogue-entete">
       <h3 id="titre-vue-agrandie">{entrees[indexOuvert]?.libelle}</h3>
-      <button type="button" onclick={() => dialogue?.close()} aria-label="Fermer la vue agrandie">✕</button>
+      <button type="button" onclick={() => dialogue?.close()} aria-label={t(lang, 'troisVues.fermer')}>✕</button>
     </div>
-    <img src={entrees[indexOuvert]?.src} alt="Pantalon large, vue {entrees[indexOuvert]?.libelle.toLowerCase()} agrandie" />
+    <img src={entrees[indexOuvert]?.src} alt={t(lang, 'troisVues.altAgrandie', { vue: (entrees[indexOuvert]?.libelle ?? '').toLowerCase() })} />
     <div class="dialogue-nav">
-      <button type="button" onclick={() => naviguer(-1)} aria-label="Vue précédente">← Précédente</button>
-      <button type="button" onclick={() => naviguer(1)} aria-label="Vue suivante">Suivante →</button>
+      <button type="button" onclick={() => naviguer(-1)} aria-label={t(lang, 'troisVues.precedent')}>← {t(lang, 'troisVues.precedent')}</button>
+      <button type="button" onclick={() => naviguer(1)} aria-label={t(lang, 'troisVues.suivant')}>{t(lang, 'troisVues.suivant')} →</button>
     </div>
   </dialog>
 </section>

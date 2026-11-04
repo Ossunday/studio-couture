@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { agencerPieces, boite, boiteEtiquetteCote } from '../brouillon';
+import { t } from '../../i18n';
 import { analyserPantalonLarge, genererPatronPantalonLarge } from './geometry';
 
 const fmt = (v: number) => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
@@ -25,8 +26,8 @@ describe('aperçu — containment des étiquettes de cote (correction visuelle)'
     for (const p of pieces) {
       const b = boite(p);
       for (const cote of p.cotes ?? []) {
-        const fond = boiteEtiquetteCote(cote.texte.x + p.dx, cote.texte.y + p.dy, cote.libelle, fmt(cote.valeurCm));
-        const ou = `${jeu.nom}/${p.id}/${cote.libelle}`;
+        const fond = boiteEtiquetteCote(cote.texte.x + p.dx, cote.texte.y + p.dy, t('fr', cote.libelleCle), fmt(cote.valeurCm));
+        const ou = `${jeu.nom}/${p.id}/${cote.libelleCle}`;
         expect(fond.x1, ou).toBeGreaterThanOrEqual(MARGE_MIN);
         expect(fond.y1, ou).toBeGreaterThanOrEqual(MARGE_MIN);
         expect(fond.x2, ou).toBeLessThanOrEqual(largeur - MARGE_MIN);
@@ -90,7 +91,7 @@ describe('étiquettes de cote : aucun recouvrement, Hanches loin des crans et de
   it.each(JEUX)('jeu $nom : étiquettes deux à deux disjointes', (jeu) => {
     const { pieces } = agencerPieces(genererPatronPantalonLarge({ ...jeu }));
     const fonds = pieces.flatMap((p) =>
-      (p.cotes ?? []).map((c) => ({ piece: p.id, libelle: c.libelle, boite: boiteEtiquetteCote(c.texte.x + p.dx, c.texte.y + p.dy, c.libelle, fmt(c.valeurCm)) }))
+      (p.cotes ?? []).map((c) => ({ piece: p.id, libelle: c.libelleCle, boite: boiteEtiquetteCote(c.texte.x + p.dx, c.texte.y + p.dy, t('fr', c.libelleCle), fmt(c.valeurCm)) }))
     );
     for (let i = 0; i < fonds.length; i++)
       for (let j = i + 1; j < fonds.length; j++) {
@@ -104,8 +105,8 @@ describe('étiquettes de cote : aucun recouvrement, Hanches loin des crans et de
   it.each(JEUX)('jeu $nom : « Hanches » ne touche ni cran (carré ±1 cm) ni bord de coupe de sa pièce', (jeu) => {
     const { pieces } = agencerPieces(genererPatronPantalonLarge({ ...jeu }));
     for (const p of pieces.slice(0, 2)) {
-      const cote = p.cotes!.find((c) => c.libelle === 'Hanches')!;
-      const fond = boiteEtiquetteCote(cote.texte.x + p.dx, cote.texte.y + p.dy, cote.libelle, fmt(cote.valeurCm));
+      const cote = p.cotes!.find((c) => c.libelleCle === 'cote.hanches')!;
+      const fond = boiteEtiquetteCote(cote.texte.x + p.dx, cote.texte.y + p.dy, t('fr', cote.libelleCle), fmt(cote.valeurCm));
       for (const cran of p.crans) {
         const cx = cran.x + p.dx;
         const cy = cran.y + p.dy;
@@ -193,11 +194,11 @@ describe('pantalon large — vérifications géométriques (le vrai test)', () =
       expect(piece.mesuresPatron?.length ?? 0).toBeGreaterThanOrEqual(2);
     }
     const devant = genererPatronPantalonLarge({ ...JEUX[1] })[0]!;
-    expect(devant.cotes!.map((c) => c.libelle)).toEqual(
-      expect.arrayContaining(['Taille', 'Hanches', 'Genou', 'Bas', 'Fourche', 'Côté', 'Entrejambe'])
+    expect(devant.cotes!.map((c) => c.libelleCle)).toEqual(
+      expect.arrayContaining(['cote.taille', 'cote.hanches', 'cote.genou', 'cote.bas', 'cote.fourche', 'cote.cote', 'cote.entrejambe'])
     );
-    expect(devant.mesuresPatron!.map((c) => c.libelle)).toEqual(
-      expect.arrayContaining(['Hauteur de fourche', 'Longueur de côté', 'Entrejambe'])
+    expect(devant.mesuresPatron!.map((c) => c.libelleCle)).toEqual(
+      expect.arrayContaining(['cote.hauteurFourche', 'cote.longueurCote', 'cote.entrejambe'])
     );
   });
 });

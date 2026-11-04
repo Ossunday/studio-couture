@@ -1,25 +1,29 @@
 <script lang="ts">
+  import { t, formatCm, type Lang, type TranslationKey } from '$lib/i18n';
   let { data } = $props();
+  const lang: Lang = $derived(data.lang ?? 'fr');
+  const cle = (k: string) => k as TranslationKey;
 </script>
 
+<svelte:head><title>{t(lang, 'patron.apercu.titrePage')}</title></svelte:head>
+
 <main>
-  <p><a href={data.hrefMesures}>← Refaire les mesures</a></p>
-  <h1>{data.titre} — {data.nom}</h1>
+  <p><a href={data.hrefMesures}>← {t(lang, cle('patron.apercu.refaire'))}</a></p>
+  <h1>{t(lang, 'patron.apercu.titre', { modele: data.titre })} — {data.nom}</h1>
 
   <section class="alerte" role="alert">
-    <strong>Brouillon non validé.</strong>
-    Ces formules sont marquées « à valider » : un maître tailleur ne les a pas encore confirmées.
-    Essayez d’abord sur un tissu peu coûteux, ne coupez pas un tissu précieux avec ce brouillon.
+    <strong>{t(lang, 'commun.brouillonNonValide')}.</strong>
+    {t(lang, 'patron.apercu.banniere')}
   </section>
 
   <p class="mesures-resume">
-    {#each data.mesures as m, i}{#if i > 0}<span aria-hidden="true">{' · '}</span>{/if}<span>{m.libelle} : {m.valeur} cm</span>{/each}
+    {#each data.mesures as m, i}{#if i > 0}<span aria-hidden="true">{' · '}</span>{/if}<span>{m.libelle} : {formatCm(lang, m.valeur)} {t(lang, 'commun.cm')}</span>{/each}
   </p>
 
   <div class="patron-defilant">
     <div class="patron-cadre">
-  <svg viewBox="0 0 {data.largeur} {data.hauteur}" role="img" aria-label="Aperçu du patron brouillon {data.titre} pour {data.nom} : devant, dos et ceinture, avec marges de couture et cotes" class="patron">
-    <title>Aperçu du patron brouillon {data.titre} pour {data.nom}</title>
+  <svg viewBox="0 0 {data.largeur} {data.hauteur}" role="img" aria-label={t(lang, cle('patron.apercu.aria'), { modele: data.titre, nom: data.nom })} class="patron">
+    <title>{t(lang, cle('patron.apercu.aria'), { modele: data.titre, nom: data.nom })}</title>
     {#each data.pieces as piece}
       <polygon points={piece.coupe} fill="#fffdf8" stroke="#1e1a17" stroke-width="0.35" />
       <polygon points={piece.couture} fill="none" stroke="#b5532f" stroke-width="0.25" stroke-dasharray="1.2 0.8" />
@@ -37,12 +41,12 @@
         <g class="cote">
           <line x1={cote.x1} y1={cote.y1} x2={cote.x2} y2={cote.y2} stroke="#2f6b4f" stroke-width="0.22" marker-start="url(#fleche-cote)" marker-end="url(#fleche-cote)" />
           <rect x={cote.fondX} y={cote.fondY} width={cote.fondLargeur} height={cote.fondHauteur} fill="#ffffff" opacity="0.92" />
-          <text x={cote.tx} y={cote.ty} font-size="2.3" fill="#2f6b4f" text-anchor="middle">{cote.libelle} {cote.valeur} cm</text>
+          <text x={cote.tx} y={cote.ty} font-size="2.3" fill="#2f6b4f" text-anchor="middle">{cote.libelle} {cote.valeur} {t(lang, 'commun.cm')}</text>
         </g>
       {/each}
       <rect x={piece.etiquetteX - 0.5} y={piece.etiquetteY - 3.4} width={piece.nom.length * 1.9 + 1} height="7.6" fill="#ffffff" opacity="0.92" />
       <text x={piece.etiquetteX} y={piece.etiquetteY} font-size="3" fill="#1e1a17">{piece.nom}</text>
-      <text x={piece.etiquetteX} y={piece.etiquetteY + 3.4} font-size="2" fill="#1e1a17">Marge incluse — brouillon</text>
+      <text x={piece.etiquetteX} y={piece.etiquetteY + 3.4} font-size="2" fill="#1e1a17">{t(lang, 'visionneuse.margeIncluse')}</text>
     {/each}
     <defs>
       <marker id="fleche" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto">
@@ -55,18 +59,18 @@
   </svg>
     </div>
   </div>
-  <p class="aide-defilement">Sur téléphone, faites défiler le dessin de gauche à droite pour lire toutes les cotes.</p>
-  <p class="legende">Trait plein noir : coupe (marges comprises). Pointillé rouge : couture — 1 cm de marge, 2 cm d’ourlet en bas. Trait avec flèches : fil droit. Croix : crans. Vert : cotes en cm, étiquettes sur fond clair. Gris : lignes de construction (hanches, genou, fourche). Poche : bientôt — non incluse dans ce brouillon.</p>
+  <p class="aide-defilement">{t(lang, 'patron.apercu.defilement')}</p>
+  <p class="legende">{t(lang, cle('patron.apercu.legende'))}</p>
 
-  <section class="carte" aria-label="Mesures du patron">
-    <h2>Mesures du patron</h2>
+  <section class="carte" aria-label={t(lang, 'patron.apercu.mesuresTableau')}>
+    <h2>{t(lang, 'patron.apercu.mesuresTableau')}</h2>
     {#each data.pieces as piece}
       <h3>{piece.nom}</h3>
       {#if piece.tableau.length}
         <table>
           <tbody>
             {#each piece.tableau as ligne}
-              <tr><th scope="row">{ligne.libelle}</th><td>{ligne.valeur} cm</td></tr>
+              <tr><th scope="row">{ligne.libelle}</th><td>{ligne.valeur} {t(lang, 'commun.cm')}</td></tr>
             {/each}
           </tbody>
         </table>
@@ -74,11 +78,11 @@
     {/each}
   </section>
 
-  <p><a class="bouton" href={data.hrefPdf} download>Télécharger le PDF (A4, échelle 1:1)</a></p>
-  <p>Imprimez sans mise à l’échelle (« taille réelle »), puis vérifiez le carré de contrôle de 10 cm à la règle avant de couper.</p>
+  <p><a class="bouton" href={data.hrefPdf} download>{t(lang, 'demo.telecharger')}</a></p>
+  <p>{t(lang, 'demo.carreRappel')}</p>
 
   <section class="carte">
-    <h2>Formules utilisées — statut : à valider</h2>
+    <h2>{t(lang, 'patron.apercu.formules')}</h2>
     <ul>
       {#each data.formules as f}
         <li><strong>{f.element}</strong> ({f.statut}) : {f.hypotheses.join(' ')}</li>

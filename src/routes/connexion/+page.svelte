@@ -1,32 +1,35 @@
 <script lang="ts">
   import ChampTexte from '$lib/design/ChampTexte.svelte';
   import PanneauAuth from '$lib/design/PanneauAuth.svelte';
+  import { t, type TranslationKey } from '$lib/i18n';
   let { data, form } = $props();
+  const lang = $derived(data.lang);
+  const tr = (k: TranslationKey, p?: Record<string, string | number>) => t(lang, k, p);
 </script>
 
-<svelte:head><title>Studio Couture — Connexion à l’atelier</title></svelte:head>
+<svelte:head><title>{tr('auth.connexion.titrePage')}</title></svelte:head>
 
-<PanneauAuth>
-  <p class="deja">Pas encore d’atelier ? <a href="/inscription">Créer mon atelier</a></p>
+<PanneauAuth {lang}>
+  <p class="deja">{tr('auth.connexion.pasAtelier')} <a href="/inscription">{tr('commun.creerAtelier')}</a></p>
   <div class="titre">
-    <h1>Connexion à l’atelier</h1>
-    <p>Retrouvez vos clientes, leurs mesures et leurs patrons.</p>
+    <h1>{tr('auth.connexion.titre')}</h1>
+    <p>{tr('auth.connexion.texte')}</p>
   </div>
 
   {#if data.installationRequise}
-    <p class="alerte">Aucun compte n’existe encore. <a href="/installation">Créer l’atelier et le compte administratrice</a> ou <a href="/inscription">ouvrir votre atelier</a>.</p>
+    <p class="alerte">{tr('auth.connexion.aucunCompte')} <a href="/installation">{tr('auth.connexion.creerAdmin')}</a> {tr('commun.ou')} <a href="/inscription">{tr('auth.connexion.ouvrirAtelier')}</a>.</p>
   {/if}
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
 
   <form method="post" class="grille-form">
-    <ChampTexte label="Adresse e-mail ou numéro de téléphone" name="identifiant" autocomplete="username" requis valeur={form?.identifiant ?? ''} />
-    <ChampTexte label="Mot de passe" name="mot_de_passe" type="password" autocomplete="current-password" requis />
-    <button type="submit" class="plein">Se connecter</button>
+    <ChampTexte label={tr('auth.identifiant')} name="identifiant" autocomplete="username" requis valeur={form?.identifiant ?? ''} />
+    <ChampTexte label={tr('auth.motDePasse')} name="mot_de_passe" type="password" autocomplete="current-password" requis />
+    <button type="submit" class="plein">{tr('auth.connexion.bouton')}</button>
   </form>
 
-  <div class="separateur" aria-hidden="true"><span></span><span class="ou">ou</span><span></span></div>
-  <a class="bouton-demo" href="/demo">Essayer la démo guidée, sans compte</a>
-  <p class="creer"><a href="/inscription">Créer mon atelier</a></p>
+  <div class="separateur" aria-hidden="true"><span></span><span class="ou">{tr('commun.ou')}</span><span></span></div>
+  <a class="bouton-demo" href="/demo">{tr('commun.demoSansCompte')}</a>
+  <p class="creer"><a href="/inscription">{tr('commun.creerAtelier')}</a></p>
 </PanneauAuth>
 
 <style>

@@ -1,23 +1,24 @@
-import { boiteEtiquetteCote, pointsEnAttribut, type PiecePlacee } from './brouillon';
-
-const fmt = (v: number) => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+import { formatCm, t, type Lang } from '../i18n';
+import { boiteEtiquetteCote, nomPiece, pointsEnAttribut, type PiecePlacee } from './brouillon';
 
 /** Données de rendu SVG d'une pièce placée (aperçu connecté et démo publique). */
-export function preparerPiece(p: PiecePlacee) {
+export function preparerPiece(p: PiecePlacee, lang: Lang = 'fr') {
   return {
     id: p.id,
-    nom: p.nom,
+    nom: nomPiece(lang, p),
     coupe: pointsEnAttribut(p.coupe, p.dx, p.dy),
     couture: pointsEnAttribut(p.couture, p.dx, p.dy),
     filDroit: { x1: p.filDroit.de.x + p.dx, y1: p.filDroit.de.y + p.dy, x2: p.filDroit.a.x + p.dx, y2: p.filDroit.a.y + p.dy },
     crans: p.crans.map((c) => ({ x: c.x + p.dx, y: c.y + p.dy })),
-    traits: (p.traitsInterieurs ?? []).map((t) => pointsEnAttribut(t, p.dx, p.dy)),
-    lignes: (p.lignesConstruction ?? []).map((t) => pointsEnAttribut(t, p.dx, p.dy)),
+    traits: (p.traitsInterieurs ?? []).map((tr) => pointsEnAttribut(tr, p.dx, p.dy)),
+    lignes: (p.lignesConstruction ?? []).map((tr) => pointsEnAttribut(tr, p.dx, p.dy)),
     cotes: (p.cotes ?? []).map((ct) => {
-      const valeur = fmt(ct.valeurCm);
-      const fond = boiteEtiquetteCote(ct.texte.x + p.dx, ct.texte.y + p.dy, ct.libelle, valeur);
+      const valeur = formatCm(lang, ct.valeurCm);
+      const libelle = t(lang, ct.libelleCle);
+      const fond = boiteEtiquetteCote(ct.texte.x + p.dx, ct.texte.y + p.dy, libelle, valeur);
       return {
-        libelle: ct.libelle,
+        libelle,
+        libelleCle: ct.libelleCle,
         valeur,
         x1: ct.de.x + p.dx,
         y1: ct.de.y + p.dy,
@@ -31,7 +32,7 @@ export function preparerPiece(p: PiecePlacee) {
         fondHauteur: fond.y2 - fond.y1
       };
     }),
-    tableau: (p.mesuresPatron ?? []).map((mm) => ({ libelle: mm.libelle, valeur: fmt(mm.valeurCm) })),
+    tableau: (p.mesuresPatron ?? []).map((mm) => ({ libelle: t(lang, mm.libelleCle), libelleCle: mm.libelleCle, valeur: formatCm(lang, mm.valeurCm) })),
     etiquetteX: Math.min(...p.coupe.map((pt) => pt.x)) + p.dx + 2,
     etiquetteY: Math.min(...p.coupe.map((pt) => pt.y)) + p.dy - 4.5
   };

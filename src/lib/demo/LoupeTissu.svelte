@@ -1,7 +1,9 @@
 <script lang="ts">
   import { couleurTissu, dessinerTextureTissu, type MatiereId } from './tissus';
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
 
-  let { couleurId, matiere, legende = '' }: { couleurId: string; matiere: MatiereId; legende?: string } = $props();
+  let { couleurId, matiere, legende = '', lang = 'fr' }: { couleurId: string; matiere: MatiereId; legende?: string; lang?: Lang } = $props();
+  const cle = (k: string) => k as TranslationKey;
   let canvas = $state<HTMLCanvasElement | null>(null);
 
   $effect(() => {
@@ -15,8 +17,8 @@
 </script>
 
 <figure class="loupe">
-  <canvas bind:this={canvas} width="192" height="192" data-testid="loupe-tissu" aria-label="Gros plan du tissu choisi, dessiné par code"></canvas>
-  <figcaption>{legende || 'Gros plan du tissu'}</figcaption>
+  <canvas bind:this={canvas} width="192" height="192" data-testid="loupe-tissu" aria-label={t(lang, cle('tissu.loupeAria'))}></canvas>
+  <figcaption>{legende || t(lang, cle('tissu.loupe'))}</figcaption>
 </figure>
 
 <style>

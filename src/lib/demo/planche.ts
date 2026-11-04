@@ -1,4 +1,5 @@
 /** Planche composite PNG de l'aperçu en 3 images — dessinée en canvas 2D, jamais envoyée au serveur. */
+import { t, type Lang, type TranslationKey } from '$lib/i18n';
 
 export interface VuesApercu {
   face: string;
@@ -7,23 +8,25 @@ export interface VuesApercu {
 }
 
 export const LIBELLES_VUES = [
-  { cle: 'face', libelle: 'Face' },
-  { cle: 'perspective', libelle: 'Perspective' },
-  { cle: 'dos', libelle: 'Dos' }
+  { cle: 'face', libelleCle: 'troisVues.face' },
+  { cle: 'perspective', libelleCle: 'troisVues.perspective' },
+  { cle: 'dos', libelleCle: 'troisVues.dos' }
 ] as const;
 
-function chargerImage(src: string): Promise<HTMLImageElement> {
+const cle = (k: string) => k as TranslationKey;
+
+function chargerImage(src: string, lang: Lang): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Image de la vue illisible.'));
+    img.onerror = () => reject(new Error(t(lang, cle('troisVues.imageIllisible'))));
     img.src = src;
   });
 }
 
 /** Compose la planche : titre, 3 vues côte à côte (800×1000 chacune), mesures et mention brouillon en pied. */
-export async function composerPlanche(vues: VuesApercu, mesuresTexte: string, tissuTexte: string): Promise<string> {
-  const images = await Promise.all([chargerImage(vues.face), chargerImage(vues.perspective), chargerImage(vues.dos)]);
+export async function composerPlanche(vues: VuesApercu, mesuresTexte: string, tissuTexte: string, lang: Lang = 'fr'): Promise<string> {
+  const images = await Promise.all([chargerImage(vues.face, lang), chargerImage(vues.perspective, lang), chargerImage(vues.dos, lang)]);
   const largeurVue = 800;
   const hauteurVue = 1000;
   const marge = 36;
@@ -35,7 +38,7 @@ export async function composerPlanche(vues: VuesApercu, mesuresTexte: string, ti
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#1e1a17';
   ctx.font = '700 44px Georgia, serif';
-  ctx.fillText('Pantalon large — brouillon', marge, 62);
+  ctx.fillText(t(lang, 'troisVues.titrePlanche'), marge, 62);
   ctx.strokeStyle = '#c9a24b';
   ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(marge, 80); ctx.lineTo(canvas.width - marge, 80); ctx.stroke();
@@ -45,20 +48,20 @@ export async function composerPlanche(vues: VuesApercu, mesuresTexte: string, ti
     ctx.fillStyle = '#1e1a17';
     ctx.font = '700 30px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(LIBELLES_VUES[i]!.libelle, x + largeurVue / 2, 96 + hauteurVue + 38);
+    ctx.fillText(t(lang, LIBELLES_VUES[i]!.libelleCle as TranslationKey), x + largeurVue / 2, 96 + hauteurVue + 38);
     ctx.textAlign = 'left';
   });
   const piedY = 96 + hauteurVue + 78;
   ctx.font = '28px system-ui, sans-serif';
-  ctx.fillText(`Mesures : ${mesuresTexte}`, marge, piedY);
-  ctx.fillText(`Tissu : ${tissuTexte}`, marge, piedY + 38);
+  ctx.fillText(t(lang, cle('troisVues.plancheMesures'), { texte: mesuresTexte }), marge, piedY);
+  ctx.fillText(t(lang, cle('troisVues.plancheTissu'), { texte: tissuTexte }), marge, piedY + 38);
   ctx.font = '700 28px system-ui, sans-serif';
-  ctx.fillText('Brouillon non validé — volume généré à partir des cotes du patron', marge, piedY + 80);
+  ctx.fillText(`${t(lang, 'commun.brouillonNonValide')} — ${t(lang, 'salle.volumeIndicatif')}`, marge, piedY + 80);
   return canvas.toDataURL('image/png');
 }
 
-export async function telechargerPlanche(vues: VuesApercu, mesuresTexte: string, tissuTexte: string): Promise<void> {
-  const dataUrl = await composerPlanche(vues, mesuresTexte, tissuTexte);
+export async function telechargerPlanche(vues: VuesApercu, mesuresTexte: string, tissuTexte: string, lang: Lang = 'fr'): Promise<void> {
+  const dataUrl = await composerPlanche(vues, mesuresTexte, tissuTexte, lang);
   // Conversion manuelle en Blob (fetch sur très longue data URL peu fiable).
   const base64 = dataUrl.split(',')[1]!;
   const binaire = atob(base64);

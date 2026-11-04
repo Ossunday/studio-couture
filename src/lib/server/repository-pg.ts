@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
 import type { Cliente, Consentement, Mensuration, PatronCliente, PhotoCliente } from '../domain/types';
 import type { CompteUtilisatrice, Repository } from './repository';
+import { MessageError } from '$lib/i18n';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -269,7 +270,7 @@ export class RepositoryPg implements Repository {
        returning *`,
       [e.clienteId, atelierId, e.modele, e.nom, e.mesures, e.options, e.tissu, e.creePar]
     );
-    if (!r.rows[0]) throw new Error('Cliente introuvable pour cet atelier.');
+    if (!r.rows[0]) throw new MessageError('erreur.clienteIntrouvable');
     return this.patron(r.rows[0]);
   }
 

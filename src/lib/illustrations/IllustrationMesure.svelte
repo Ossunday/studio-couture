@@ -1,15 +1,14 @@
 <script lang="ts">
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
   // Illustration originale : silhouette neutre de face, trait de mesure surligné en rouge.
-  let { code }: { code: string } = $props();
+  let { code, lang = 'fr' }: { code: string; lang?: Lang } = $props();
 
-  const titres: Record<string, string> = {
-    tour_taille_cm: 'Illustration : mesurer le tour de taille, au creux naturel de la taille',
-    tour_hanches_cm: 'Illustration : mesurer le tour de hanches, à l’endroit le plus fort',
-    hauteur_fourche_cm: 'Illustration : mesurer la hauteur de fourche, assise, de la taille à la chaise',
-    longueur_pantalon_cm: 'Illustration : mesurer la longueur du pantalon, de la taille au sol, le long du côté',
-    longueur_jupe_cm: 'Illustration : mesurer la longueur de la jupe, de la taille à la longueur souhaitée'
-  };
-  const titre = $derived(titres[code] ?? 'Illustration : silhouette avec le trait de mesure surligné');
+  const CODES_DETAIL = ['tour_taille_cm', 'tour_hanches_cm', 'hauteur_fourche_cm', 'longueur_pantalon_cm', 'longueur_jupe_cm'];
+  const titre = $derived(
+    CODES_DETAIL.includes(code)
+      ? t(lang, `illustration.detail.${code}` as TranslationKey)
+      : t(lang, 'illustration.generique' as TranslationKey)
+  );
 </script>
 
 <svg viewBox="0 0 120 160" role="img" aria-label={titre} class="mesure">

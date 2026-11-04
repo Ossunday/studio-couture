@@ -1,20 +1,23 @@
 <script lang="ts">
   import type { PieceRendue } from '$lib/patterns/apercu-rendu';
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
 
   let {
     pieces,
     largeur,
     hauteur,
     couleurTissu = '',
-    matiereTissu = ''
-  }: { pieces: PieceRendue[]; largeur: number; hauteur: number; couleurTissu?: string; matiereTissu?: string } = $props();
+    matiereTissu = '',
+    lang = 'fr'
+  }: { pieces: PieceRendue[]; largeur: number; hauteur: number; couleurTissu?: string; matiereTissu?: string; lang?: Lang } = $props();
 
+  const cle = (k: string) => k as TranslationKey;
   // Onglets déduits des pièces du modèle affiché (aucun nom de pièce codé ici).
   const onglets = $derived([
-    { id: 'tout', libelle: 'Tout' },
+    { id: 'tout', libelle: t(lang, 'visionneuse.tout') },
     ...pieces.map((p) => ({ id: p.id, libelle: p.nom.replace(/\s*\(.*$/, '') }))
   ]);
-  const ariaPatron = $derived(`Aperçu du patron brouillon : ${pieces.map((p) => p.nom).join(', ')}, avec cotes`);
+  const ariaPatron = $derived(t(lang, 'visionneuse.aria', { pieces: pieces.map((p) => p.nom).join(', ') }));
 
   let onglet = $state<string>('tout');
   let echelle = $state(1);
@@ -67,23 +70,23 @@
 
 <div class="visionneuse">
   <div class="barre-outils">
-    <div class="onglets" role="tablist" aria-label="Pièces à afficher">
+    <div class="onglets" role="tablist" aria-label={t(lang, cle('visionneuse.pieces'))}>
       {#each onglets as o}
         <button type="button" role="tab" aria-selected={onglet === o.id} class:actif={onglet === o.id} onclick={() => (onglet = o.id)}>{o.libelle}</button>
       {/each}
     </div>
-    <div class="zoom" aria-label="Zoom du patron">
-      <button type="button" aria-label="Zoomer" onclick={() => zoomer(1.25)}>+</button>
-      <button type="button" aria-label="Dézoomer" onclick={() => zoomer(0.8)}>−</button>
-      <button type="button" onclick={ajuster}>Ajuster</button>
-      <button type="button" onclick={reinitialiser}>Réinitialiser</button>
+    <div class="zoom" aria-label={t(lang, cle('visionneuse.zoom'))}>
+      <button type="button" class="zoom-rond" aria-label={t(lang, 'salle.zoomPlus')} onclick={() => zoomer(1.25)}>+</button>
+      <button type="button" class="zoom-rond" aria-label={t(lang, 'salle.zoomMoins')} onclick={() => zoomer(0.8)}>−</button>
+      <button type="button" onclick={ajuster}>{t(lang, 'salle.zoomAjuster')}</button>
+      <button type="button" onclick={reinitialiser}>{t(lang, 'salle.zoomReset')}</button>
     </div>
   </div>
-  <p class="zoom-lu" aria-live="polite">Zoom : {Math.round(echelle * 100)} % — glissez pour déplacer, pincez sur mobile.</p>
-  <div class="scene" onpointerdown={debut} onpointermove={bouger} onpointerup={fin} onpointercancel={fin} role="application" aria-label="Patron déplaçable et zoomable">
+  <p class="zoom-lu" aria-live="polite">{t(lang, cle('visionneuse.zoomLu'), { zoom: Math.round(echelle * 100) })}</p>
+  <div class="scene" onpointerdown={debut} onpointermove={bouger} onpointerup={fin} onpointercancel={fin} role="application" aria-label={t(lang, cle('visionneuse.scene'))}>
     <div class="calque" style="transform: translate({tx}px, {ty}px) scale({echelle});">
       <svg viewBox="0 0 {largeur} {hauteur}" role="img" aria-label={ariaPatron} class="patron" data-tissu-couleur={couleurTissu} data-tissu-matiere={matiereTissu}>
-        <title>Aperçu du patron brouillon</title>
+        <title>{t(lang, cle('visionneuse.titre'))}</title>
         {#each visibles as piece}
           <polygon points={piece.coupe} pathLength="100" class="trace" fill={couleurTissu ? 'url(#motif-tissu)' : '#fffdf8'} stroke="#1e1a17" stroke-width="0.35" />
           <polygon points={piece.couture} fill="none" stroke="#b5532f" stroke-width="0.25" stroke-dasharray="1.2 0.8" />
@@ -95,12 +98,12 @@
             <g>
               <line x1={cote.x1} y1={cote.y1} x2={cote.x2} y2={cote.y2} stroke="#2f6b4f" stroke-width="0.22" marker-start="url(#fleche-cote-demo)" marker-end="url(#fleche-cote-demo)" />
               <rect x={cote.fondX} y={cote.fondY} width={cote.fondLargeur} height={cote.fondHauteur} fill="#ffffff" opacity="0.94" />
-              <text x={cote.tx} y={cote.ty} font-size="2.3" fill="#2f6b4f" text-anchor="middle">{cote.libelle} {cote.valeur} cm</text>
+              <text x={cote.tx} y={cote.ty} font-size="2.3" fill="#2f6b4f" text-anchor="middle">{cote.libelle} {cote.valeur} {t(lang, 'commun.cm')}</text>
             </g>
           {/each}
           <rect x={piece.etiquetteX - 0.5} y={piece.etiquetteY - 3.4} width={piece.nom.length * 1.9 + 1} height="7.6" fill="#ffffff" opacity="0.94" />
           <text x={piece.etiquetteX} y={piece.etiquetteY} font-size="3" fill="#1e1a17">{piece.nom}</text>
-          <text x={piece.etiquetteX} y={piece.etiquetteY + 3.4} font-size="2" fill="#1e1a17">Marge incluse — brouillon</text>
+          <text x={piece.etiquetteX} y={piece.etiquetteY + 3.4} font-size="2" fill="#1e1a17">{t(lang, 'visionneuse.margeIncluse')}</text>
         {/each}
         <defs>
           {#if couleurTissu}
@@ -123,8 +126,8 @@
     </div>
   </div>
   <details class="legende">
-    <summary>Légende du patron</summary>
-    <p>Trait plein : coupe (marges comprises). Pointillé terracotta : couture — 1 cm de marge, 2 cm d’ourlet en bas. Flèches : fil droit. Croix : crans. Vert : cotes en cm. Gris : lignes de construction du modèle.</p>
+    <summary>{t(lang, cle('visionneuse.legendeTitre'))}</summary>
+    <p>{t(lang, cle('visionneuse.legende'))}</p>
   </details>
 </div>
 
@@ -133,7 +136,7 @@
   .barre-outils { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
   .onglets, .zoom { display: flex; flex-wrap: wrap; gap: 8px; }
   .onglets button, .zoom button { min-width: 48px; min-height: 48px; }
-  .zoom button[aria-label='Zoomer'], .zoom button[aria-label='Dézoomer'] { border-radius: 999px; width: 48px; font-size: 20px; }
+  .zoom button.zoom-rond { border-radius: 999px; width: 48px; font-size: 20px; }
   .onglets button.actif { background: var(--terracotta); border-color: var(--terracotta); }
   .zoom-lu { font-size: 15px; margin: 8px 0; }
   .scene { overflow: hidden; border: 2px solid var(--encre); border-radius: 10px; background: #fff; touch-action: none; cursor: grab; }

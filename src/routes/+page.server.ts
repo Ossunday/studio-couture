@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { preparerCartePatron, preparerPatronGenerique, type PatronGeneriquePrepare } from '$lib/design/patron-cote';
+import { t } from '$lib/i18n';
 import { estModelePatron, REGISTRE_MODELES, texteResumeMesures } from '$lib/patterns/registre';
 import { getRepository } from '$lib/server/repository';
 import { parametresDepuisPatron } from '$lib/server/patron-cliente';
@@ -8,9 +9,10 @@ const NB_MESURES_FICHE = 10;
 
 /** Accueil public (visiteur) / tableau de bord (utilisatrice connectée, maquette Atelier). */
 export const load: PageServerLoad = async ({ locals, url }) => {
+  const lang = locals.lang;
   const u = locals.utilisatrice;
   if (!u) {
-    return { connectee: false, bienvenue: false, tableau: null };
+    return { connectee: false, bienvenue: false, tableau: null, lang };
   }
   const repo = getRepository();
   const clientes = await repo.listerClientes(u.atelierId);
@@ -39,14 +41,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     if (!estModelePatron(candidat.patron.modele)) continue;
     const entree = REGISTRE_MODELES[candidat.patron.modele];
     try {
-      const carte = preparerCartePatron(entree, candidat.patron.mesures, candidat.patron.options);
+      const carte = preparerCartePatron(entree, candidat.patron.mesures, candidat.patron.options, lang);
       dernierPatron = {
         id: candidat.patron.id,
         clienteId: candidat.cliente.id,
         clienteNom: candidat.cliente.nom,
         prenomCliente: candidat.cliente.nom.trim().split(/\s+/)[0] ?? candidat.cliente.nom,
         nom: candidat.patron.nom,
-        titreModele: entree.titre,
+        titreModele: t(lang, entree.titreCle),
         creeLe: candidat.patron.createdAt.toISOString(),
         mesuresPantalon: carte.mesuresPantalon,
         generique: carte.generique,
@@ -63,6 +65,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   return {
     connectee: true,
     bienvenue: url.searchParams.get('bienvenue') === 'atelier',
+    lang,
     tableau: {
       prenom: u.nom.trim().split(/\s+/)[0] ?? u.nom,
       incompletes,
@@ -86,7 +89,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         let vignette: PatronGeneriquePrepare | null = null;
         if (entree) {
           try {
-            vignette = preparerPatronGenerique(entree, patron.mesures, patron.options);
+            vignette = preparerPatronGenerique(entree, patron.mesures, patron.options, lang);
           } catch {
             vignette = null;
           }
@@ -97,9 +100,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
           clienteNom: cliente.nom,
           nom: patron.nom,
           modele: patron.modele,
-          titreModele: entree ? entree.titre : 'Modèle indisponible',
+          titreModele: entree ? t(lang, entree.titreCle) : t(lang, 'modele.indisponible'),
           vignette,
-          texte: entree ? texteResumeMesures(entree, patron.mesures) : patron.modele
+          texte: entree ? texteResumeMesures(entree, patron.mesures, lang) : patron.modele
         };
       }),
       dernierPatron

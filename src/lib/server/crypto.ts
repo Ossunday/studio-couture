@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { ENV_PHOTO_ENCRYPTION_KEY } from '../brand';
+import { MessageError } from '$lib/i18n';
 
 /**
  * Chiffrement côté serveur des photos clientes (règle n°8) : AES-256-GCM.
@@ -43,9 +44,9 @@ export const TAILLE_PHOTO_MAX_OCTETS = 5 * 1024 * 1024;
 
 export function validerPhoto(typeMime: string, tailleOctets: number): void {
   if (!(TYPES_PHOTO_ACCEPTES as readonly string[]).includes(typeMime)) {
-    throw new Error('Format de photo non accepté : utilisez JPEG, PNG ou WebP.');
+    throw new MessageError('validation.photoFormat');
   }
   if (!Number.isInteger(tailleOctets) || tailleOctets <= 0 || tailleOctets > TAILLE_PHOTO_MAX_OCTETS) {
-    throw new Error('Photo trop lourde : 5 Mo maximum.');
+    throw new MessageError('validation.photoTropLourde');
   }
 }

@@ -27,20 +27,20 @@ describe('validerInscription', () => {
   });
 
   it('refuse un nom d’atelier hors 2–80 caractères', () => {
-    expect(() => validerInscription({ ...base, nomAtelier: 'A' })).toThrow(/Nom de l’atelier/);
-    expect(() => validerInscription({ ...base, nomAtelier: 'x'.repeat(81) })).toThrow(/Nom de l’atelier/);
+    expect(() => validerInscription({ ...base, nomAtelier: 'A' })).toThrow('validation.nomAtelierBornes');
+    expect(() => validerInscription({ ...base, nomAtelier: 'x'.repeat(81) })).toThrow('validation.nomAtelierBornes');
   });
 
   it('refuse un mot de passe de moins de 12 caractères, sans règle de composition', () => {
-    expect(() => validerInscription({ ...base, motDePasse: 'court', confirmation: 'court' })).toThrow(/12 caractères minimum/);
-    expect(() => validerInscription({ ...base, motDePasse: 'motdepasse1', confirmation: 'motdepasse1' })).toThrow(/12 caractères/);
+    expect(() => validerInscription({ ...base, motDePasse: 'court', confirmation: 'court' })).toThrow('validation.motDePasse12');
+    expect(() => validerInscription({ ...base, motDePasse: 'motdepasse1', confirmation: 'motdepasse1' })).toThrow('validation.motDePasse12');
   });
 
   it('refuse une confirmation différente, un e-mail invalide et l’absence de consentement', () => {
-    expect(() => validerInscription({ ...base, confirmation: 'autre phrase longue' })).toThrow(/ne correspondent pas/);
-    expect(() => validerInscription({ ...base, email: 'pas-un-email' })).toThrow(/Adresse e-mail invalide/);
-    expect(() => validerInscription({ ...base, email: '+22901000000' })).toThrow(/Adresse e-mail invalide/);
-    expect(() => validerInscription({ ...base, consentement: false })).toThrow(/consentement/);
+    expect(() => validerInscription({ ...base, confirmation: 'autre phrase longue' })).toThrow('validation.motsDePasseDifferents');
+    expect(() => validerInscription({ ...base, email: 'pas-un-email' })).toThrow('validation.identifiantEmail');
+    expect(() => validerInscription({ ...base, email: '+22901000000' })).toThrow('validation.identifiantEmail');
+    expect(() => validerInscription({ ...base, consentement: false })).toThrow('validation.consentementCoche');
   });
 
   it('détecte le champ piège rempli', () => {
@@ -98,7 +98,7 @@ describe('inscrireAtelier — doublon et isolation entre ateliers', () => {
     const repo = new RepositoryMemoire();
     await inscrireAtelier(repo, base);
     await expect(inscrireAtelier(repo, { ...base, email: 'AWA@atelier.com', nomAtelier: 'Autre atelier' })).rejects.toThrow(
-      'Cette adresse est déjà utilisée. Connectez-vous.'
+      'validation.doublon'
     );
     expect(await repo.compterUtilisatrices()).toBe(1);
   });

@@ -3,15 +3,20 @@ import type { RequestHandler } from './$types';
 import { clePhotoDepuisEnv, dechiffrer } from '$lib/server/crypto';
 import { exigerConnexion } from '$lib/server/garde';
 import { getRepository } from '$lib/server/repository';
+import { t, type TranslationKey } from '$lib/i18n';
+
+/** Clé pas encore dans fr.ts/en.ts : proposée dans le rapport du lot (clé=FR=EN). */
+const cle = (k: string) => k as TranslationKey;
 
 /** Lecture d’une photo cliente déchiffrée en mémoire — jamais d’URL publique, jamais de cache. */
 export const GET: RequestHandler = async ({ locals, params }) => {
+  const lang = locals.lang;
   const u = exigerConnexion(locals.utilisatrice);
   const repo = getRepository();
   const cliente = await repo.trouverCliente(u.atelierId, params.id);
-  if (!cliente) throw error(404, 'Cliente introuvable.');
+  if (!cliente) throw error(404, t(lang, cle('erreur.clienteIntrouvable')));
   const photo = await repo.trouverPhoto(cliente.id, params.photoId);
-  if (!photo || photo.expireLe.getTime() <= Date.now()) throw error(404, 'Photo introuvable ou expirée.');
+  if (!photo || photo.expireLe.getTime() <= Date.now()) throw error(404, t(lang, cle('erreur.photoIntrouvable')));
   const clair = dechiffrer(
     { iv: photo.iv, authTag: photo.authTag, donnees: photo.donneesChiffrees },
     clePhotoDepuisEnv()

@@ -1,4 +1,5 @@
 import { definitionMensuration, validerMensurationSaisie } from '../domain/mensurations-saisie';
+import { MessageError, type TranslationKey } from '../i18n';
 import { agencerPieces, type PieceBrouillon, type PiecePlacee } from './brouillon';
 import type { OptionsPantalonLarge } from './pantalon-large/geometry';
 import {
@@ -14,24 +15,17 @@ export { estModelePatron, type ModelePatron } from './registre';
 
 /**
  * Adaptateur historique au-dessus du REGISTRE des modèles (`registre.ts`) :
- * ce fichier ne connaît plus aucun modèle en particulier. Il conserve les
- * signatures utilisées par les écrans et les tests ; toute la connaissance
- * (champs, bornes, options, générateur) vit dans le registre.
+ * ce fichier ne connaît plus aucun modèle en particulier.
  */
-export const MODELES: Record<ModelePatron, { titre: string; champs: readonly string[] }> = Object.fromEntries(
-  Object.values(REGISTRE_MODELES).map((e) => [e.id, { titre: e.titre, champs: e.champs }])
-) as Record<ModelePatron, { titre: string; champs: readonly string[] }>;
+export const MODELES: Record<ModelePatron, { titreCle: TranslationKey; champs: readonly string[] }> = Object.fromEntries(
+  Object.values(REGISTRE_MODELES).map((e) => [e.id, { titreCle: e.titreCle, champs: e.champs }])
+) as Record<ModelePatron, { titreCle: TranslationKey; champs: readonly string[] }>;
 
-/** Libellé court pour les messages « Vérifiez … » (sans le « (cm) » final). */
-export function libelleMesure(code: string): string {
-  return definitionMensuration(code).libelle.replace(' (cm)', '');
+/** Clé de traduction d’une mesure (pour les messages « Vérifiez … »). */
+export function cleMesure(code: string): TranslationKey {
+  return definitionMensuration(code).libelleCle;
 }
 
-/**
- * Valide les mesures d'un modèle depuis des paramètres texte (formulaire ou URL).
- * Message en français nommant la mesure à vérifier (consigne produit n°5).
- * Un modèle inconnu lève « Modèle indisponible » (registre), jamais de repli.
- */
 export function validerMesuresPatron(
   modele: ModelePatron,
   lire: (code: string) => string | null | undefined
@@ -40,17 +34,14 @@ export function validerMesuresPatron(
   const mesures: Record<string, number> = {};
   for (const code of entree.champs) {
     const brut = (lire(code) ?? '').toString().trim();
-    if (!brut) throw new Error(`Vérifiez : ${libelleMesure(code).toLowerCase()} — mesure manquante.`);
+    if (!brut) throw new MessageError('validation.verifiezMesureManquante', {}, cleMesure(code));
     try {
       mesures[code] = validerMensurationSaisie(code, brut);
     } catch {
       const def = definitionMensuration(code);
-      throw new Error(
-        `Vérifiez : ${libelleMesure(code).toLowerCase()} — entrez un nombre entre ${def.minCm} et ${def.maxCm} cm (ex. 82,5).`
-      );
+      throw new MessageError('validation.verifiezMesureNombre', { min: def.minCm, max: def.maxCm }, cleMesure(code));
     }
   }
-  // Contrôles de cohérence du moteur brouillon (messages nommant la mesure).
   entree.genererPieces(mesures, {});
   return mesures;
 }

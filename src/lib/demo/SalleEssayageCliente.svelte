@@ -12,6 +12,7 @@
   import { genererPiecesPlacees, validerMesuresPatron, type ModelePatron } from '$lib/patterns/saisie-patron';
   import { parametresOptionsModele, REGISTRE_MODELES, type OptionsModele, type ValeurOption } from '$lib/patterns/registre';
   import type { OptionsPantalonLarge } from '$lib/patterns/pantalon-large/geometry';
+  import { t, formatCm, traduireErreur, type Lang, type TranslationKey } from '$lib/i18n';
 
   /**
    * Salle d'essayage connectée (maquette « Salle » / « Salle3d », design v3) :
@@ -34,7 +35,8 @@
     hrefRetour,
     sousTitre = '',
     ficheLibelle = '',
-    infoPatron = ''
+    infoPatron = '',
+    lang = 'fr'
   }: {
     modele: ModelePatron;
     mesuresInitiales: Record<string, number>;
@@ -49,14 +51,17 @@
     sousTitre?: string;
     ficheLibelle?: string;
     infoPatron?: string;
+    lang?: Lang;
   } = $props();
+
+  const cle = (k: string) => k as TranslationKey;
 
   // Tout ce qui dépend du modèle vient du REGISTRE (champs, bornes, options,
   // morphologies, vue 3D) : cette salle ne connaît aucun modèle en particulier.
   // svelte-ignore state_referenced_locally
   const entree = REGISTRE_MODELES[modele];
-  const champs = $derived(entree.mesures.map((m) => ({ code: m.code, libelle: m.libelle, minCm: m.minCm, maxCm: m.maxCm, pasCm: 0.5 })));
-  const fmt = (v: number) => String(v).replace('.', ',');
+  const champs = $derived(entree.mesures.map((m) => ({ code: m.code, libelle: t(lang, m.libelleCle), minCm: m.minCm, maxCm: m.maxCm, pasCm: 0.5 })));
+  const fmt = (v: number) => formatCm(lang, v);
 
   // Morphologies de référence du modèle (registre).
   const PRESETS = entree.presets;
@@ -133,7 +138,7 @@
       if (def.type !== 'nombre') continue;
       const brut = (optionsTexte[def.code] ?? '').trim().replace(',', '.');
       if (brut && (!Number.isFinite(Number(brut)) || Number(brut) < (def.min ?? -Infinity) || Number(brut) > (def.max ?? Infinity))) {
-        erreurOptions = `Option « ${def.libelle.toLowerCase()} » : entrez un nombre entre ${def.min} et ${def.max} cm (ou laissez vide).`;
+        erreurOptions = t(lang, 'salle.optionErreur', { option: t(lang, def.libelleCle), min: def.min ?? '', max: def.max ?? '' });
         return;
       }
     }
@@ -149,32 +154,51 @@
   let messageIa = $state('');
   let suggestionIaOk = $state(false);
   let optionsOuvertes = $state(false);
-  const LIBELLES_SUGGESTION: { cle: keyof OptionsPantalonLarge; code: string; suffixe: string }[] = [
-    { cle: 'largeurBasPieceCm', code: 'largeur_bas_cm', suffixe: 'bas' },
-    { cle: 'profondeurPliCm', code: 'profondeur_pli_cm', suffixe: 'pli' },
-    { cle: 'hauteurCeintureFinieCm', code: 'hauteur_ceinture_cm', suffixe: 'ceinture' }
+  const LIBELLES_SUGGESTION: { cle: keyof OptionsPantalonLarge; code: string; suffixeCle: TranslationKey }[] = [
+    { cle: 'largeurBasPieceCm', code: 'largeur_bas_cm', suffixeCle: 'cote.bas' },
+    { cle: 'profondeurPliCm', code: 'profondeur_pli_cm', suffixeCle: 'option.profondeurPliCm' },
+    { cle: 'hauteurCeintureFinieCm', code: 'hauteur_ceinture_cm', suffixeCle: 'patronCote.ceinture' }
   ];
+  // Statuts renvoyés par /api/suggestion-modele -> clés locales ia.* (aucun message serveur affiché tel quel).
+  const CLES_STATUT_IA: Record<string, TranslationKey> = {
+    indisponible: 'ia.indisponible',
+    desactive: 'ia.desactiveDemo',
+    desactive_demo: 'ia.desactiveDemo',
+    non_configure: 'ia.nonConfigure',
+    limite: 'ia.limite',
+    invalide: 'ia.invalide',
+    refuse: 'ia.connectez',
+    echec: 'ia.echec'
+  };
+  function messageStatutIa(donnees: { statut?: string; message?: string; messageCle?: string; cle?: string }): string {
+    const cleMessage = donnees.messageCle ?? donnees.cle ?? (donnees.message?.includes('.') ? donnees.message : undefined);
+    if (cleMessage) return t(lang, cleMessage as TranslationKey);
+    if (donnees.statut && CLES_STATUT_IA[donnees.statut]) return t(lang, CLES_STATUT_IA[donnees.statut]!);
+    return t(lang, 'ia.indisponible');
+  }
   async function demanderSuggestion() {
     const texte = descriptionModele.trim();
     if (texte.length < 3 || suggestionEnCours) return;
     suggestionEnCours = true;
     suggestionIaOk = false;
-    messageIa = 'Suggestion en cours…';
+    messageIa = t(lang, 'ia.enCours');
     try {
       const reponse = await fetch('/api/suggestion-modele', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({ texte })
       });
-      const donnees: { statut?: string; message?: string; options?: OptionsPantalonLarge } = await reponse.json().catch(() => ({}));
+      const donnees: { statut?: string; message?: string; messageCle?: string; cle?: string; options?: OptionsPantalonLarge } = await reponse.json().catch(() => ({}));
       if (donnees.statut === 'ok' && donnees.options) {
         const retenues: string[] = [];
+        const valeurs: Partial<Record<keyof OptionsPantalonLarge, number>> = {};
         const nouvelles = { ...optionsTexte };
-        for (const { cle, code, suffixe } of LIBELLES_SUGGESTION) {
-          const v = donnees.options[cle];
+        for (const { cle: cleOpt, code, suffixeCle } of LIBELLES_SUGGESTION) {
+          const v = donnees.options[cleOpt];
           if (typeof v === 'number' && Number.isFinite(v)) {
             nouvelles[code] = fmt(v);
-            retenues.push(`${suffixe} ${fmt(v)} cm`);
+            valeurs[cleOpt] = v;
+            retenues.push(`${t(lang, suffixeCle)} ${fmt(v)} ${t(lang, 'commun.cm')}`);
           }
         }
         optionsTexte = nouvelles;
@@ -182,26 +206,29 @@
         optionsOuvertes = true;
         suggestionIaOk = true;
         messageIa = retenues.length
-          ? `Suggestion de l’IA, à vérifier : ${retenues.join(' · ')}. Ajustez dans « Options du modèle » si besoin — le moteur recalcule le patron, toujours brouillon non validé.`
-          : 'Suggestion de l’IA, à vérifier : aucune option retenue, réglez les options manuellement.';
+          ? valeurs.largeurBasPieceCm !== undefined && valeurs.profondeurPliCm !== undefined && valeurs.hauteurCeintureFinieCm !== undefined
+            ? `${t(lang, 'ia.suggestion', { bas: fmt(valeurs.largeurBasPieceCm), pli: fmt(valeurs.profondeurPliCm), ceinture: fmt(valeurs.hauteurCeintureFinieCm) })} ${t(lang, cle('ia.suggestionAjuster'))}`
+            : `${t(lang, 'ia.suggestionPartielle')} : ${retenues.join(' · ')}. ${t(lang, cle('ia.suggestionAjuster'))}`
+          : t(lang, cle('ia.aucuneOption'));
       } else {
-        messageIa = donnees.message ?? 'Assistant indisponible pour le moment : réglez les options manuellement, le patron reste calculé par le moteur.';
+        messageIa = messageStatutIa(donnees);
       }
     } catch {
-      messageIa = 'Assistant indisponible pour le moment : réglez les options manuellement, le patron reste calculé par le moteur.';
+      messageIa = t(lang, 'ia.echec');
     } finally {
       suggestionEnCours = false;
     }
   }
 
   const couleurChoisie = $derived(couleurTissu(couleurId));
-  const matiereLibelle = $derived(MATIERES.find((m) => m.id === matiere)?.libelle ?? matiere);
-  const tissuTexte = $derived(`${couleurChoisie.libelle} · ${matiereLibelle}`);
+  const couleurLibelle = $derived(t(lang, couleurChoisie.libelleCle));
+  const matiereLibelle = $derived(t(lang, MATIERES.find((m) => m.id === matiere)?.libelleCle ?? ('matiere.' + matiere) as TranslationKey));
+  const tissuTexte = $derived(`${couleurLibelle} · ${matiereLibelle}`);
   const rendu = $derived.by(() => {
     const { pieces, largeur, hauteur } = genererPiecesPlacees(modele, mesuresValidees, optionsValides);
-    return { pieces: pieces.map(preparerPiece), largeur: Math.ceil(largeur), hauteur: Math.ceil(hauteur) };
+    return { pieces: pieces.map((p) => preparerPiece(p, lang)), largeur: Math.ceil(largeur), hauteur: Math.ceil(hauteur) };
   });
-  const resume = $derived(champs.map((c) => `${c.libelle} : ${fmt(mesuresValidees[c.code]!)} cm`));
+  const resume = $derived(champs.map((c) => `${c.libelle} : ${fmt(mesuresValidees[c.code]!)} ${t(lang, 'commun.cm')}`));
   // La vue 3D n'existe que pour les modèles qui la déclarent (registre).
   const mesures3d = $derived(
     entree.aVue3d
@@ -214,7 +241,7 @@
       : null
   );
   // Valeurs du moteur pour les pastilles « Votre patron » (dessin spécialisé).
-  const patronCote = $derived(entree.aVue3d && mesures3d ? preparerPatronCote(mesures3d, optionsPantalon) : null);
+  const patronCote = $derived(entree.aVue3d && mesures3d ? preparerPatronCote(mesures3d, optionsPantalon, lang) : null);
   const hrefPdf = $derived.by(() => {
     const params = new URLSearchParams({ modele, nom: nomInitial });
     for (const [k, v] of Object.entries(mesuresValidees)) params.set(k, String(v));
@@ -232,7 +259,7 @@
         Scene3D = (await import('$lib/demo/three/Scene3DPantalon.svelte')).default;
       } catch {
         vue = 'plat';
-        message3d = 'Le chargement de la 3D a échoué : voici le patron à plat.';
+        message3d = t(lang, cle('salle.chargement3dEchoue'));
       }
     }
   }
@@ -265,7 +292,7 @@
       try {
         candidat[champ.code] = validerMensurationSaisie(champ.code, (valeursLive[champ.code] ?? '').replace('.', ','));
       } catch (e) {
-        erreurs[champ.code] = e instanceof Error ? e.message : 'Vérifiez cette mesure.';
+        erreurs[champ.code] = traduireErreur(lang, e, 'salle.erreurMesure');
       }
     }
     if (Object.keys(erreurs).length > 0) {
@@ -275,7 +302,7 @@
     try {
       mesuresValidees = validerMesuresPatron(modele, (code) => String(candidat[code]));
     } catch (e) {
-      erreursLive = codeModifie ? { [codeModifie]: e instanceof Error ? e.message : 'Vérifiez vos mesures.' } : {};
+      erreursLive = codeModifie ? { [codeModifie]: traduireErreur(lang, e, 'salle.erreurMesure') } : {};
       return false;
     }
     erreursLive = {};
@@ -313,18 +340,18 @@
 
 <header class="entete-salle">
   <div class="entete-gauche">
-    <a class="retour" href={hrefRetour} aria-label="Retour à la fiche de {prenomCliente}">
+    <a class="retour" href={hrefRetour} aria-label={t(lang, 'salle.retourFiche', { prenom: prenomCliente })}>
       <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </a>
     <div class="titres">
-      <h1>Salle d’essayage — {prenomCliente}</h1>
+      <h1>{t(lang, 'salle.titre', { prenom: prenomCliente })}</h1>
       {#if sousTitre}<p>{sousTitre}</p>{/if}
       {#if infoPatron}<p class="info-patron">{infoPatron}</p>{/if}
     </div>
-    <Puce ton="accent">Brouillon non validé</Puce>
+    <Puce ton="accent">{t(lang, 'commun.brouillonNonValide')}</Puce>
   </div>
   <div class="entete-actions">
-    <a class="bouton bouton-secondaire" href={hrefPdf} download>Télécharger le PDF A4</a>
+    <a class="bouton bouton-secondaire" href={hrefPdf} download>{t(lang, 'commun.telechargerPdf')}</a>
     <button type="submit" form="form-enregistrer-salle" class="bouton bouton-action">{libelleEnregistrer} <span aria-hidden="true">✓</span></button>
   </div>
 </header>
@@ -333,14 +360,14 @@
   <div class="scene-essayage carte-scene">
     {#if entree.aVue3d}
       <div class="scene-haut">
-        <div class="onglets-vue" role="tablist" aria-label="Choix de la vue" tabindex="-1" onkeydown={onkeydownOnglets}>
-          <button type="button" role="tab" id="onglet-vue-plat" aria-selected={vue === 'plat'} aria-controls="panneau-vue-plat" tabindex={vue === 'plat' ? 0 : -1} class:actif={vue === 'plat'} onclick={() => (vue = 'plat')}>1 · Patron à plat</button>
-          <button type="button" role="tab" id="onglet-vue-3d" aria-selected={vue === '3d'} aria-controls="panneau-vue-3d" tabindex={vue === '3d' ? 0 : -1} class:actif={vue === '3d'} onclick={activerVue3d}>2 · Vue 3D (aperçu)</button>
+        <div class="onglets-vue" role="tablist" aria-label={t(lang, cle('salle.choixVue'))} tabindex="-1" onkeydown={onkeydownOnglets}>
+          <button type="button" role="tab" id="onglet-vue-plat" aria-selected={vue === 'plat'} aria-controls="panneau-vue-plat" tabindex={vue === 'plat' ? 0 : -1} class:actif={vue === 'plat'} onclick={() => (vue = 'plat')}>{t(lang, 'salle.vuePatron')}</button>
+          <button type="button" role="tab" id="onglet-vue-3d" aria-selected={vue === '3d'} aria-controls="panneau-vue-3d" tabindex={vue === '3d' ? 0 : -1} class:actif={vue === '3d'} onclick={activerVue3d}>{t(lang, 'salle.vue3d')}</button>
         </div>
         {#if vue === '3d'}
-          <span class="bandeau-indicatif">Aperçu indicatif · le patron à plat fait foi</span>
+          <span class="bandeau-indicatif">{t(lang, 'salle.apercuIndicatif')}</span>
           <div class="loupe-scene">
-            <LoupeTissu couleurId={couleurId} matiere={matiere} legende="{matiereLibelle} · {couleurChoisie.libelle}" />
+            <LoupeTissu couleurId={couleurId} matiere={matiere} lang={lang} legende="{matiereLibelle} · {couleurLibelle}" />
           </div>
         {/if}
       </div>
@@ -350,22 +377,22 @@
     {#if entree.aVue3d}
       {#if vue === 'plat'}
         <div role="tabpanel" id="panneau-vue-plat" aria-labelledby="onglet-vue-plat">
-          <div class="controles-zoom" aria-label="Zoom du patron à plat">
-            <button type="button" aria-label="Zoomer" disabled={zoom >= 2.5} onclick={() => zoomer(1.25)}>+</button>
-            <button type="button" aria-label="Dézoomer" disabled={zoom <= 0.6} onclick={() => zoomer(0.8)}>−</button>
-            <button type="button" aria-label="Réinitialiser la vue" disabled={zoom === 1} onclick={() => (zoom = 1)}>⟲</button>
+          <div class="controles-zoom" aria-label={t(lang, cle('salle.zoomPatron'))}>
+            <button type="button" aria-label={t(lang, 'salle.zoomPlus')} disabled={zoom >= 2.5} onclick={() => zoomer(1.25)}>+</button>
+            <button type="button" aria-label={t(lang, 'salle.zoomMoins')} disabled={zoom <= 0.6} onclick={() => zoomer(0.8)}>−</button>
+            <button type="button" aria-label={t(lang, 'salle.zoomReset')} disabled={zoom === 1} onclick={() => (zoom = 1)}>⟲</button>
           </div>
           <div class="plat-defilant">
             <div class="plat-zoom" style="--zoom: {zoom}">
-              {#if mesures3d}<PatronCote mesures={mesures3d} options={optionsValides} uid="salle" />{/if}
+              {#if mesures3d}<PatronCote mesures={mesures3d} options={optionsValides} uid="salle" lang={lang} />{/if}
             </div>
           </div>
           <div class="barre-foi">
             <div class="barre-foi-texte">
-              <strong>Le patron à plat fait foi</strong>
-              <span>Imprimez-le à l’échelle 1:1 et vérifiez le carré de 10 cm avant de couper.</span>
+              <strong>{t(lang, 'salle.patronFaitFoi')}</strong>
+              <span>{t(lang, cle('salle.imprimerEchelle'))}</span>
             </div>
-            <a class="bouton bouton-action" href={hrefPdf} download>Télécharger le PDF A4</a>
+            <a class="bouton bouton-action" href={hrefPdf} download>{t(lang, 'commun.telechargerPdf')}</a>
           </div>
         </div>
       {:else}
@@ -374,36 +401,36 @@
             <Scene3D mesures={mesures3d} couleurId={couleurId} matiere={matiere} onIndisponible={repli3d} onVues={(v: VuesApercu) => (vues3d = v)} />
           {/if}
           {#if vues3d}
-            <ApercuTroisVues vues={vues3d} mesuresTexte={resume.join(' · ')} tissuTexte={tissuTexte} />
-            <p class="aide-scene">Volume généré à partir des cotes du patron, pas une simulation de drapé.</p>
+            <ApercuTroisVues vues={vues3d} mesuresTexte={resume.join(' · ')} tissuTexte={tissuTexte} lang={lang} />
+            <p class="aide-scene">{t(lang, 'salle.volumeIndicatifVirgule')}</p>
           {:else if message3d}
-            <p>Aperçu en 3 images indisponible ici : le patron à plat reste consultable et téléchargeable en PDF.</p>
+            <p>{t(lang, cle('salle.apercu3Indisponible'))}</p>
           {/if}
         </div>
       {/if}
     {:else}
-      <p class="aide-scene">Vue 3D non disponible pour ce modèle : voici le patron à plat, qui fait foi.</p>
-      <VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} />
+      <p class="aide-scene">{t(lang, 'salle.vue3dIndisponible')}</p>
+      <VisionneusePatron pieces={rendu.pieces} largeur={rendu.largeur} hauteur={rendu.hauteur} couleurTissu={couleurChoisie.hex} matiereTissu={matiere} lang={lang} />
     {/if}
   </div>
 
   <div class="tiroir">
-    <div class="onglets-panneaux" role="tablist" aria-label="Panneaux de la salle d’essayage">
-      <button type="button" role="tab" aria-selected={panneauMobile === 'mesures'} onclick={() => (panneauMobile = 'mesures')}>Mesures</button>
-      <button type="button" role="tab" aria-selected={panneauMobile === 'tissu'} onclick={() => (panneauMobile = 'tissu')}>Tissu</button>
-      <button type="button" role="tab" aria-selected={panneauMobile === 'patron'} onclick={() => (panneauMobile = 'patron')}>Patron</button>
+    <div class="onglets-panneaux" role="tablist" aria-label={t(lang, cle('salle.panneaux'))}>
+      <button type="button" role="tab" aria-selected={panneauMobile === 'mesures'} onclick={() => (panneauMobile = 'mesures')}>{t(lang, 'salle.vosMesures')}</button>
+      <button type="button" role="tab" aria-selected={panneauMobile === 'tissu'} onclick={() => (panneauMobile = 'tissu')}>{t(lang, 'salle.tissu')}</button>
+      <button type="button" role="tab" aria-selected={panneauMobile === 'patron'} onclick={() => (panneauMobile = 'patron')}>{t(lang, 'salle.votrePatron')}</button>
     </div>
 
-    <section class="carte panneau" class:panneau-actif={panneauMobile === 'mesures'} aria-label="Vos mesures">
+    <section class="carte panneau" class:panneau-actif={panneauMobile === 'mesures'} aria-label={t(lang, 'salle.vosMesures')}>
       <div class="carte-entete">
-        <h2>Vos mesures</h2>
+        <h2>{t(lang, 'salle.vosMesures')}</h2>
         {#if ficheLibelle}<Puce ton="bleu">{ficheLibelle}</Puce>{/if}
       </div>
-      <p class="aide">Préremplies depuis la fiche — ajustez ici pour ce patron. La fiche n’est pas modifiée.</p>
+      <p class="aide">{t(lang, cle('salle.aideMesuresFiche'))}</p>
       {#if PRESETS.length > 0}
-        <div class="presets" role="group" aria-label="Morphologies de référence">
+        <div class="presets" role="group" aria-label={t(lang, 'demo.morphologie')}>
           {#each PRESETS as p}
-            <button type="button" class:actif={presetActif === p.id} aria-pressed={presetActif === p.id} onclick={() => appliquerPreset(p)}>{p.libelle}</button>
+            <button type="button" class:actif={presetActif === p.id} aria-pressed={presetActif === p.id} onclick={() => appliquerPreset(p)}>{t(lang, p.libelleCle)}</button>
           {/each}
         </div>
       {/if}
@@ -413,67 +440,67 @@
             <label for="live-{champ.code}">{champ.libelle}</label>
             <span class="pastille-valeur">
               <input id="live-{champ.code}" name="live-{champ.code}" type="text" inputmode="decimal" value={valeursLive[champ.code]} oninput={(e) => { valeursLive = { ...valeursLive, [champ.code]: e.currentTarget.value }; planifierMaj(champ.code); }} aria-invalid={erreursLive[champ.code] ? 'true' : undefined} aria-describedby={erreursLive[champ.code] ? `err-${champ.code}` : undefined} />
-              <span aria-hidden="true">cm</span>
+              <span aria-hidden="true">{t(lang, 'commun.cm')}</span>
             </span>
           </div>
-          <input type="range" min={champ.minCm} max={champ.maxCm} step={champ.pasCm} value={nombreLive(champ.code, champ.minCm)} oninput={(e) => majDepuisCurseur(champ.code, e.currentTarget.valueAsNumber)} aria-label="Curseur {champ.libelle}" />
-          <span class="aide">Plage : {champ.minCm} à {champ.maxCm} cm, pas de {fmt(champ.pasCm)} cm.</span>
+          <input type="range" min={champ.minCm} max={champ.maxCm} step={champ.pasCm} value={nombreLive(champ.code, champ.minCm)} oninput={(e) => majDepuisCurseur(champ.code, e.currentTarget.valueAsNumber)} aria-label={t(lang, 'salle.curseur', { mesure: champ.libelle })} />
+          <span class="aide">{t(lang, cle('salle.plagePas'), { min: fmt(champ.minCm), max: fmt(champ.maxCm), pas: fmt(champ.pasCm) })}</span>
           {#if erreursLive[champ.code]}<p class="erreur-mesure" id="err-{champ.code}" role="alert">{erreursLive[champ.code]}</p>{/if}
         </div>
       {/each}
     </section>
 
-    <section class="carte panneau" class:panneau-actif={panneauMobile === 'tissu'} aria-label="Tissu">
-      <h2>Tissu</h2>
-      <p id="tissu-choisi" aria-live="polite">{couleurChoisie.libelle} · {matiereLibelle}</p>
-      <div class="pastilles-couleur" role="group" aria-label="Couleur du tissu">
+    <section class="carte panneau" class:panneau-actif={panneauMobile === 'tissu'} aria-label={t(lang, 'salle.tissu')}>
+      <h2>{t(lang, 'salle.tissu')}</h2>
+      <p id="tissu-choisi" aria-live="polite">{couleurLibelle} · {matiereLibelle}</p>
+      <div class="pastilles-couleur" role="group" aria-label={t(lang, cle('salle.couleurTissu'))}>
         {#each COULEURS_TISSU as c}
-          <button type="button" class="pastille-couleur" class:actif={couleurId === c.id} style="--pastille: {c.hex}" aria-pressed={couleurId === c.id} aria-label="Couleur {c.libelle}" title={c.libelle} onclick={() => (couleurId = c.id)}></button>
+          <button type="button" class="pastille-couleur" class:actif={couleurId === c.id} style="--pastille: {c.hex}" aria-pressed={couleurId === c.id} aria-label={t(lang, 'salle.couleur', { couleur: t(lang, c.libelleCle) })} title={t(lang, c.libelleCle)} onclick={() => (couleurId = c.id)}></button>
         {/each}
       </div>
-      <div class="matieres" role="group" aria-label="Matière">
+      <div class="matieres" role="group" aria-label={t(lang, cle('salle.matiere'))}>
         {#each MATIERES as m}
-          <button type="button" class:actif={matiere === m.id} aria-pressed={matiere === m.id} onclick={() => (matiere = m.id)}>{m.libelle}</button>
+          <button type="button" class:actif={matiere === m.id} aria-pressed={matiere === m.id} onclick={() => (matiere = m.id)}>{t(lang, m.libelleCle)}</button>
         {/each}
       </div>
-      <p class="aide">La couleur remplit les pièces du patron à plat ; la loupe, dans la vue 3D, montre la matière en gros plan.</p>
+      <p class="aide">{t(lang, cle('salle.tissuAide'))}</p>
     </section>
 
     {#if entree.assistantIa}
-    <section class="carte panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label="Assistant de modèle">
-      <h2>Assistant de modèle</h2>
-      <p class="aide">Décrivez le pantalon voulu en quelques mots : l’assistant propose seulement les options du modèle (ampleur du bas, pli, ceinture). Il ne fournit aucune cote, ne dessine pas le patron et ne le valide pas — le moteur calcule, vous vérifiez.</p>
-      <label class="description-modele">Modèle voulu
-        <textarea bind:value={descriptionModele} rows="3" maxlength="300" placeholder="Ex. pantalon très ample et fluide, pli marqué, ceinture fine"></textarea>
+    <section class="carte panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label={t(lang, 'ia.titre')}>
+      <h2>{t(lang, 'ia.titre')}</h2>
+      <p class="aide">{t(lang, 'ia.texte')}</p>
+      <label class="description-modele">{t(lang, cle('ia.modeleVoulu'))}
+        <textarea bind:value={descriptionModele} rows="3" maxlength="300" placeholder={t(lang, 'ia.placeholder')}></textarea>
       </label>
       <p class="actions-ia">
         <button type="button" class="bouton bouton-secondaire" disabled={suggestionEnCours || descriptionModele.trim().length < 3} onclick={demanderSuggestion}>
-          {suggestionEnCours ? 'Suggestion en cours…' : 'Proposer des paramètres'}
+          {suggestionEnCours ? t(lang, 'ia.enCours') : t(lang, 'ia.proposer')}
         </button>
       </p>
       {#if messageIa}<p class="message-ia" class:ok={suggestionIaOk} role="status" aria-live="polite">{messageIa}</p>{/if}
     </section>
     {/if}
 
-    <section class="carte panneau carte-sombre-panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label="Votre patron">
-      <h2>Votre patron</h2>
+    <section class="carte panneau carte-sombre-panneau" class:panneau-actif={panneauMobile === 'patron'} aria-label={t(lang, 'salle.votrePatron')}>
+      <h2>{t(lang, 'salle.votrePatron')}</h2>
       {#if patronCote}
         <div class="puces-pieces">
-          <span class="puce-piece">Devant ×2 · bas {patronCote.valeurs.basDevant}</span>
-          <span class="puce-piece">Dos ×2 · bas {patronCote.valeurs.basDos}</span>
-          <span class="puce-piece">Ceinture ×1 · {patronCote.valeurs.ceinture} cm</span>
+          <span class="puce-piece">{t(lang, 'piece.devant')} ×2 · {t(lang, 'cote.bas')} {patronCote.valeurs.basDevant}</span>
+          <span class="puce-piece">{t(lang, 'piece.dos')} ×2 · {t(lang, 'cote.bas')} {patronCote.valeurs.basDos}</span>
+          <span class="puce-piece">{t(lang, 'piece.ceinture')} ×1 · {patronCote.valeurs.ceinture} {t(lang, 'commun.cm')}</span>
         </div>
       {:else}
         {#each rendu.pieces as piece}
           <h3 class="piece-nom">{piece.nom}</h3>
           <table>
             <tbody>
-              {#each piece.tableau as ligne}<tr><th scope="row">{ligne.libelle}</th><td>{ligne.valeur} cm</td></tr>{/each}
+              {#each piece.tableau as ligne}<tr><th scope="row">{ligne.libelle}</th><td>{ligne.valeur} {t(lang, 'commun.cm')}</td></tr>{/each}
             </tbody>
           </table>
         {/each}
       {/if}
-      <p class="texte-sombre-doux">Imprimez sans mise à l’échelle puis vérifiez le carré de 10 cm à la règle avant de couper.</p>
+      <p class="texte-sombre-doux">{t(lang, 'demo.carreRappel')}</p>
 
       <form method="post" action={actionEnregistrer} class="enregistrer" id="form-enregistrer-salle">
         <input type="hidden" name="_csrf" value={csrfToken} />
@@ -483,31 +510,31 @@
         {/each}
         <input type="hidden" name="couleur_id" value={couleurId} />
         <input type="hidden" name="matiere_id" value={matiere} />
-        <label class="nom-patron">Nom du patron
+        <label class="nom-patron">{t(lang, 'salle.nomPatron')}
           <input name="nom_patron" value={nomInitial} required minlength="2" maxlength="80" />
         </label>
         {#if defsOptions.length > 0}
           <details bind:open={optionsOuvertes}>
-            <summary>Options du modèle (facultatif)</summary>
+            <summary>{t(lang, 'patron.mesures.options')}</summary>
             {#each defsOptions as def}
               {#if def.type === 'nombre'}
-                <label>{def.libelle} (cm)
-                  <input name={def.code} inputmode="decimal" placeholder={def.placeholder ?? ''} bind:value={optionsTexte[def.code]} oninput={verifierOptions} />
+                <label>{t(lang, def.libelleCle)} ({t(lang, 'commun.cm')})
+                  <input name={def.code} inputmode="decimal" placeholder={def.placeholderCle ? t(lang, def.placeholderCle) : ''} bind:value={optionsTexte[def.code]} oninput={verifierOptions} />
                 </label>
               {:else if def.type === 'choix'}
                 <fieldset class="options-choix">
-                  <legend>{def.libelle}</legend>
+                  <legend>{t(lang, def.libelleCle)}</legend>
                   {#each def.choix ?? [] as choix}
                     <label class="coche-option">
                       <input type="radio" name={def.code} value={choix.valeur} bind:group={optionsChoix[def.code]} />
-                      {choix.libelle}
+                      {t(lang, choix.libelleCle)}
                     </label>
                   {/each}
                 </fieldset>
               {:else}
                 <label class="coche-option">
                   <input type="checkbox" name={def.code} value={String(def.defaut ?? 'oui')} checked={optionsChoix[def.code] === 'on'} onchange={(e) => { optionsChoix = { ...optionsChoix, [def.code]: e.currentTarget.checked ? 'on' : '' }; }} />
-                  {def.libelle}
+                  {t(lang, def.libelleCle)}
                 </label>
               {/if}
             {/each}

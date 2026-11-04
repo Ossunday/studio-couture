@@ -1,75 +1,47 @@
 <script lang="ts">
   import IllustrationMesure from '$lib/illustrations/IllustrationMesure.svelte';
+  import { t, formatCm, type Lang, type TranslationKey } from '$lib/i18n';
   let { data, form } = $props();
+  const lang: Lang = $derived(data.lang ?? 'fr');
+  const cle = (k: string) => k as TranslationKey;
 
-  const aides: Record<string, { aide: string; exemple: string }> = {
-    tour_taille_cm: {
-      aide: 'Faites le tour au creux naturel de la taille, ruban à plat, sans serrer.',
-      exemple: 'Exemple courant : 82 cm.'
-    },
-    tour_hanches_cm: {
-      aide: 'Faites le tour à l’endroit le plus fort des hanches et des fesses.',
-      exemple: 'Exemple courant : 100 cm.'
-    },
-    hauteur_fourche_cm: {
-      aide: 'Assise sur une chaise dure, mesurez le long du côté, de la taille jusqu’à la chaise.',
-      exemple: 'Exemple courant : 27 cm.'
-    },
-    longueur_pantalon_cm: {
-      aide: 'Debout, mesurez le long du côté, de la taille jusqu’au sol (ou à la cheville souhaitée).',
-      exemple: 'Exemple courant : 105 cm.'
-    },
-    longueur_jupe_cm: {
-      aide: 'Mesurez de la taille jusqu’à la longueur de jupe souhaitée (genou, mollet…).',
-      exemple: 'Exemple courant : 60 cm.'
-    },
-    tour_poitrine_cm: {
-      aide: 'Faites le tour à l’endroit le plus fort de la poitrine, ruban à plat.',
-      exemple: 'Exemple courant : 92 cm.'
-    },
-    longueur_dos_cm: {
-      aide: 'Mesurez de la nuque jusqu’au creux naturel de la taille, dans le dos.',
-      exemple: 'Exemple courant : 40 cm.'
-    },
-    largeur_epaules_cm: {
-      aide: 'Mesurez d’une pointe d’épaule à l’autre, dans le dos.',
-      exemple: 'Exemple courant : 38 cm.'
-    },
-    longueur_robe_cm: {
-      aide: 'Mesurez depuis la nuque, le long du dos, jusqu’à la longueur de robe souhaitée.',
-      exemple: 'Exemple courant : 100 cm.'
-    }
-  };
+  // Aides de prise de mesure par code (clés proposées aideMesure.* / aideMesure.exemple.*).
+  const aideCle = (code: string) => cle(`aideMesure.${code}`);
+  const exempleCle = (code: string) => cle(`aideMesure.exemple.${code}`);
+  const aAide = (code: string) =>
+    ['tour_taille_cm','tour_hanches_cm','hauteur_fourche_cm','longueur_pantalon_cm','longueur_jupe_cm','tour_poitrine_cm','longueur_dos_cm','largeur_epaules_cm','longueur_robe_cm'].includes(code);
 </script>
 
+<svelte:head><title>{t(lang, 'patron.mesures.titrePage')}</title></svelte:head>
+
 <main>
-  <p><a href="/">← Changer de modèle</a></p>
-  <h1>{data.titre} — vos mesures</h1>
-  <p>Seulement les mesures de ce modèle. Prenez-les au mètre ruban, en centimètres.</p>
+  <p><a href="/">← {t(lang, cle('patron.mesures.changerModele'))}</a></p>
+  <h1>{data.titre} — {t(lang, cle('patron.mesures.vosMesures'))}</h1>
+  <p>{t(lang, 'patron.mesures.texte')}</p>
 
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
 
   <form method="post" class="grille">
     <input type="hidden" name="_csrf" value={data.csrfToken} />
-    <label>Nom de la cliente (ou laissez « sans nom »)
-      <input name="nom" autocomplete="name" placeholder="sans nom" />
+    <label>{t(lang, 'patron.mesures.nomCliente')}
+      <input name="nom" autocomplete="name" placeholder={t(lang, 'patron.mesures.sansNom')} />
     </label>
     {#each data.champs as champ}
       <div class="champ">
-        <IllustrationMesure code={champ.code} />
-        <label>{champ.libelle}
-          <input name={champ.code} inputmode="decimal" required placeholder="ex. 82,5" />
-          <span class="aide">{aides[champ.code]?.aide} {aides[champ.code]?.exemple} Plage acceptée : {champ.minCm} à {champ.maxCm} cm.</span>
+        <IllustrationMesure code={champ.code} lang={lang} />
+        <label>{champ.libelle} ({t(lang, 'commun.cm')})
+          <input name={champ.code} inputmode="decimal" required placeholder={t(lang, cle('demo.exempleSaisie'))} />
+          <span class="aide">{#if aAide(champ.code)}{t(lang, aideCle(champ.code))} {t(lang, exempleCle(champ.code))} {/if}{t(lang, 'patron.mesures.aidePlage', { min: formatCm(lang, champ.minCm), max: formatCm(lang, champ.maxCm) })}</span>
         </label>
       </div>
     {/each}
     {#if data.options.length > 0}
       <details>
-        <summary>Options du modèle (facultatif)</summary>
-        <p>Les valeurs par défaut du modèle s'appliquent si vous ne changez rien. Aucun champ obligatoire ici.</p>
+        <summary>{t(lang, 'patron.mesures.options')}</summary>
+        <p>{t(lang, cle('patron.mesures.optionsDefaut'))}</p>
         {#each data.options as option}
           {#if option.type === 'nombre'}
-            <label>{option.libelle} (cm)
+            <label>{option.libelle} ({t(lang, 'commun.cm')})
               <input name={option.code} inputmode="decimal" placeholder={option.placeholder ?? ''} />
             </label>
           {:else if option.type === 'choix'}
@@ -89,7 +61,7 @@
         {/each}
       </details>
     {/if}
-    <button type="submit">Voir mon patron</button>
+    <button type="submit">{t(lang, 'patron.mesures.generer')}</button>
   </form>
 </main>
 

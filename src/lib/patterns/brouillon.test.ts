@@ -4,7 +4,9 @@ import { genererPdfPatron } from './pdf';
 import { genererPatronJupeDroite } from './jupe-droite/geometry';
 import { FORMULES_PANTALON_LARGE } from './pantalon-large/formulas';
 import { genererPatronPantalonLarge } from './pantalon-large/geometry';
+import { MessageError, traduireErreur } from '../i18n';
 import { validerMesuresPatron } from './saisie-patron';
+function cleEtTexte(fn: () => unknown): { cle: string; texte: string } { try { fn(); } catch (e) { if (e instanceof MessageError) return { cle: e.cle, texte: traduireErreur('fr', e) }; throw e; } throw new Error('aucune erreur'); }
 
 const JEUX = [
   { nom: 'petite', tourTailleCm: 64, tourHanchesCm: 88, hauteurFourcheCm: 24, longueurPantalonCm: 96 },
@@ -60,12 +62,14 @@ describe('patron brouillon pantalon large — géométrie', () => {
 
 describe('validation des mesures du patron (message nommant la mesure)', () => {
   it('refuse une valeur hors bornes en nommant la mesure', () => {
-    expect(() =>
-      validerMesuresPatron('pantalon_large', (code) => ({ tour_taille_cm: '300', tour_hanches_cm: '100', hauteur_fourche_cm: '27', longueur_pantalon_cm: '105' })[code])
-    ).toThrow(/Vérifiez : tour de taille/);
+    const r = cleEtTexte(() => validerMesuresPatron('pantalon_large', (code) => ({ tour_taille_cm: '300', tour_hanches_cm: '100', hauteur_fourche_cm: '27', longueur_pantalon_cm: '105' })[code]));
+    expect(r.cle).toBe('validation.verifiezMesureNombre');
+    expect(r.texte).toMatch(/Vérifiez : tour de taille/);
   });
   it('refuse une mesure manquante en la nommant', () => {
-    expect(() => validerMesuresPatron('jupe_droite', (code) => (code === 'longueur_jupe_cm' ? '' : '90'))).toThrow(/longueur de jupe/);
+    const r = cleEtTexte(() => validerMesuresPatron('jupe_droite', (code) => (code === 'longueur_jupe_cm' ? '' : '90')));
+    expect(r.cle).toBe('validation.verifiezMesureManquante');
+    expect(r.texte).toMatch(/longueur de jupe/);
   });
   it('refuse une fourche incohérente avec la longueur', () => {
     expect(() =>

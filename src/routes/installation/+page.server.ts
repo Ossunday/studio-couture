@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { normaliserIdentifiant, validerMotDePasse } from '$lib/domain/identifiant';
+import { MessageError, t, traduireErreur } from '$lib/i18n';
 import { hacherMotDePasse } from '$lib/server/auth';
 import { getRepository } from '$lib/server/repository';
 
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-  default: async ({ request }) => {
+  default: async ({ request, locals }) => {
     const repo = getRepository();
     if ((await repo.compterUtilisatrices()) > 0) throw redirect(303, '/connexion');
     const data = await request.formData();
@@ -20,12 +21,14 @@ export const actions: Actions = {
     const identifiantBrut = String(data.get('identifiant') ?? '');
     const motDePasse = String(data.get('mot_de_passe') ?? '');
     try {
-      if (!nomAtelier || !nom) throw new Error('Nom de l’atelier et votre nom sont requis.');
+      if (!nomAtelier || !nom) throw new MessageError('validation.installationRequis');
       const identifiant = normaliserIdentifiant(identifiantBrut).valeur;
       validerMotDePasse(motDePasse);
       await repo.creerAtelierEtAdmin({ nomAtelier, nom, identifiant, motDePasseHash: hacherMotDePasse(motDePasse) });
     } catch (e) {
-      return fail(400, { erreur: e instanceof Error ? e.message : 'Installation impossible.' });
+      return fail(400, {
+        erreur: e instanceof MessageError ? traduireErreur(locals.lang, e) : t(locals.lang, 'validation.installationImpossible')
+      });
     }
     throw redirect(303, '/connexion');
   }

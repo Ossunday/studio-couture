@@ -7,9 +7,9 @@ import { RepositoryMemoire } from './repository-memory';
 describe('validation des photos clientes', () => {
   it('accepte JPEG/PNG/WebP sous 5 Mo et refuse le reste', () => {
     expect(() => validerPhoto('image/jpeg', 1024)).not.toThrow();
-    expect(() => validerPhoto('image/gif', 1024)).toThrow(/JPEG, PNG ou WebP/);
-    expect(() => validerPhoto('image/png', TAILLE_PHOTO_MAX_OCTETS + 1)).toThrow(/5 Mo/);
-    expect(() => validerPhoto('image/png', 0)).toThrow(/5 Mo/);
+    expect(() => validerPhoto('image/gif', 1024)).toThrowError(expect.objectContaining({ cle: 'validation.photoFormat' }));
+    expect(() => validerPhoto('image/png', TAILLE_PHOTO_MAX_OCTETS + 1)).toThrowError(expect.objectContaining({ cle: 'validation.photoTropLourde' }));
+    expect(() => validerPhoto('image/png', 0)).toThrowError(expect.objectContaining({ cle: 'validation.photoTropLourde' }));
   });
   it('expire exactement 7 jours après création par défaut', () => {
     const creee = new Date('2026-10-28T10:00:00Z');

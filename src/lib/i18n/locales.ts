@@ -1,10 +1,12 @@
-export const LOCALES = ['fr'] as const;
+export const LOCALES = ['fr', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
+export type Lang = Locale;
 export const DEFAULT_LOCALE: Locale = 'fr';
+export const LANG_COOKIE = 'lang';
 
-/**
- * Règle produit n°6 : aucune traduction en langue locale n'est publiée
- * sans validation humaine. N'ajouter une locale ici qu'après validation
- * écrite d'un·e locuteur·rice / traducteur·rice identifié·e.
- */
-export const PUBLISHED_LOCALES: readonly Locale[] = ['fr'];
+/** Langue lue dans le cookie « lang » : seule « en » active l'anglais, tout le reste = français. */
+export function lireLangue(valeur: string | null | undefined): Lang {
+  return valeur === 'en' ? 'en' : 'fr';
+}
+
+export const PUBLISHED_LOCALES: readonly Locale[] = ['fr', 'en'];

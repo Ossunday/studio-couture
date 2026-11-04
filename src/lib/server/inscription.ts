@@ -1,4 +1,5 @@
 import { normaliserIdentifiant } from '$lib/domain/identifiant';
+import { MessageError, type TranslationKey } from '$lib/i18n';
 import { hacherMotDePasse } from './auth';
 import type { CompteUtilisatrice, Repository } from './repository';
 
@@ -10,7 +11,7 @@ import type { CompteUtilisatrice, Repository } from './repository';
  * jamais journalisé.
  */
 
-export const MESSAGE_DOUBLON = 'Cette adresse est déjà utilisée. Connectez-vous.';
+export const MESSAGE_DOUBLON: TranslationKey = 'validation.doublon';
 export const LIMITE_CREATIONS_PAR_HEURE = 5;
 export const FENETRE_CREATIONS_MS = 60 * 60 * 1000;
 
@@ -44,28 +45,28 @@ export function piegeRempli(brut: InscriptionBrute): boolean {
 export function validerInscription(brut: InscriptionBrute): InscriptionValidee {
   const nomAtelier = brut.nomAtelier.trim();
   if (nomAtelier.length < 2 || nomAtelier.length > 80) {
-    throw new Error('Nom de l’atelier : entre 2 et 80 caractères.');
+    throw new MessageError('validation.nomAtelierBornes');
   }
   const nom = brut.nom.trim();
   if (nom.length < 2 || nom.length > 80) {
-    throw new Error('Votre nom : entre 2 et 80 caractères.');
+    throw new MessageError('validation.votreNomBornes');
   }
   let email: string;
   try {
     const normalise = normaliserIdentifiant(brut.email);
-    if (normalise.type !== 'email') throw new Error('Adresse e-mail invalide.');
+    if (normalise.type !== 'email') throw new MessageError('validation.identifiantEmail');
     email = normalise.valeur; // minuscules, garantie par normaliserIdentifiant
   } catch {
-    throw new Error('Adresse e-mail invalide.');
+    throw new MessageError('validation.identifiantEmail');
   }
   if (brut.motDePasse.length < 12) {
-    throw new Error('Mot de passe trop court : 12 caractères minimum.');
+    throw new MessageError('validation.motDePasse12');
   }
   if (brut.motDePasse !== brut.confirmation) {
-    throw new Error('Les deux mots de passe ne correspondent pas.');
+    throw new MessageError('validation.motsDePasseDifferents');
   }
   if (!brut.consentement) {
-    throw new Error('Cochez la case d’engagement sur le consentement de vos clientes.');
+    throw new MessageError('validation.consentementCoche');
   }
   return { nomAtelier, nom, email, motDePasse: brut.motDePasse };
 }
@@ -74,7 +75,7 @@ export function validerInscription(brut: InscriptionBrute): InscriptionValidee {
 export async function inscrireAtelier(repo: Repository, brut: InscriptionBrute): Promise<CompteUtilisatrice> {
   const valide = validerInscription(brut);
   if (await repo.trouverCompteParIdentifiant(valide.email)) {
-    throw new Error(MESSAGE_DOUBLON);
+    throw new MessageError(MESSAGE_DOUBLON);
   }
   try {
     return await repo.creerAtelierEtAdmin({
@@ -85,7 +86,7 @@ export async function inscrireAtelier(repo: Repository, brut: InscriptionBrute):
     });
   } catch (e) {
     // Course entre deux inscriptions simultanées : contrainte unique de la base.
-    if (e instanceof Error && /duplicate|unique|déjà/i.test(e.message)) throw new Error(MESSAGE_DOUBLON);
+    if (e instanceof Error && /duplicate|unique|déjà/i.test(e.message)) throw new MessageError(MESSAGE_DOUBLON);
     throw e;
   }
 }

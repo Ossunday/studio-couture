@@ -1,28 +1,31 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Avatar from '$lib/design/Avatar.svelte';
+  import { t, type Lang, type TranslationKey } from '$lib/i18n';
 
   let {
     nom,
     role,
-    csrfToken
-  }: { nom: string; role: 'admin' | 'couturiere'; csrfToken?: string } = $props();
+    csrfToken,
+    lang = 'fr'
+  }: { nom: string; role: 'admin' | 'couturiere'; csrfToken?: string; lang?: Lang } = $props();
 
+  const tr = (k: TranslationKey) => t(lang, k);
   const chemin = $derived(page.url.pathname);
   const estActif = (href: string) => (href === '/' ? chemin === '/' : chemin.startsWith(href));
 
   const liens = $derived([
-    { href: '/', libelle: 'Accueil', icone: 'accueil', actif: estActif('/') },
-    { href: '/clientes', libelle: 'Clientes', icone: 'clientes', actif: estActif('/clientes') },
-    { href: '/patron/mesures?modele=pantalon_large', libelle: 'Patrons', icone: 'patrons', actif: chemin.startsWith('/patron') },
+    { href: '/', libelle: tr('nav.accueil'), icone: 'accueil', actif: estActif('/') },
+    { href: '/clientes', libelle: tr('nav.clientes'), icone: 'clientes', actif: estActif('/clientes') },
+    { href: '/patron/mesures?modele=pantalon_large', libelle: tr('nav.patrons'), icone: 'patrons', actif: chemin.startsWith('/patron') },
     ...(role === 'admin'
-      ? [{ href: '/atelier/utilisatrices', libelle: 'Équipe', icone: 'equipe', actif: estActif('/atelier') }]
-      : [{ href: '/profil', libelle: 'Profil', icone: 'profil', actif: estActif('/profil') }])
+      ? [{ href: '/atelier/utilisatrices', libelle: tr('nav.equipe'), icone: 'equipe', actif: estActif('/atelier') }]
+      : [{ href: '/profil', libelle: tr('nav.profil'), icone: 'profil', actif: estActif('/profil') }])
   ]);
 </script>
 
-<nav class="rail" aria-label="Atelier">
-  <a class="rail-logo" href="/" aria-label="Studio Couture — Accueil">
+<nav class="rail" aria-label={tr('nav.atelier')}>
+  <a class="rail-logo" href="/" aria-label={tr('nav.logoAccueil')}>
     <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><rect width="38" height="38" rx="11" fill="#B9C8F5" /><path d="M12 25c2 2.2 5 2.8 7.5 1.8 2.6-1 3-4 .6-5.2l-3.4-1.6c-2.4-1.2-2-4.2.6-5.2 2.4-1 5.3-.4 7.2 1.6" fill="none" stroke="#25252B" stroke-width="2.6" stroke-linecap="round" /></svg>
   </a>
 
@@ -51,7 +54,7 @@
       <input type="hidden" name="_csrf" value={csrfToken} />
       <button type="submit" class="rail-deconnexion">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        <span class="rail-libelle">Se déconnecter</span>
+        <span class="rail-libelle">{tr('commun.seDeconnecter')}</span>
       </button>
     </form>
   </div>
@@ -66,7 +69,7 @@
   .rail-liens a, .rail-deconnexion { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; min-width: 44px; width: 100%; padding: 6px 4px; border-radius: 999px; color: #d9d9e2; text-decoration: none; font-weight: 600; font-size: 0.72rem; background: transparent; border: 0; cursor: pointer; }
   .rail-liens a svg, .rail-deconnexion svg { width: 22px; height: 22px; flex: none; }
   .rail-liens a.actif { background: #fff; color: var(--encre); }
-  .rail-bas { display: flex; align-items: center; }
+  .rail-bas { display: flex; align-items: center; gap: 4px; }
   .rail-bas form { display: flex; }
   .rail-deconnexion .rail-libelle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .rail a:focus-visible, .rail button:focus-visible { outline: 3px solid var(--jaune-vert); outline-offset: 2px; }

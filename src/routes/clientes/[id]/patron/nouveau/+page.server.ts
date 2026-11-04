@@ -2,8 +2,9 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
 import { estModelePatron, MODELES, validerMesuresPatron } from '$lib/patterns/saisie-patron';
-import { REGISTRE_MODELES } from '$lib/patterns/registre';
+import { REGISTRE_MODELES, parametresOptionsModele } from '$lib/patterns/registre';
 import { assertCsrf, exigerConnexion } from '$lib/server/garde';
+import { lireConfigIa } from '$lib/server/ia/suggestion-modele';
 import { validerPatronEnregistre } from '$lib/server/patron-cliente';
 import { getRepository } from '$lib/server/repository';
 import { formatDate, t, traduireErreur, type TranslationKey } from '$lib/i18n';
@@ -26,7 +27,13 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   const base = {
     lang,
     cliente: { id: cliente.id, nom: cliente.nom, prenom },
-    csrfToken: locals.csrfToken
+    csrfToken: locals.csrfToken,
+    // Assistant IA (phase 11) : visible dès le choix du modèle. Désactivé
+    // sans erreur en mode démo mémoire ou sans configuration serveur ; la
+    // carte annonce alors « Assistant bientôt disponible » et le choix
+    // manuel reste le repli.
+    assistantIaDisponible:
+      (process.env.STUDIO_COUTURE_REPOSITORY ?? '').trim().toLowerCase() !== 'memoire' && lireConfigIa() !== null
   };
   const modeleBrut = url.searchParams.get('modele');
   // Paramètre absent → écran de choix. Paramètre présent mais inconnu →
@@ -66,9 +73,24 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
       ? absentes.map((code) => ({ code, valeur: '' }))
       : MODELES[modele].champs.map((code) => ({ code, valeur: lire(code) ?? '' }));
   const erreurAffichee = mesures || absentes.length > 0 ? null : erreurMesures;
+  // Options préremplies par l’assistant (paramètres d’URL encodés par code,
+  // relus par le registre) : transmises à la salle, modifiables, jamais
+  // obligatoires. Une valeur illisible est ignorée, jamais bloquante.
+  const entree = REGISTRE_MODELES[modele];
+  let optionsInitiales: Record<string, number | string> = {};
+  try {
+    optionsInitiales = entree.lireOptions((code) => url.searchParams.get(code));
+  } catch {
+    optionsInitiales = {};
+  }
+  const optionsParams = entree.options
+    .filter((def) => optionsInitiales[def.cle] !== undefined)
+    .map((def) => ({ code: def.code, valeur: String(optionsInitiales[def.cle]) }));
   return {
     ...base,
     modele,
+    optionsInitiales,
+    optionsParams,
     titreModele: t(lang, REGISTRE_MODELES[modele].titreCle),
     manquantes: mesures ? [] : manquantes,
     aCompleter,
@@ -109,6 +131,14 @@ export const actions: Actions = {
         else valeurs[code] = validerMensurationSaisie(code, '');
       }
       validerMesuresPatron(modele, (code) => String(valeurs[code]));
+      // Options venues de l’assistant : ré-émises dans l’URL de la salle,
+      // pour qu’elles y arrivent préremplies et modifiables.
+      try {
+        const entree = REGISTRE_MODELES[modele];
+        parametresOptionsModele(retour, entree, entree.lireOptions((code) => data.get(code)?.toString()));
+      } catch {
+        // Option illisible : ignorée, le parcours manuel continue.
+      }
       for (const code of MODELES[modele].champs) {
         if (enregistrer) {
           await repo.enregistrerMensuration({ clienteId: cliente.id, code, valeurCm: valeurs[code]!, saisiePar: u.id });

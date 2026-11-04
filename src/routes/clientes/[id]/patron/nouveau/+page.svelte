@@ -1,5 +1,6 @@
 <script lang="ts">
   import IllustrationModele from '$lib/illustrations/IllustrationModele.svelte';
+  import AssistantPatron from '$lib/design/AssistantPatron.svelte';
   import SalleEssayageCliente from '$lib/demo/SalleEssayageCliente.svelte';
   import { definitionMensuration } from '$lib/domain/mensurations-saisie';
   import { LISTE_MODELES } from '$lib/patterns/registre';
@@ -22,6 +23,7 @@
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
 
   {#if !data.modele}
+    <AssistantPatron lang={data.lang} clienteId={data.cliente.id} csrfToken={data.csrfToken ?? ''} disponible={data.assistantIaDisponible ?? false} />
     <h2>1. {t(data.lang, 'demo.choisirModele')}</h2>
     <div class="modeles">
       {#each LISTE_MODELES as entree}
@@ -37,6 +39,9 @@
     <form method="post" action="?/completerMesures" class="grille">
       <input type="hidden" name="_csrf" value={data.csrfToken} />
       <input type="hidden" name="modele" value={data.modele} />
+      {#each data.optionsParams ?? [] as opt}
+        <input type="hidden" name={opt.code} value={opt.valeur} />
+      {/each}
       {#each data.aCompleter as champ}
         {@const def = definitionMensuration(champ.code)}
         <label>{t(data.lang, `mesure.${champ.code}` as TranslationKey)} — {t(data.lang, 'patron.mesures.aidePlage', { min: def.minCm, max: def.maxCm })}
@@ -54,6 +59,7 @@
       lang={data.lang}
       modele={data.modele}
       mesuresInitiales={data.mesures}
+      optionsInitiales={data.optionsInitiales ?? {}}
       nomInitial={data.nomPropose ?? ''}
       csrfToken={data.csrfToken ?? ''}
       actionEnregistrer="?/enregistrerPatron"

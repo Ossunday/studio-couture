@@ -1,5 +1,8 @@
 import { ENV_IA_API_KEY, ENV_IA_BASE_URL, ENV_IA_MODELE } from '$lib/brand';
+import { t } from '$lib/i18n';
 import type { OptionsPantalonLarge } from '$lib/patterns/pantalon-large/geometry';
+import { LISTE_MODELES, REGISTRE_MODELES, type ModelePatron, type OptionsModele } from '$lib/patterns/registre';
+import type { TypeImageIa } from './photo';
 
 /**
  * Assistant de modèle par IA — traduction d'une description libre en OPTIONS
@@ -38,8 +41,19 @@ export const LIBELLES_OPTIONS_IA: Record<CleOptionIa, string> = {
 
 /** Longueur maximale du texte envoyé au modèle (texte du modèle uniquement). */
 export const LONGUEUR_MAX_TEXTE_MODELE = 300;
-/** Délai d'attente court par défaut pour l'appel au modèle. */
-export const DELAI_IA_DEFAUT_MS = 8_000;
+/**
+ * Délai d'attente par défaut pour l'appel au modèle : 30 secondes.
+ * L'endpoint compatible peut réfléchir avant de répondre ; un délai court
+ * couperait des réponses pourtant valides.
+ */
+export const DELAI_IA_DEFAUT_MS = 30_000;
+/**
+ * Jetons de réponse : 1 500 minimum. Mesuré avec le modèle configuré : la
+ * réponse commence par un bloc de réflexion sans texte, qui consomme le
+ * budget — avec 50 jetons, le bloc texte n'arrive jamais ; avec 1 000, il
+ * arrive. 1 500 laisse la réflexion ET le JSON final.
+ */
+export const MAX_TOKENS_IA = 1_500;
 
 export class SuggestionInvalideError extends Error {}
 
@@ -101,9 +115,17 @@ export function construirePromptUtilisateur(texteModele: string): string {
   return `Description du modèle de pantalon large voulu : « ${texteModele.trim()} »`;
 }
 
+export interface ImageIa {
+  mediaType: TypeImageIa;
+  /** Image encodée en base64, métadonnées déjà retirées (voir photo.ts). */
+  donneesBase64: string;
+}
+
 export interface ClientIa {
   /** Renvoie le texte brut de la réponse du modèle (JSON attendu). */
   genererTexte(systeme: string, utilisateur: string, signal: AbortSignal): Promise<string>;
+  /** Même chose avec une photo de vêtement jointe au message. */
+  genererAvecImage?(systeme: string, utilisateur: string, image: ImageIa, signal: AbortSignal): Promise<string>;
 }
 
 export interface ConfigIa {
@@ -138,38 +160,59 @@ export function lireConfigIa(env: NodeJS.ProcessEnv = process.env): ConfigIa | n
  * accepter (`x-api-key` et `Authorization: Bearer`) ; elle n'est jamais
  * journalisée et n'apparaît dans aucun message d'erreur.
  */
+/**
+ * Extrait le texte exploitable d'une réponse Messages : SEULS les blocs
+ * `text` comptent. L'endpoint configuré renvoie d'abord un bloc
+ * `redacted_thinking` (ou `thinking`) sans texte, puis le bloc `text` :
+ * tout autre bloc est ignoré. Aucun bloc texte → erreur générique, jamais
+ * de crash, et l'appelant affiche son message de repli.
+ */
+export function extraireTexteReponse(corps: unknown): string {
+  const contenu = (corps as { content?: unknown } | null)?.content;
+  if (!Array.isArray(contenu)) throw new Error('Assistant indisponible.');
+  const texte = contenu
+    .filter((bloc): bloc is { type: string; text: string } => !!bloc && typeof bloc === 'object' && (bloc as { type?: unknown }).type === 'text' && typeof (bloc as { text?: unknown }).text === 'string')
+    .map((bloc) => bloc.text)
+    .join('');
+  if (!texte.trim()) throw new Error('Assistant indisponible.');
+  return texte;
+}
+
 export function creerClientAnthropique(config: ConfigIa, fetchFn: typeof fetch = fetch): ClientIa {
+  async function appeler(systeme: string, contenuUtilisateur: unknown, signal: AbortSignal): Promise<string> {
+    const reponse = await fetchFn(`${config.baseUrl}/v1/messages`, {
+      method: 'POST',
+      signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': config.apiKey,
+        authorization: `Bearer ${config.apiKey}`,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: config.modele,
+        max_tokens: MAX_TOKENS_IA,
+        system: systeme,
+        messages: [{ role: 'user', content: contenuUtilisateur }]
+      })
+    });
+    // Échec : message générique, le corps de réponse n'est ni lu ni recopié
+    // (il ne doit jamais fuiter — ni lui, ni la clé — vers l'utilisatrice).
+    if (!reponse.ok) throw new Error('Assistant indisponible.');
+    const corps: unknown = await reponse.json().catch(() => null);
+    return extraireTexteReponse(corps);
+  }
   return {
-    async genererTexte(systeme, utilisateur, signal) {
-      const reponse = await fetchFn(`${config.baseUrl}/v1/messages`, {
-        method: 'POST',
-        signal,
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': config.apiKey,
-          authorization: `Bearer ${config.apiKey}`,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: config.modele,
-          max_tokens: 300,
-          system: systeme,
-          messages: [{ role: 'user', content: utilisateur }]
-        })
-      });
-      // Échec : message générique, le corps de réponse n'est ni lu ni recopié
-      // (il ne doit jamais fuiter — ni lui, ni la clé — vers l'utilisatrice).
-      if (!reponse.ok) throw new Error('Assistant indisponible.');
-      const corps: unknown = await reponse.json().catch(() => null);
-      const contenu = (corps as { content?: unknown } | null)?.content;
-      if (!Array.isArray(contenu)) throw new Error('Assistant indisponible.');
-      const texte = contenu
-        .filter((bloc): bloc is { type: string; text: string } => !!bloc && typeof bloc === 'object' && (bloc as { type?: unknown }).type === 'text' && typeof (bloc as { text?: unknown }).text === 'string')
-        .map((bloc) => bloc.text)
-        .join('');
-      if (!texte) throw new Error('Assistant indisponible.');
-      return texte;
-    }
+    genererTexte: (systeme, utilisateur, signal) => appeler(systeme, utilisateur, signal),
+    genererAvecImage: (systeme, utilisateur, image, signal) =>
+      appeler(
+        systeme,
+        [
+          { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.donneesBase64 } },
+          { type: 'text', text: utilisateur }
+        ],
+        signal
+      )
   };
 }
 
@@ -222,6 +265,184 @@ export async function suggererOptionsModele(texteModele: string, deps: Dependanc
     return { statut: 'echec' };
   } finally {
     if (minuteur) clearTimeout(minuteur);
+  }
+}
+
+/** Limitation par atelier, en mémoire (mono-instance, comme les autres limites du projet). */
+export class ReconnaissanceInvalideError extends Error {}
+
+/**
+ * Prompt système de reconnaissance, CONSTRUIT DEPUIS LE REGISTRE : seuls les
+ * modèles et les options que le moteur expose y figurent, avec leurs plages
+ * et leurs choix. L'IA reconnaît un type de vêtement et propose des options ;
+ * elle ne produit jamais de cote ni de géométrie, et ne remplace jamais un
+ * vêtement hors catalogue par un modèle du catalogue.
+ */
+export function construireSystemeReconnaissance(): string {
+  const lignes: string[] = [
+    'Tu aides une couturière à choisir un modèle de patron parmi un catalogue fermé, à partir d’une description ou d’une photo de vêtement.',
+    'Catalogue (identifiants exacts à utiliser) :'
+  ];
+  for (const entree of LISTE_MODELES) {
+    lignes.push(`- "${entree.id}" : ${t('fr', entree.titreCle)}.`);
+    if (entree.options.length === 0) {
+      lignes.push('  Ce modèle n’expose aucune option réglable : réponds "options": {}.');
+    } else {
+      lignes.push('  Options exposées par le moteur (clés exactes) :');
+      for (const def of entree.options) {
+        if (def.type === 'nombre') {
+          lignes.push(`  - "${def.cle}" : nombre en centimètres entre ${def.min} et ${def.max} (${t('fr', def.libelleCle)}).`);
+        } else if (def.type === 'choix') {
+          const choix = (def.choix ?? []).map((c) => `"${c.valeur}" (${t('fr', c.libelleCle)})`).join(' ou ');
+          lignes.push(`  - "${def.cle}" : un seul choix parmi ${choix} (${t('fr', def.libelleCle)}).`);
+        } else {
+          lignes.push(`  - "${def.cle}" : booléen, true seulement si la description ou la photo le montre (${t('fr', def.libelleCle)}).`);
+        }
+      }
+    }
+  }
+  lignes.push(
+    'Réponds UNIQUEMENT par un objet JSON, sans texte autour, dans l’un de ces trois formats :',
+    '1. Vêtement du catalogue : {"modele":"<identifiant du catalogue>","options":{...}} — uniquement les clés d’options exposées pour CE modèle, seulement si la description ou la photo les indique ; sinon "options": {}.',
+    '2. Vêtement réel mais hors catalogue (veste, chemise, robe d’un autre type, etc.) : {"modele":"hors_catalogue"} — ne le remplace JAMAIS par un modèle du catalogue.',
+    '3. Impossible à identifier, aucun vêtement visible, image illisible ou description trop vague : {"modele":"illisible"}.',
+    'Ne mets jamais de mesure de personne, de cote ni de géométrie : le moteur calcule tout lui-même.',
+    'La description peut être en français ou en anglais : comprends-la dans l’une ou l’autre langue.'
+  );
+  return lignes.join('\n');
+}
+
+export function construirePromptReconnaissanceTexte(texteModele: string): string {
+  return `Description du vêtement voulu : « ${texteModele.trim()} »`;
+}
+
+export const PROMPT_RECONNAISSANCE_PHOTO =
+  'Voici la photo d’un vêtement. Identifie son type parmi le catalogue, ou réponds "hors_catalogue" s’il n’y figure pas, ou "illisible" si aucun vêtement n’est reconnaissable.';
+
+export type ReconnaissanceValidee =
+  | { modele: ModelePatron; options: OptionsModele }
+  | { modele: 'hors_catalogue'; options: OptionsModele }
+  | { modele: 'illisible'; options: OptionsModele };
+
+/**
+ * Valide la réponse de reconnaissance selon un schéma strict : le modèle
+ * doit être un identifiant du registre (ou hors_catalogue / illisible —
+ * jamais de substitution silencieuse) ; les options sont filtrées par les
+ * définitions du registre : nombres ramenés dans leur plage, choix vérifiés
+ * dans la liste, clés inconnues ou mal formées ignorées. La jupe droite
+ * n'expose aucune option : le résultat porte donc toujours {} pour elle.
+ */
+export function validerReconnaissance(brut: unknown): ReconnaissanceValidee {
+  let valeur: unknown = brut;
+  if (typeof brut === 'string') {
+    const texte = brut.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    try {
+      valeur = JSON.parse(texte);
+    } catch {
+      throw new ReconnaissanceInvalideError('reconnaissance_illisible');
+    }
+  }
+  if (!valeur || typeof valeur !== 'object' || Array.isArray(valeur)) {
+    throw new ReconnaissanceInvalideError('reconnaissance_format_invalide');
+  }
+  const enregistrement = valeur as Record<string, unknown>;
+  const modeleBrut = enregistrement['modele'];
+  if (modeleBrut === 'hors_catalogue') return { modele: 'hors_catalogue', options: {} };
+  if (modeleBrut === 'illisible') return { modele: 'illisible', options: {} };
+  if (typeof modeleBrut !== 'string' || !(modeleBrut in REGISTRE_MODELES)) {
+    throw new ReconnaissanceInvalideError('reconnaissance_modele_inconnu');
+  }
+  const entree = REGISTRE_MODELES[modeleBrut as ModelePatron];
+  const optionsBrutes =
+    enregistrement['options'] && typeof enregistrement['options'] === 'object' && !Array.isArray(enregistrement['options'])
+      ? (enregistrement['options'] as Record<string, unknown>)
+      : {};
+  const options: OptionsModele = {};
+  for (const def of entree.options) {
+    const v = optionsBrutes[def.cle];
+    if (v === undefined) continue;
+    if (def.type === 'nombre') {
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        const borne = Math.min(def.max ?? v, Math.max(def.min ?? v, v));
+        options[def.cle] = Math.round(borne * 10) / 10;
+      }
+    } else if (def.type === 'choix') {
+      if (typeof v === 'string' && (def.choix ?? []).some((c) => c.valeur === v)) options[def.cle] = v;
+    } else {
+      if (v === true || v === def.defaut) options[def.cle] = def.defaut ?? 'oui';
+    }
+  }
+  return { modele: entree.id, options };
+}
+
+export type EntreeReconnaissance =
+  | { type: 'texte'; texte: string }
+  | { type: 'photo'; image: ImageIa };
+
+export type ResultatReconnaissance =
+  | { statut: 'ok'; modele: ModelePatron; options: OptionsModele }
+  | { statut: 'hors_catalogue' }
+  | { statut: 'illisible' }
+  | { statut: 'non_configuree' }
+  | { statut: 'invalide' }
+  | { statut: 'echec' };
+
+async function appelerAvecDelai<T>(delaiMs: number, appeler: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controleur = new AbortController();
+  let minuteur: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const expiration = new Promise<never>((_, rejeter) => {
+      minuteur = setTimeout(() => {
+        controleur.abort();
+        rejeter(new Error('Délai dépassé.'));
+      }, delaiMs);
+    });
+    return await Promise.race([appeler(controleur.signal), expiration]);
+  } finally {
+    if (minuteur) clearTimeout(minuteur);
+  }
+}
+
+/**
+ * Reconnaît un modèle du registre à partir d'un texte ou d'une photo.
+ * Ne lève jamais : non configuré, panne, délai dépassé, réponse non conforme
+ * — tout devient un statut explicite, et le choix manuel reste le repli.
+ * Seuls le texte ou la photo du vêtement sont envoyés : aucune donnée cliente.
+ */
+export async function reconnaitreModele(entree: EntreeReconnaissance, deps: DependancesSuggestion = {}): Promise<ResultatReconnaissance> {
+  if (entree.type === 'texte') {
+    const texte = (entree.texte ?? '').trim();
+    if (texte.length < 3 || texte.length > LONGUEUR_MAX_TEXTE_MODELE) return { statut: 'invalide' };
+  } else if (!entree.image.donneesBase64) {
+    return { statut: 'invalide' };
+  }
+
+  let client = deps.client;
+  if (!client) {
+    const config = lireConfigIa(deps.env);
+    if (!config) return { statut: 'non_configuree' };
+    client = creerClientAnthropique(config, deps.fetchFn);
+  }
+
+  try {
+    const reponseTexte = await appelerAvecDelai(deps.delaiMs ?? DELAI_IA_DEFAUT_MS, (signal) =>
+      entree.type === 'texte'
+        ? client!.genererTexte(construireSystemeReconnaissance(), construirePromptReconnaissanceTexte(entree.texte), signal)
+        : client!.genererAvecImage
+          ? client!.genererAvecImage(construireSystemeReconnaissance(), PROMPT_RECONNAISSANCE_PHOTO, entree.image, signal)
+          : Promise.reject(new Error('Assistant indisponible.'))
+    );
+    let validee: ReconnaissanceValidee;
+    try {
+      validee = validerReconnaissance(reponseTexte);
+    } catch {
+      return { statut: 'invalide' };
+    }
+    if (validee.modele === 'hors_catalogue') return { statut: 'hors_catalogue' };
+    if (validee.modele === 'illisible') return { statut: 'illisible' };
+    return { statut: 'ok', modele: validee.modele, options: validee.options };
+  } catch {
+    return { statut: 'echec' };
   }
 }
 

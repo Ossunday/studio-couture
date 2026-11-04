@@ -13,24 +13,43 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   if (!estModelePatron(modele)) throw error(404, t(lang, 'erreur.modeleIndisponible'));
   const entree = exigerEntreeModele(modele);
   const defParCode = new Map(entree.mesures.map((m) => [m.code, m]));
+  const estimationIa = url.searchParams.get('estimation_ia') === '1';
+  // Mesures estimées par l’assistant (phase 12) : préremplies depuis l’URL,
+  // modifiables, étiquetées « estimation IA ». Une valeur illisible est
+  // ignorée (champ vide), jamais bloquante.
+  const valeurDepuisUrl = (code: string): string => {
+    const brut = (url.searchParams.get(code) ?? '').replace(',', '.');
+    return /^\d+(\.\d{1,2})?$/.test(brut) ? brut : '';
+  };
+  let optionsInitiales: OptionsModele = {};
+  try {
+    optionsInitiales = entree.lireOptions((code) => url.searchParams.get(code));
+  } catch {
+    optionsInitiales = {};
+  }
   return {
     lang,
     modele,
+    estimationIa,
     titre: t(lang, entree.titreCle),
     champs: entree.champs.map((code) => {
       const def = definitionMensuration(code);
       const defModele = defParCode.get(code);
+      const valeur = valeurDepuisUrl(code);
       return {
         code,
         libelle: defModele ? t(lang, defModele.libelleCle) : t(lang, def.libelleCle),
         minCm: def.minCm,
-        maxCm: def.maxCm
+        maxCm: def.maxCm,
+        valeur,
+        estimee: estimationIa && valeur !== ''
       };
     }),
     options: entree.options.map((o) => ({
       ...o,
       libelle: t(lang, o.libelleCle),
       placeholder: o.placeholderCle ? t(lang, o.placeholderCle) : (o.placeholder ?? ''),
+      valeur: optionsInitiales[o.cle] !== undefined ? String(optionsInitiales[o.cle]) : '',
       choix: (o.choix ?? []).map((c) => ({ valeur: c.valeur, libelle: t(lang, c.libelleCle) }))
     })),
     csrfToken: locals.csrfToken

@@ -8,6 +8,7 @@
   import { page } from '$app/state';
   import { BRAND_NAME } from '$lib/brand';
   import Avatar from '$lib/design/Avatar.svelte';
+  import AssistantFlottant from '$lib/design/AssistantFlottant.svelte';
   import BoutonLangue from '$lib/design/BoutonLangue.svelte';
   import Rail from '$lib/design/Rail.svelte';
   import { t, type TranslationKey } from '$lib/i18n';
@@ -31,6 +32,7 @@
         <p>{tr('commun.pied')}</p>
       </footer>
     </div>
+    <AssistantFlottant {lang} csrfToken={data.csrfToken ?? ''} disponible={data.assistantIaDisponible} clientes={data.clientesAssistant} />
   </div>
 {:else if estAccueil}
   {@render children()}

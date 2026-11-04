@@ -4,7 +4,6 @@ import { validerMensurationSaisie } from '$lib/domain/mensurations-saisie';
 import { estModelePatron, MODELES, validerMesuresPatron } from '$lib/patterns/saisie-patron';
 import { REGISTRE_MODELES, parametresOptionsModele } from '$lib/patterns/registre';
 import { assertCsrf, exigerConnexion } from '$lib/server/garde';
-import { lireConfigIa } from '$lib/server/ia/suggestion-modele';
 import { validerPatronEnregistre } from '$lib/server/patron-cliente';
 import { getRepository } from '$lib/server/repository';
 import { formatDate, t, traduireErreur, type TranslationKey } from '$lib/i18n';
@@ -27,13 +26,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   const base = {
     lang,
     cliente: { id: cliente.id, nom: cliente.nom, prenom },
-    csrfToken: locals.csrfToken,
-    // Assistant IA (phase 11) : visible dès le choix du modèle. Désactivé
-    // sans erreur en mode démo mémoire ou sans configuration serveur ; la
-    // carte annonce alors « Assistant bientôt disponible » et le choix
-    // manuel reste le repli.
-    assistantIaDisponible:
-      (process.env.STUDIO_COUTURE_REPOSITORY ?? '').trim().toLowerCase() !== 'memoire' && lireConfigIa() !== null
+    csrfToken: locals.csrfToken
+    // L’assistant IA (phases 11 et 12) est la boîte flottante du gabarit
+    // connecté : il est visible aussi sur cette page, sans carte dédiée.
   };
   const modeleBrut = url.searchParams.get('modele');
   // Paramètre absent → écran de choix. Paramètre présent mais inconnu →
@@ -86,9 +81,20 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
   const optionsParams = entree.options
     .filter((def) => optionsInitiales[def.cle] !== undefined)
     .map((def) => ({ code: def.code, valeur: String(optionsInitiales[def.cle]) }));
+  // Mesures estimées par l’assistant (phase 12) : arrivées par l’URL avec
+  // estimation_ia=1, préremplies et étiquetées, jamais enregistrées sans
+  // validation du formulaire. Celles qui ne sont pas redemandées dans le
+  // formulaire court repartent en champs cachés pour ne pas être perdues.
+  const codesACompleter = new Set(aCompleter.map((c) => c.code));
+  const codesEstimation = MODELES[modele].champs.filter((code) => url.searchParams.get(code));
   return {
     ...base,
     modele,
+    estimationIa: url.searchParams.get('estimation_ia') === '1',
+    codesEstimation,
+    mesuresCachees: codesEstimation
+      .filter((code) => !codesACompleter.has(code))
+      .map((code) => ({ code, valeur: url.searchParams.get(code)! })),
     optionsInitiales,
     optionsParams,
     titreModele: t(lang, REGISTRE_MODELES[modele].titreCle),

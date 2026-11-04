@@ -1,6 +1,5 @@
 <script lang="ts">
   import IllustrationModele from '$lib/illustrations/IllustrationModele.svelte';
-  import AssistantPatron from '$lib/design/AssistantPatron.svelte';
   import SalleEssayageCliente from '$lib/demo/SalleEssayageCliente.svelte';
   import { definitionMensuration } from '$lib/domain/mensurations-saisie';
   import { LISTE_MODELES } from '$lib/patterns/registre';
@@ -23,7 +22,6 @@
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
 
   {#if !data.modele}
-    <AssistantPatron lang={data.lang} clienteId={data.cliente.id} csrfToken={data.csrfToken ?? ''} disponible={data.assistantIaDisponible ?? false} />
     <h2>1. {t(data.lang, 'demo.choisirModele')}</h2>
     <div class="modeles">
       {#each LISTE_MODELES as entree}
@@ -36,15 +34,20 @@
     <h2>2. {data.aCompleter.length > 1 ? txt('nouveau.mesuresManquantesPlusieurs', { n: data.aCompleter.length }) : txt('nouveau.mesuresManquantesUne', { n: data.aCompleter.length })}</h2>
     <p>{txt('nouveau.ficheDeja', { prenom: data.cliente.prenom, n: data.mesuresConnues?.length ?? 0 })}</p>
     {#if data.erreurMesures}<p class="alerte" role="alert">{data.erreurMesures}</p>{/if}
+    {#if data.estimationIa}<p class="note-estimation" role="note">{t(data.lang, 'assistant.formulaireEstimationNote')}</p>{/if}
     <form method="post" action="?/completerMesures" class="grille">
       <input type="hidden" name="_csrf" value={data.csrfToken} />
       <input type="hidden" name="modele" value={data.modele} />
       {#each data.optionsParams ?? [] as opt}
         <input type="hidden" name={opt.code} value={opt.valeur} />
       {/each}
+      {#each data.mesuresCachees ?? [] as mesureCachee}
+        <input type="hidden" name={mesureCachee.code} value={mesureCachee.valeur} />
+      {/each}
       {#each data.aCompleter as champ}
         {@const def = definitionMensuration(champ.code)}
         <label>{t(data.lang, `mesure.${champ.code}` as TranslationKey)} — {t(data.lang, 'patron.mesures.aidePlage', { min: def.minCm, max: def.maxCm })}
+          {#if data.estimationIa && (data.codesEstimation ?? []).includes(champ.code)}<span class="badge-estimation">{t(data.lang, 'assistant.estimationBadge')}</span>{/if}
           <input name={champ.code} inputmode="decimal" required value={champ.valeur} placeholder={txt('commun.exempleNombre', { exemple: formatCm(data.lang, 82.5) })} />
         </label>
       {/each}
@@ -55,6 +58,7 @@
       <button type="submit">{txt('nouveau.continuerSalle')}</button>
     </form>
   {:else if data.mesures}
+    {#if data.estimationIa}<p class="note-estimation" role="note">{t(data.lang, 'assistant.formulaireEstimationNote')}</p>{/if}
     <SalleEssayageCliente
       lang={data.lang}
       modele={data.modele}
@@ -80,4 +84,6 @@
   .carte-modele span { font-size: 16px; color: var(--encre-douce); }
   .coche { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; }
   .coche input { min-height: auto; width: auto; margin-top: 4px; }
+  .note-estimation { padding: 10px 14px; border-radius: 12px; background: #f6f1ff; border: 1px solid #e4dcff; line-height: 1.5; }
+  .badge-estimation { font-size: 11px; font-weight: 700; background: #d8b4fe; border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
 </style>

@@ -4,11 +4,16 @@ import { ENV_SESSION_SECRET } from '$lib/brand';
 import { SESSION_COOKIE, verifierCsrf } from '$lib/server/auth';
 import {
   LONGUEUR_MAX_TEXTE_MODELE,
+  estCorpulenceIa,
+  estimerMesuresModele,
   limiteurSuggestionsIa,
   lireConfigIa,
   reconnaitreModele,
-  suggererOptionsModele
+  suggererOptionsModele,
+  validerTailleIa,
+  type CorpulenceIa
 } from '$lib/server/ia/suggestion-modele';
+import { estModelePatron } from '$lib/patterns/registre';
 import { PhotoInvalideError, validerPhoto, versBase64 } from '$lib/server/ia/photo';
 
 /**
@@ -82,13 +87,36 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
     if (porte) return porte;
     const resultat = await reconnaitreModele({
       type: 'photo',
-      image: { mediaType: photo.mediaType, donneesBase64: versBase64(photo.donnees) }
+      image: { mediaType: photo.mediaType, donneesBase64: versBase64(photo.donnees) },
+      tailleCm: validerTailleIa(String(formulaire.get('tailleCm') ?? '')),
+      corpulence: corpulenceDepuis(formulaire.get('corpulence'))
     });
     return reponseReconnaissance(resultat);
   }
 
   // --- Flux JSON : reconnaissance texte ou suggestion historique ----------
   const corps: unknown = await request.json().catch(() => null);
+
+  // Estimation des mesures d’un modèle déjà reconnu (chat, phase 12) :
+  // taille et corpulence déclarées à l’instant, aucune donnée cliente.
+  if ((corps as { estimation?: unknown } | null)?.estimation === true) {
+    const modeleBrut = (corps as { modele?: unknown }).modele;
+    if (typeof modeleBrut !== 'string' || !estModelePatron(modeleBrut)) {
+      return json({ statut: 'invalide', cle: 'assistant.reponseInvalide' }, { status: 400 });
+    }
+    const porte = porteIa();
+    if (porte) return porte;
+    const estimation = await estimerMesuresModele(modeleBrut, {
+      tailleCm: validerTailleIa((corps as { tailleCm?: unknown }).tailleCm),
+      corpulence: corpulenceDepuis((corps as { corpulence?: unknown }).corpulence)
+    });
+    if (estimation.statut === 'ok') {
+      return json({ statut: 'ok', modele: modeleBrut, estimations: estimation.estimations, ...(estimation.conseil ? { conseil: estimation.conseil } : {}) });
+    }
+    if (estimation.statut === 'invalide') return json({ statut: 'invalide', cle: 'assistant.reponseInvalide' });
+    return json({ statut: 'indisponible', cle: 'assistant.bientot' });
+  }
+
   const texte = (corps as { texte?: unknown } | null)?.texte;
   if (typeof texte !== 'string' || texte.trim().length < 3 || texte.trim().length > LONGUEUR_MAX_TEXTE_MODELE) {
     return json({ statut: 'invalide', cle: 'ia.decrivez' }, { status: 400 });
@@ -98,7 +126,12 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
   if (reconnaissance) {
     const porte = porteIa();
     if (porte) return porte;
-    const resultat = await reconnaitreModele({ type: 'texte', texte });
+    const resultat = await reconnaitreModele({
+      type: 'texte',
+      texte,
+      tailleCm: validerTailleIa((corps as { tailleCm?: unknown }).tailleCm),
+      corpulence: corpulenceDepuis((corps as { corpulence?: unknown }).corpulence)
+    });
     return reponseReconnaissance(resultat);
   }
 
@@ -122,12 +155,27 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
   return json({ statut: 'indisponible', cle: 'ia.indisponible' });
 };
 
+function corpulenceDepuis(valeur: unknown): CorpulenceIa | undefined {
+  return estCorpulenceIa(valeur) ? valeur : undefined;
+}
+
 function reponseReconnaissance(resultat: Awaited<ReturnType<typeof reconnaitreModele>>): Response {
   switch (resultat.statut) {
     case 'ok':
       // Seul le JSON validé (modèle du registre + options ramenées aux
-      // plages) repart au navigateur ; la bulle est construite par l'app.
-      return json({ statut: 'ok', modele: resultat.modele, options: resultat.options });
+      // plages + estimations bornées) repart au navigateur ; la bulle est
+      // construite par l'app.
+      return json({
+        statut: 'ok',
+        modele: resultat.modele,
+        options: resultat.options,
+        estimations: resultat.estimations,
+        ...(resultat.conseil ? { conseil: resultat.conseil } : {})
+      });
+    case 'candidats':
+      return json({ statut: 'candidats', candidats: resultat.candidats });
+    case 'conseil':
+      return json({ statut: 'conseil', conseil: resultat.conseil });
     case 'hors_catalogue':
       return json({ statut: 'hors_catalogue', cle: 'assistant.horsCatalogue' });
     case 'illisible':

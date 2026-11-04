@@ -177,4 +177,49 @@ describe('validerPhoto — taille, type, métadonnées', () => {
     const sortie = retirerMetadonnees('image/jpeg', tronque);
     expect(detecterTypeImage(sortie)).toBe('image/jpeg');
   });
+
+  it('vraie photo JPEG (1×1 complète) : métadonnées retirées, structure JPEG intacte', () => {
+    // JPEG 1×1 complet et décodable (SOI, DQT, SOF0, DHT, SOS, EOI), encodé en
+    // base64 dans le test — aucune image cliente, aucun fichier externe.
+    const JPEG_1X1_BASE64 =
+      '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AvwH/2Q==';
+    const original = new Uint8Array(Buffer.from(JPEG_1X1_BASE64, 'base64'));
+    expect(detecterTypeImage(original)).toBe('image/jpeg');
+    // On injecte un segment APP1 EXIF comme le ferait un téléphone.
+    const avecExif = assemblerTest([
+      original.subarray(0, 2),
+      segmentJpeg(0xe1, octetsTexte('Exif\0\0GPS-SECRET')),
+      original.subarray(2)
+    ]);
+    const nettoye = validerPhoto(avecExif);
+    expect(nettoye.mediaType).toBe('image/jpeg');
+    expect(contient(nettoye.donnees, 'GPS-SECRET')).toBe(false);
+    // Structure toujours complète : SOI au début, EOI à la fin, SOF et SOS présents.
+    expect([nettoye.donnees[0], nettoye.donnees[1]]).toEqual([0xff, 0xd8]);
+    expect([nettoye.donnees[nettoye.donnees.length - 2], nettoye.donnees[nettoye.donnees.length - 1]]).toEqual([0xff, 0xd9]);
+    const marqueurs = new Set<number>();
+    for (let i = 0; i + 1 < nettoye.donnees.length; i += 1) {
+      if (nettoye.donnees[i] === 0xff && nettoye.donnees[i + 1] !== 0x00 && nettoye.donnees[i + 1] !== 0xff) marqueurs.add(nettoye.donnees[i + 1]!);
+    }
+    expect(marqueurs.has(0xc0) || marqueurs.has(0xc2)).toBe(true); // SOF0/SOF2 : dimensions présentes
+    expect(marqueurs.has(0xda)).toBe(true); // SOS : données d’image présentes
+    expect(marqueurs.has(0xe1)).toBe(false); // APP1 bien retiré
+    // Idempotence : retraiter l’image nettoyée (comme après un réencodage
+    // navigateur sans métadonnées) ne change plus rien.
+    expect(validerPhoto(nettoye.donnees).donnees).toEqual(nettoye.donnees);
+    const propre = validerPhoto(original);
+    expect(detecterTypeImage(propre.donnees)).toBe('image/jpeg');
+    expect([propre.donnees[propre.donnees.length - 2], propre.donnees[propre.donnees.length - 1]]).toEqual([0xff, 0xd9]);
+  });
 });
+
+function assemblerTest(parties: Uint8Array[]): Uint8Array {
+  const total = parties.reduce((n, p) => n + p.length, 0);
+  const sortie = new Uint8Array(total);
+  let pos = 0;
+  for (const p of parties) {
+    sortie.set(p, pos);
+    pos += p.length;
+  }
+  return sortie;
+}

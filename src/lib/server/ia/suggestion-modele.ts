@@ -278,6 +278,19 @@ export class ReconnaissanceInvalideError extends Error {}
  * elle ne produit jamais de cote ni de géométrie, et ne remplace jamais un
  * vêtement hors catalogue par un modèle du catalogue.
  */
+export type CorpulenceIa = 'petite' | 'moyenne' | 'forte';
+export const CORPULENCES_IA: readonly CorpulenceIa[] = ['petite', 'moyenne', 'forte'];
+
+export function estCorpulenceIa(valeur: unknown): valeur is CorpulenceIa {
+  return valeur === 'petite' || valeur === 'moyenne' || valeur === 'forte';
+}
+
+/** Taille de personne plausible pour une estimation (cm). */
+export function validerTailleIa(valeur: unknown): number | undefined {
+  const n = typeof valeur === 'number' ? valeur : typeof valeur === 'string' ? Number(valeur.replace(',', '.')) : NaN;
+  return Number.isFinite(n) && n >= 100 && n <= 230 ? Math.round(n * 10) / 10 : undefined;
+}
+
 export function construireSystemeReconnaissance(): string {
   const lignes: string[] = [
     'Tu aides une couturière à choisir un modèle de patron parmi un catalogue fermé, à partir d’une description ou d’une photo de vêtement.',
@@ -285,6 +298,9 @@ export function construireSystemeReconnaissance(): string {
   ];
   for (const entree of LISTE_MODELES) {
     lignes.push(`- "${entree.id}" : ${t('fr', entree.titreCle)}.`);
+    lignes.push(
+      `  Mesures de ce modèle (clés exactes, en centimètres) : ${entree.mesures.map((m) => `"${m.code}" entre ${m.minCm} et ${m.maxCm}`).join(', ')}.`
+    );
     if (entree.options.length === 0) {
       lignes.push('  Ce modèle n’expose aucune option réglable : réponds "options": {}.');
     } else {
@@ -302,34 +318,98 @@ export function construireSystemeReconnaissance(): string {
     }
   }
   lignes.push(
-    'Réponds UNIQUEMENT par un objet JSON, sans texte autour, dans l’un de ces trois formats :',
-    '1. Vêtement du catalogue : {"modele":"<identifiant du catalogue>","options":{...}} — uniquement les clés d’options exposées pour CE modèle, seulement si la description ou la photo les indique ; sinon "options": {}.',
-    '2. Vêtement réel mais hors catalogue (veste, chemise, robe d’un autre type, etc.) : {"modele":"hors_catalogue"} — ne le remplace JAMAIS par un modèle du catalogue.',
-    '3. Impossible à identifier, aucun vêtement visible, image illisible ou description trop vague : {"modele":"illisible"}.',
-    'Ne mets jamais de mesure de personne, de cote ni de géométrie : le moteur calcule tout lui-même.',
-    'La description peut être en français ou en anglais : comprends-la dans l’une ou l’autre langue.'
+    'ÉTAPE 1 — DÉCRIS D’ABORD : remplis toujours "vetement_vu" par une courte description du vêtement réellement visible ou décrit (ex. "pantalon ample à taille haute"). C’est ce vêtement-là, et lui seul, que tu dois classer ensuite.',
+    'ÉTAPE 2 — DÉCIDE avec ces règles explicites :',
+    '- tout pantalon (large, ample, droit, fluide, à pinces…) → "pantalon_large" ;',
+    '- toute robe moulante, droite ou fourreau → "robe_fourreau" ;',
+    '- toute jupe droite ou crayon → "jupe_droite" ;',
+    '- "hors_catalogue" SEULEMENT si c’est clairement une AUTRE catégorie (veste, chemise, manteau, combinaison, haut…) — jamais par incertitude, jamais pour un pantalon, une robe droite ou une jupe droite ;',
+    '- si plusieurs vêtements sont visibles, classe le plus visible ; si tu hésites entre deux modèles du catalogue, réponds "illisible" avec "candidats" listant ces modèles au lieu de trancher au hasard.',
+    'Réponds UNIQUEMENT par un objet JSON, sans texte autour, dans l’un de ces formats :',
+    '1. Vêtement du catalogue : {"vetement_vu":"<ce que tu vois>","modele":"<identifiant du catalogue>","options":{...},"estimations":{...},"conseil":"<une courte phrase, 200 caractères maximum>"} — options : uniquement les clés exposées pour CE modèle, seulement si indiquées, sinon {}. estimations : uniquement les clés de mesures de CE modèle, en centimètres, seulement si une taille et une corpulence de la personne sont fournies dans le message ou si la photo montre une personne dont tu peux estimer les mesures ; sinon {}. Ces estimations sont indicatives, jamais des cotes de patron.',
+    '2. Vêtement réel mais hors catalogue : {"vetement_vu":"<ce que tu vois>","modele":"hors_catalogue"} — ne le remplace JAMAIS par un modèle du catalogue.',
+    '3. Impossible à identifier, aucun vêtement visible, image illisible ou description trop vague : {"vetement_vu":"<ce que tu vois, ou vide>","modele":"illisible"} ; si tu hésites entre des modèles du catalogue, ajoute "candidats":["<identifiant>",...].',
+    '4. Question de couture ou de mesures (pas de vêtement à reconnaître) : {"modele":"question","conseil":"<réponse courte et concrète, 200 caractères maximum>"}.',
+    'Le champ "conseil" est facultatif partout : une seule phrase courte, sans promesse, sans cote de patron.',
+    'Ne produis jamais de géométrie de patron : le moteur calcule tout lui-même.',
+    'La description peut être en français ou en anglais : comprends-la dans l’une ou l’autre langue, et rédige "vetement_vu" et "conseil" en français.'
   );
   return lignes.join('\n');
 }
 
-export function construirePromptReconnaissanceTexte(texteModele: string): string {
-  return `Description du vêtement voulu : « ${texteModele.trim()} »`;
+export interface ContextePersonneIa {
+  tailleCm?: number;
+  corpulence?: CorpulenceIa;
+}
+
+function suffixeContexte(contexte?: ContextePersonneIa): string {
+  const morceaux: string[] = [];
+  if (contexte?.tailleCm !== undefined) morceaux.push(`taille de la personne : environ ${contexte.tailleCm} cm`);
+  if (contexte?.corpulence) morceaux.push(`corpulence : ${contexte.corpulence}`);
+  return morceaux.length > 0 ? ` (${morceaux.join(', ')})` : '';
+}
+
+export function construirePromptReconnaissanceTexte(texteModele: string, contexte?: ContextePersonneIa): string {
+  return `Description du vêtement voulu : « ${texteModele.trim()} »${suffixeContexte(contexte)}`;
 }
 
 export const PROMPT_RECONNAISSANCE_PHOTO =
-  'Voici la photo d’un vêtement. Identifie son type parmi le catalogue, ou réponds "hors_catalogue" s’il n’y figure pas, ou "illisible" si aucun vêtement n’est reconnaissable.';
+  'Voici une photo. Étape 1 : décris le vêtement le plus visible dans "vetement_vu". Étape 2 : classe-le avec les règles du catalogue (tout pantalon → "pantalon_large", robe moulante ou droite → "robe_fourreau", jupe droite ou crayon → "jupe_droite", "hors_catalogue" seulement pour une autre catégorie claire). Si la photo montre une personne portant le vêtement, tu peux aussi proposer des "estimations" de mesures indicatives.';
+
+export function construirePromptReconnaissancePhoto(contexte?: ContextePersonneIa): string {
+  return `${PROMPT_RECONNAISSANCE_PHOTO}${suffixeContexte(contexte)}`;
+}
+
+export type EstimationsIa = Record<string, number>;
 
 export type ReconnaissanceValidee =
-  | { modele: ModelePatron; options: OptionsModele }
+  | { modele: ModelePatron; options: OptionsModele; estimations: EstimationsIa; conseil?: string }
   | { modele: 'hors_catalogue'; options: OptionsModele }
-  | { modele: 'illisible'; options: OptionsModele };
+  | { modele: 'illisible'; options: OptionsModele; candidats: ModelePatron[] }
+  | { modele: 'question'; options: OptionsModele; conseil: string };
+
+/**
+ * Conseil libre du modèle, filtré avant tout affichage : une seule ligne,
+ * sans balise ni lien, 200 caractères maximum. Vide → undefined.
+ */
+export function filtrerConseilIa(brut: unknown): string | undefined {
+  if (typeof brut !== 'string') return undefined;
+  const propre = brut.replace(/<[^>]*>/g, ' ').replace(/https?:\/\/\S+/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 200).trim();
+  return propre || undefined;
+}
+
+/** Estimations ramenées aux seules mesures du modèle, chacune dans la plage de sa définition. */
+export function validerEstimationsIa(brut: unknown, entree: (typeof LISTE_MODELES)[number]): EstimationsIa {
+  const estimations: EstimationsIa = {};
+  if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return estimations;
+  const source = brut as Record<string, unknown>;
+  for (const def of entree.mesures) {
+    const v = source[def.code];
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      estimations[def.code] = Math.round(Math.min(def.maxCm, Math.max(def.minCm, v)) * 10) / 10;
+    }
+  }
+  return estimations;
+}
+
+function validerCandidatsIa(brut: unknown): ModelePatron[] {
+  if (!Array.isArray(brut)) return [];
+  const candidats: ModelePatron[] = [];
+  for (const v of brut) {
+    if (typeof v === 'string' && v in REGISTRE_MODELES && !candidats.includes(v as ModelePatron)) candidats.push(v as ModelePatron);
+  }
+  return candidats;
+}
 
 /**
  * Valide la réponse de reconnaissance selon un schéma strict : le modèle
- * doit être un identifiant du registre (ou hors_catalogue / illisible —
- * jamais de substitution silencieuse) ; les options sont filtrées par les
- * définitions du registre : nombres ramenés dans leur plage, choix vérifiés
- * dans la liste, clés inconnues ou mal formées ignorées. La jupe droite
+ * doit être un identifiant du registre (ou hors_catalogue / illisible /
+ * question — jamais de substitution silencieuse) ; les options sont filtrées
+ * par les définitions du registre : nombres ramenés dans leur plage, choix
+ * vérifiés dans la liste, clés inconnues ou mal formées ignorées. Le champ
+ * libre "vetement_vu" (description préalable du vêtement, jamais affichée)
+ * est simplement ignoré. Les estimations sont ramenées aux mesures du
+ * modèle reconnu et à leurs plages ; le conseil est filtré. La jupe droite
  * n'expose aucune option : le résultat porte donc toujours {} pour elle.
  */
 export function validerReconnaissance(brut: unknown): ReconnaissanceValidee {
@@ -348,7 +428,12 @@ export function validerReconnaissance(brut: unknown): ReconnaissanceValidee {
   const enregistrement = valeur as Record<string, unknown>;
   const modeleBrut = enregistrement['modele'];
   if (modeleBrut === 'hors_catalogue') return { modele: 'hors_catalogue', options: {} };
-  if (modeleBrut === 'illisible') return { modele: 'illisible', options: {} };
+  if (modeleBrut === 'illisible') return { modele: 'illisible', options: {}, candidats: validerCandidatsIa(enregistrement['candidats']) };
+  if (modeleBrut === 'question') {
+    const conseil = filtrerConseilIa(enregistrement['conseil']);
+    if (!conseil) throw new ReconnaissanceInvalideError('reconnaissance_conseil_vide');
+    return { modele: 'question', options: {}, conseil };
+  }
   if (typeof modeleBrut !== 'string' || !(modeleBrut in REGISTRE_MODELES)) {
     throw new ReconnaissanceInvalideError('reconnaissance_modele_inconnu');
   }
@@ -372,17 +457,25 @@ export function validerReconnaissance(brut: unknown): ReconnaissanceValidee {
       if (v === true || v === def.defaut) options[def.cle] = def.defaut ?? 'oui';
     }
   }
-  return { modele: entree.id, options };
+  const conseil = filtrerConseilIa(enregistrement['conseil']);
+  return {
+    modele: entree.id,
+    options,
+    estimations: validerEstimationsIa(enregistrement['estimations'], entree),
+    ...(conseil ? { conseil } : {})
+  };
 }
 
 export type EntreeReconnaissance =
-  | { type: 'texte'; texte: string }
-  | { type: 'photo'; image: ImageIa };
+  | { type: 'texte'; texte: string; tailleCm?: number; corpulence?: CorpulenceIa }
+  | { type: 'photo'; image: ImageIa; tailleCm?: number; corpulence?: CorpulenceIa };
 
 export type ResultatReconnaissance =
-  | { statut: 'ok'; modele: ModelePatron; options: OptionsModele }
+  | { statut: 'ok'; modele: ModelePatron; options: OptionsModele; estimations: EstimationsIa; conseil?: string }
   | { statut: 'hors_catalogue' }
   | { statut: 'illisible' }
+  | { statut: 'candidats'; candidats: ModelePatron[] }
+  | { statut: 'conseil'; conseil: string }
   | { statut: 'non_configuree' }
   | { statut: 'invalide' }
   | { statut: 'echec' };
@@ -425,11 +518,15 @@ export async function reconnaitreModele(entree: EntreeReconnaissance, deps: Depe
   }
 
   try {
+    const contexte: ContextePersonneIa = {
+      tailleCm: validerTailleIa(entree.tailleCm),
+      corpulence: estCorpulenceIa(entree.corpulence) ? entree.corpulence : undefined
+    };
     const reponseTexte = await appelerAvecDelai(deps.delaiMs ?? DELAI_IA_DEFAUT_MS, (signal) =>
       entree.type === 'texte'
-        ? client!.genererTexte(construireSystemeReconnaissance(), construirePromptReconnaissanceTexte(entree.texte), signal)
+        ? client!.genererTexte(construireSystemeReconnaissance(), construirePromptReconnaissanceTexte(entree.texte, contexte), signal)
         : client!.genererAvecImage
-          ? client!.genererAvecImage(construireSystemeReconnaissance(), PROMPT_RECONNAISSANCE_PHOTO, entree.image, signal)
+          ? client!.genererAvecImage(construireSystemeReconnaissance(), construirePromptReconnaissancePhoto(contexte), entree.image, signal)
           : Promise.reject(new Error('Assistant indisponible.'))
     );
     let validee: ReconnaissanceValidee;
@@ -439,8 +536,106 @@ export async function reconnaitreModele(entree: EntreeReconnaissance, deps: Depe
       return { statut: 'invalide' };
     }
     if (validee.modele === 'hors_catalogue') return { statut: 'hors_catalogue' };
-    if (validee.modele === 'illisible') return { statut: 'illisible' };
-    return { statut: 'ok', modele: validee.modele, options: validee.options };
+    if (validee.modele === 'question') return { statut: 'conseil', conseil: validee.conseil };
+    if (validee.modele === 'illisible') {
+      return validee.candidats.length > 0 ? { statut: 'candidats', candidats: validee.candidats } : { statut: 'illisible' };
+    }
+    return {
+      statut: 'ok',
+      modele: validee.modele,
+      options: validee.options,
+      estimations: validee.estimations,
+      ...(validee.conseil ? { conseil: validee.conseil } : {})
+    };
+  } catch {
+    return { statut: 'echec' };
+  }
+}
+
+/** Prompt d’estimation des mesures d’un modèle déjà reconnu, depuis taille et corpulence. */
+export function construireSystemeEstimation(modele: ModelePatron): string {
+  const entree = REGISTRE_MODELES[modele];
+  const lignes: string[] = [
+    `Tu aides une couturière à estimer les mesures d’une personne pour le modèle "${entree.id}" (${t('fr', entree.titreCle)}), à partir de sa taille en centimètres et de sa corpulence (petite, moyenne ou forte).`,
+    'Mesures à estimer (clés exactes, en centimètres, chacune dans sa plage) :'
+  ];
+  for (const def of entree.mesures) {
+    lignes.push(`- "${def.code}" entre ${def.minCm} et ${def.maxCm} (${t('fr', def.libelleCle)}).`);
+  }
+  lignes.push('Repères par corpulence (mesures usuelles du registre, à ajuster selon la taille fournie) :');
+  for (const preset of entree.presets) {
+    lignes.push(`- ${preset.id} : ${Object.entries(preset.valeurs).map(([code, v]) => `${code}=${v}`).join(', ')}.`);
+  }
+  lignes.push(
+    'Réponds UNIQUEMENT par un objet JSON, sans texte autour : {"estimations":{...},"conseil":"<une courte phrase, 200 caractères maximum>"}.',
+    'Toutes les mesures du modèle doivent être estimées. Ce sont des estimations indicatives à vérifier au mètre ruban : jamais des cotes de patron, jamais de géométrie.'
+  );
+  return lignes.join('\n');
+}
+
+export function construirePromptEstimation(contexte: ContextePersonneIa): string {
+  const morceaux: string[] = [];
+  if (contexte.tailleCm !== undefined) morceaux.push(`taille : environ ${contexte.tailleCm} cm`);
+  if (contexte.corpulence) morceaux.push(`corpulence : ${contexte.corpulence}`);
+  return `Personne à estimer — ${morceaux.join(', ') || 'corpulence moyenne supposée'}.`;
+}
+
+/** Valide une réponse d’estimation : toutes les mesures du modèle, ramenées à leurs plages. */
+export function validerEstimationMesures(brut: unknown, modele: ModelePatron): { estimations: EstimationsIa; conseil?: string } {
+  let valeur: unknown = brut;
+  if (typeof brut === 'string') {
+    const texte = brut.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    try {
+      valeur = JSON.parse(texte);
+    } catch {
+      throw new ReconnaissanceInvalideError('estimation_illisible');
+    }
+  }
+  if (!valeur || typeof valeur !== 'object' || Array.isArray(valeur)) throw new ReconnaissanceInvalideError('estimation_format_invalide');
+  const enregistrement = valeur as Record<string, unknown>;
+  const estimations = validerEstimationsIa(enregistrement['estimations'], REGISTRE_MODELES[modele]);
+  if (Object.keys(estimations).length === 0) throw new ReconnaissanceInvalideError('estimation_vide');
+  const conseil = filtrerConseilIa(enregistrement['conseil']);
+  return { estimations, ...(conseil ? { conseil } : {}) };
+}
+
+export type ResultatEstimation =
+  | { statut: 'ok'; estimations: EstimationsIa; conseil?: string }
+  | { statut: 'non_configuree' }
+  | { statut: 'invalide' }
+  | { statut: 'echec' };
+
+/**
+ * Estime les mesures d’un modèle reconnu depuis la taille et la corpulence
+ * déclarées dans le chat. Ne lève jamais ; aucune donnée cliente enregistrée
+ * n’est envoyée — seulement la taille et la corpulence saisies à l’instant.
+ */
+export async function estimerMesuresModele(
+  modele: ModelePatron,
+  contexte: ContextePersonneIa,
+  deps: DependancesSuggestion = {}
+): Promise<ResultatEstimation> {
+  const tailleCm = validerTailleIa(contexte.tailleCm);
+  const corpulence = estCorpulenceIa(contexte.corpulence) ? contexte.corpulence : undefined;
+  if (tailleCm === undefined && corpulence === undefined) return { statut: 'invalide' };
+
+  let client = deps.client;
+  if (!client) {
+    const config = lireConfigIa(deps.env);
+    if (!config) return { statut: 'non_configuree' };
+    client = creerClientAnthropique(config, deps.fetchFn);
+  }
+
+  try {
+    const reponseTexte = await appelerAvecDelai(deps.delaiMs ?? DELAI_IA_DEFAUT_MS, (signal) =>
+      client!.genererTexte(construireSystemeEstimation(modele), construirePromptEstimation({ tailleCm, corpulence }), signal)
+    );
+    try {
+      const validee = validerEstimationMesures(reponseTexte, modele);
+      return { statut: 'ok', estimations: validee.estimations, ...(validee.conseil ? { conseil: validee.conseil } : {}) };
+    } catch {
+      return { statut: 'invalide' };
+    }
   } catch {
     return { statut: 'echec' };
   }

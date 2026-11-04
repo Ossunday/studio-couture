@@ -3,59 +3,65 @@
   import SalleEssayageCliente from '$lib/demo/SalleEssayageCliente.svelte';
   import { definitionMensuration } from '$lib/domain/mensurations-saisie';
   import { LISTE_MODELES } from '$lib/patterns/registre';
+  import { formatCm, t, type TranslationKey } from '$lib/i18n';
   let { data, form } = $props();
+
+  /** Clé pas encore dans fr.ts/en.ts : proposée dans le rapport du lot (clé=FR=EN). */
+  const txt = (k: string, params?: Record<string, string | number>) => t(data.lang, k as TranslationKey, params);
 </script>
 
 <main>
   {#if !data.mesures}
-    <p><a href="/clientes/{data.cliente.id}">← Fiche de {data.cliente.nom}</a></p>
-    <h1>Créer un patron pour {data.cliente.prenom}</h1>
+    <p><a href="/clientes/{data.cliente.id}">← {txt('fiche.ficheDe', { nom: data.cliente.nom })}</a></p>
+    <h1>{t(data.lang, 'fiche.creerPatronPour', { prenom: data.cliente.prenom })}</h1>
     <section class="alerte" role="alert">
-      <strong>Brouillon non validé.</strong>
-      Ces formules sont marquées « à valider » : un maître tailleur ne les a pas encore confirmées. Essayez d’abord sur un tissu peu coûteux.
+      <strong>{t(data.lang, 'commun.brouillonNonValide')}.</strong>
+      {txt('nouveau.brouillonTexte')}
     </section>
   {/if}
   {#if form?.erreur}<p class="alerte" role="alert">{form.erreur}</p>{/if}
 
   {#if !data.modele}
-    <h2>1. Choisir le modèle</h2>
+    <h2>1. {t(data.lang, 'demo.choisirModele')}</h2>
     <div class="modeles">
       {#each LISTE_MODELES as entree}
         <a class="carte-modele" href="/clientes/{data.cliente.id}/patron/nouveau?modele={entree.id}">
-          <IllustrationModele modele={entree.id} /><strong>{entree.titre}</strong><span>{entree.accroche}</span>
+          <IllustrationModele modele={entree.id} /><strong>{t(data.lang, entree.titreCle)}</strong><span>{t(data.lang, entree.accrocheCle)}</span>
         </a>
       {/each}
     </div>
-  {:else if data.manquantes && data.manquantes.length > 0}
-    <h2>2. Il manque {data.manquantes.length} mesure{data.manquantes.length > 1 ? 's' : ''}</h2>
-    <p>La fiche de {data.cliente.prenom} a déjà {data.mesuresConnues?.length ?? 0} mesure(s) utile(s) pour ce modèle. Complétez seulement celles-ci :</p>
+  {:else if data.aCompleter && data.aCompleter.length > 0}
+    <h2>2. {data.aCompleter.length > 1 ? txt('nouveau.mesuresManquantesPlusieurs', { n: data.aCompleter.length }) : txt('nouveau.mesuresManquantesUne', { n: data.aCompleter.length })}</h2>
+    <p>{txt('nouveau.ficheDeja', { prenom: data.cliente.prenom, n: data.mesuresConnues?.length ?? 0 })}</p>
+    {#if data.erreurMesures}<p class="alerte" role="alert">{data.erreurMesures}</p>{/if}
     <form method="post" action="?/completerMesures" class="grille">
       <input type="hidden" name="_csrf" value={data.csrfToken} />
       <input type="hidden" name="modele" value={data.modele} />
-      {#each data.manquantes as code}
-        {@const def = definitionMensuration(code)}
-        <label>{def.libelle} — entre {def.minCm} et {def.maxCm} cm
-          <input name={code} inputmode="decimal" required placeholder="ex. 82,5" />
+      {#each data.aCompleter as champ}
+        {@const def = definitionMensuration(champ.code)}
+        <label>{t(data.lang, `mesure.${champ.code}` as TranslationKey)} — {t(data.lang, 'patron.mesures.aidePlage', { min: def.minCm, max: def.maxCm })}
+          <input name={champ.code} inputmode="decimal" required value={champ.valeur} placeholder={txt('commun.exempleNombre', { exemple: formatCm(data.lang, 82.5) })} />
         </label>
       {/each}
       <label class="coche">
         <input type="checkbox" name="enregistrer_fiche" checked />
-        Enregistrer ces mesures dans la fiche de {data.cliente.prenom} pour les retrouver
+        {txt('nouveau.enregistrerDansFiche', { prenom: data.cliente.prenom })}
       </label>
-      <button type="submit">Continuer vers la salle d’essayage</button>
+      <button type="submit">{txt('nouveau.continuerSalle')}</button>
     </form>
   {:else if data.mesures}
     <SalleEssayageCliente
+      lang={data.lang}
       modele={data.modele}
       mesuresInitiales={data.mesures}
       nomInitial={data.nomPropose ?? ''}
       csrfToken={data.csrfToken ?? ''}
       actionEnregistrer="?/enregistrerPatron"
-      libelleEnregistrer="Enregistrer ce patron"
+      libelleEnregistrer={t(data.lang, 'salle.enregistrer')}
       prenomCliente={data.cliente.prenom}
       hrefRetour="/clientes/{data.cliente.id}"
-      sousTitre="{data.titreModele} · les mesures de la fiche sont déjà chargées"
-      ficheLibelle="Fiche d’{data.cliente.prenom}"
+      sousTitre={txt('nouveau.sousTitreSalle', { titre: data.titreModele })}
+      ficheLibelle={txt('fiche.ficheDePrenom', { nom: data.cliente.prenom })}
     />
   {/if}
 </main>

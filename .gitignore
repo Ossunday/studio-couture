@@ -18,3 +18,11 @@ docs/references-locales/
 docs/maquette/
 test-results/
 /playwright-report/
+
+static/img/accueil-robe*.jpg
+
+static/img/accueil-robe*.jpg
+
+CLAUDE.md
+.claude/
+build-diag/

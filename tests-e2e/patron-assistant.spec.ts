@@ -125,3 +125,58 @@ test('assistant IA flottant — bouton partout, boîte blanche ouverture/fermetu
   await expect(page.locator('input[name="longueur_pantalon_cm"]')).toHaveValue('104');
   await expect(page.getByText('estimation IA').first()).toBeVisible();
 });
+
+test('assistant flottant — champ large aux trois largeurs et « Retirer la photo » visible', async ({ page }) => {
+  await connecter(page);
+  const bouton = page.getByRole('button', { name: 'Assistant IA' });
+  await bouton.click();
+  const boite = page.getByRole('dialog', { name: 'Assistant IA' });
+  await expect(boite).toBeVisible();
+
+  const champ = boite.locator('.pilule > input');
+  await expect(champ).toHaveAttribute('placeholder', /Décrivez un modèle/);
+
+  for (const largeur of [360, 390, 1280]) {
+    await page.setViewportSize({ width: largeur, height: 800 });
+    const boiteBox = await boite.boundingBox();
+    const champBox = await champ.boundingBox();
+    expect(boiteBox).not.toBeNull();
+    expect(champBox).not.toBeNull();
+    // Le champ prend au moins 60 % de la largeur de la boîte, sans débordement.
+    expect(champBox!.width / boiteBox!.width).toBeGreaterThanOrEqual(0.6);
+    expect(champBox!.x + champBox!.width).toBeLessThanOrEqual(boiteBox!.x + boiteBox!.width + 1);
+    const defilement = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(defilement).toBeLessThanOrEqual(0);
+  }
+
+  // Photo jointe (mode mémoire : l’envoi est désactivé, on réactive juste le
+  // champ fichier pour vérifier l’aperçu) — « Retirer la photo » doit être
+  // visible, en texte foncé sur fond clair, nom tronqué sans débordement.
+  await page.setViewportSize({ width: 390, height: 800 });
+  const inputPhoto = boite.locator('input[type="file"]');
+  await inputPhoto.evaluate((el) => {
+    (el as HTMLInputElement).disabled = false;
+  });
+  await inputPhoto.setInputFiles({
+    name: 'photo-pantalon-tres-long-nom-de-fichier-exemple-123456789.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9])
+  });
+  const retirer = boite.getByRole('button', { name: 'Retirer la photo' });
+  await expect(retirer).toBeVisible();
+  const contraste = await retirer.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { couleur: s.color, fond: s.backgroundColor, bordure: s.borderStyle };
+  });
+  expect(contraste.couleur).toBe('rgb(31, 31, 35)');
+  expect(contraste.fond).toBe('rgb(255, 255, 255)');
+  expect(contraste.bordure).not.toBe('none');
+  const nom = boite.locator('.photo-nom');
+  await expect(nom).toBeVisible();
+  const deborde = await nom.evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(deborde).toBe(true); // nom long tronqué par ellipsis, pas de débordement de la boîte
+  const boiteBox = await boite.boundingBox();
+  const nomBox = await nom.boundingBox();
+  expect(nomBox!.x + nomBox!.width).toBeLessThanOrEqual(boiteBox!.x + boiteBox!.width + 1);
+  await expect(boite.getByText(/accord de la personne photographiée/)).toBeVisible();
+});

@@ -406,7 +406,7 @@
 
     {#if fichier}
       <div class="photo-prete">
-        <span>{t(lang, 'assistant.photoPrete', { nom: fichier.name })}</span>
+        <span class="photo-nom" title={fichier.name}>{t(lang, 'assistant.photoPrete', { nom: fichier.name })}</span>
         <button type="button" onclick={() => (fichier = null)}>{t(lang, 'assistant.retirerPhoto')}</button>
         <label class="coche">
           <input type="checkbox" bind:checked={consentement} />
@@ -438,13 +438,16 @@
           />
         </label>
         <input bind:this={saisieRef} bind:value={texte} maxlength="300" disabled={!actif || enCours} placeholder={t(lang, 'assistant.placeholderChat')} aria-label={t(lang, 'assistant.placeholderChat')} />
-        <button type="button" class="audio" disabled aria-disabled="true" title={t(lang, 'assistant.badgeBientot')}>
-          {t(lang, 'assistant.audio')} · {t(lang, 'assistant.badgeBientot')}
-        </button>
         <button type="submit" class="envoyer" aria-label={t(lang, 'assistant.envoyerMessage')} disabled={!actif || enCours || (!fichier && texte.trim().length < 3)}>
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20V5.8M5.5 12 12 5.5 18.5 12" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       </div>
+      <p class="ligne-audio">
+        <button type="button" class="audio" disabled aria-disabled="true" aria-label="{t(lang, 'assistant.audio')} · {t(lang, 'assistant.badgeBientot')}" title="{t(lang, 'assistant.audio')} · {t(lang, 'assistant.badgeBientot')}">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15Zm6-3.5a6 6 0 0 1-12 0H4.5a7.5 7.5 0 0 0 6.75 7.46V21h1.5v-2.54A7.5 7.5 0 0 0 19.5 11.5H18Z" fill="currentColor" /></svg>
+          <span>{t(lang, 'assistant.audio')} · {t(lang, 'assistant.badgeBientot')}</span>
+        </button>
+      </p>
     </form>
   </div>
 {/if}
@@ -456,17 +459,17 @@
   .fab:focus-visible, .boite button:focus-visible, .boite a:focus-visible, .boite input:focus-visible, .boite select:focus-visible { outline: 3px solid #7c5cfc; outline-offset: 2px; }
   @media (min-width: 1024px) { .fab { bottom: 24px; right: 24px; } }
 
-  .boite { position: fixed; right: 16px; bottom: 156px; z-index: 60; width: min(360px, calc(100vw - 32px)); max-height: 70vh; display: flex; flex-direction: column; gap: 10px; background: #fff; border-radius: 20px; box-shadow: 0 18px 48px rgba(30, 30, 34, 0.3); padding: 14px; }
+  .boite { position: fixed; right: 16px; bottom: 156px; z-index: 60; width: min(360px, calc(100vw - 32px)); max-height: 70vh; display: flex; flex-direction: column; gap: 10px; background: #fff; color: #1f1f23; border-radius: 20px; box-shadow: 0 18px 48px rgba(30, 30, 34, 0.3); padding: 14px; box-sizing: border-box; }
   @media (min-width: 1024px) { .boite { bottom: 92px; right: 24px; } }
   .boite header { display: flex; align-items: center; gap: 8px; }
   .boite header strong { font-size: 17px; flex: 1; }
   .etoile { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #d8b4fe; }
-  .fermer { border: 0; background: #f1f1f5; border-radius: 50%; width: 36px; height: 36px; font: inherit; cursor: pointer; }
+  .fermer { border: 0; background: #f1f1f5; color: #1f1f23; border-radius: 50%; width: 36px; height: 36px; font: inherit; cursor: pointer; }
   .cliente { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
   .cliente select { min-height: 44px; font: inherit; border: 1.5px solid #d9d9e2; border-radius: 12px; padding: 0 10px; background: #fff; }
 
   .conversation { display: grid; gap: 8px; overflow-y: auto; padding-right: 2px; }
-  .bulle { margin: 0; padding: 10px 14px; border-radius: 16px; line-height: 1.5; max-width: 94%; font-size: 15px; }
+  .bulle { margin: 0; padding: 10px 14px; border-radius: 16px; line-height: 1.5; max-width: 94%; font-size: 15px; color: #1f1f23; overflow-wrap: break-word; }
   .bulle.utilisatrice { justify-self: end; background: #7c5cfc; color: #fff; border-bottom-right-radius: 4px; }
   .bulle.assistant { justify-self: start; background: #f3f3f7; border-bottom-left-radius: 4px; }
   .bulle.resultat { justify-self: start; background: #f6f1ff; border-bottom-left-radius: 4px; }
@@ -498,18 +501,21 @@
   .actions-taille { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
   .actions-taille .estimer { background: #7c5cfc; border-color: #7c5cfc; color: #fff; }
 
-  .photo-prete { display: grid; gap: 7px; font-size: 14px; background: #f3f3f7; border-radius: 12px; padding: 9px 11px; }
-  .photo-prete button { justify-self: start; border: 0; background: none; font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; }
-  .coche { display: flex; gap: 9px; align-items: flex-start; line-height: 1.4; }
+  .photo-prete { display: grid; gap: 7px; font-size: 14px; background: #f3f3f7; color: #1f1f23; border-radius: 12px; padding: 9px 11px; min-width: 0; }
+  .photo-nom { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .photo-prete button { justify-self: start; border: 1.5px solid #6f6f7a; background: #fff; color: #1f1f23; border-radius: 999px; min-height: 40px; padding: 8px 14px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+  .coche { display: flex; gap: 9px; align-items: flex-start; line-height: 1.4; color: #1f1f23; }
   .coche input { margin-top: 3px; width: auto; min-height: auto; }
-  .bientot { margin: 0; padding: 9px 12px; border-radius: 12px; background: #f3f3f7; font-size: 14px; line-height: 1.45; }
+  .bientot { margin: 0; padding: 9px 12px; border-radius: 12px; background: #f3f3f7; color: #1f1f23; font-size: 14px; line-height: 1.45; }
 
-  .saisie { margin: 0; }
-  .pilule { display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px; background: linear-gradient(100deg, #6aa8ff, #7c5cfc 45%, #e56ba8); }
-  .pilule > input { flex: 1; min-width: 0; border: 0; background: #fff; border-radius: 999px; min-height: 44px; padding: 0 6px; font: inherit; }
-  .trombone { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #5b5b66; cursor: pointer; flex: none; }
+  .saisie { margin: 0; min-width: 0; }
+  .pilule { display: flex; align-items: center; gap: 4px; border-radius: 999px; padding: 3px; background: linear-gradient(100deg, #6aa8ff, #7c5cfc 45%, #e56ba8); min-width: 0; box-sizing: border-box; }
+  .pilule > input { flex: 1 1 auto; min-width: 0; border: 0; background: #fff; color: #1f1f23; border-radius: 999px; min-height: 44px; padding: 0 12px; font: inherit; box-sizing: border-box; }
+  .pilule > input::placeholder { color: #5f5f68; opacity: 1; }
+  .trombone { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #fff; color: #44444e; cursor: pointer; flex: none; }
   .cache { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
-  .audio { border: 0; background: #fff; border-radius: 999px; min-height: 44px; padding: 0 10px; font: inherit; font-size: 12px; font-weight: 700; color: #8a8a96; cursor: not-allowed; flex: none; }
+  .ligne-audio { margin: 6px 4px 0; display: flex; justify-content: flex-end; }
+  .audio { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; min-height: 32px; padding: 4px 6px; font: inherit; font-size: 12px; font-weight: 600; color: #5f5f68; cursor: not-allowed; }
   .envoyer { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #7c5cfc; display: grid; place-items: center; cursor: pointer; }
   .envoyer[disabled] { opacity: 0.45; cursor: not-allowed; }
 </style>

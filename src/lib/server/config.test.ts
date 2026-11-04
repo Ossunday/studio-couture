@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ENV_PHOTO_ENCRYPTION_KEY, ENV_SESSION_SECRET } from '../brand';
-import { exigerClePhoto, exigerSecretSession, validerConfigurationDemarrage } from './config';
+import { avertirSiOriginAbsent, exigerClePhoto, exigerSecretSession, validerConfigurationDemarrage } from './config';
 
 const envValide = {
   [ENV_SESSION_SECRET]: 'secret-de-demarrage-32-octets-minimum-ok',
@@ -33,5 +33,29 @@ describe('secrets obligatoires au démarrage', () => {
     // 16 caractères accentués = 32 octets UTF-8 : accepté.
     expect(() => exigerSecretSession({ [ENV_SESSION_SECRET]: 'é'.repeat(16) } as NodeJS.ProcessEnv)).not.toThrow();
     expect(() => exigerSecretSession({ [ENV_SESSION_SECRET]: 'é'.repeat(15) } as NodeJS.ProcessEnv)).toThrow(/32 octets/);
+  });
+});
+
+describe('avertissement ORIGIN au démarrage', () => {
+  it('production sans ORIGIN : avertit (schéma https supposé) sans jamais lever', () => {
+    const avertir = vi.fn();
+    expect(() => avertirSiOriginAbsent({} as NodeJS.ProcessEnv, true, avertir)).not.toThrow();
+    expect(avertir).toHaveBeenCalledTimes(1);
+    expect(avertir.mock.calls[0]?.[0]).toMatch(/ORIGIN=http:\/\/127\.0\.0\.1:3000/);
+  });
+  it('production avec ORIGIN, ou hors production sans ORIGIN : aucun avertissement', () => {
+    const avertir = vi.fn();
+    avertirSiOriginAbsent({ ORIGIN: 'http://127.0.0.1:3000' } as NodeJS.ProcessEnv, true, avertir);
+    avertirSiOriginAbsent({} as NodeJS.ProcessEnv, false, avertir);
+    expect(avertir).not.toHaveBeenCalled();
+  });
+  it('la validation complète reste non bloquante quand ORIGIN manque en production', () => {
+    const espion = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(() => validerConfigurationDemarrage({ ...envValide } as NodeJS.ProcessEnv, true)).not.toThrow();
+      expect(espion).toHaveBeenCalledTimes(1);
+    } finally {
+      espion.mockRestore();
+    }
   });
 });

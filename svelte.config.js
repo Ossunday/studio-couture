@@ -4,7 +4,9 @@ import adapter from '@sveltejs/adapter-node';
 const config = {
   kit: {
     // SSR sur un petit serveur en Europe (adapter-node). Pas de SPA.
-    adapter: adapter({ out: 'build' }),
+    // STUDIO_COUTURE_BUILD_OUT : dossier de sortie alternatif (défaut « build »),
+    // pour construire sans toucher au dossier build/ servi en production.
+    adapter: adapter({ out: process.env.STUDIO_COUTURE_BUILD_OUT || 'build' }),
     csp: {
       mode: 'auto',
       directives: {

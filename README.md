@@ -36,6 +36,12 @@ npm run check
 - Aucune vérification d’e-mail ni réinitialisation de mot de passe pour l’instant : voir `docs/A_FAIRE_AVANT_MISE_EN_LIGNE.md`.
 - Polices 100 % locales (`@fontsource/manrope`, `@fontsource/playfair-display` épinglés) : aucun CDN.
 
+## ORIGIN et CSRF (production)
+
+- En production, la protection CSRF de SvelteKit compare l’en-tête `Origin` de chaque POST de formulaire à l’origine du serveur, qu’adapter-node déduit de la variable `ORIGIN`. **Sans `ORIGIN`, adapter-node suppose le schéma `https`** : l’origine attendue devient `https://127.0.0.1:3000` alors que le navigateur, en local, envoie `http://127.0.0.1:3000` — d’où « Cross-site POST form submissions are forbidden » sur `/inscription` et `/connexion`, même si tout le reste est correct. Ce n’est pas un problème de jeton : c’est le schéma (et, le cas échéant, l’hôte ou le port) qui diffère.
+- Définissez toujours `ORIGIN` en production, **avec le schéma et l’adresse réellement utilisée dans le navigateur** : `ORIGIN=http://127.0.0.1:3000` en local (build de production lancé à la main), `ORIGIN=https://votre-domaine` derrière un hébergeur. Naviguer via `localhost` quand `ORIGIN` dit `127.0.0.1` (ou l’inverse) provoque le même refus : hôte et port font partie de l’origine comparée.
+- Garde-fou : au démarrage d’un serveur de production sans `ORIGIN`, la console affiche un avertissement explicite (sans arrêter le serveur — voir `avertirSiOriginAbsent` dans `src/lib/server/config.ts`). La protection CSRF n’est jamais désactivée.
+
 ## Routes principales
 
 - `/` : accueil public (visiteuse non connectée) ou tableau de bord de l’atelier (connectée).

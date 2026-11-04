@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+/** Dossier de sortie du build E2E (même variable que svelte.config.js ; défaut « build »). */
+const buildOut = process.env.STUDIO_COUTURE_BUILD_OUT ?? 'build';
+
 /**
  * E2E contre le dépôt mémoire (STUDIO_COUTURE_REPOSITORY=memoire) :
  * aucun PostgreSQL requis, aucune donnée réelle. Ne jamais lancer contre la production.
@@ -12,13 +15,14 @@ export default defineConfig({
   timeout: 60_000,
   use: { baseURL: 'http://127.0.0.1:4173' },
   webServer: {
-    command: 'npm run build && node build/index.js',
+    command: `npm run build && node ${buildOut}/index.js`,
     url: 'http://127.0.0.1:4173/connexion',
     timeout: 180_000,
     reuseExistingServer: false,
     env: {
       PORT: '4173',
       HOST: '127.0.0.1',
+      STUDIO_COUTURE_BUILD_OUT: buildOut,
       ORIGIN: 'http://127.0.0.1:4173',
       // Même valeur qu’en production (voir .env.example) : adapter-node plafonne
       // le corps des requêtes à 512 Ko par défaut, sous la limite photo de 5 Mo.

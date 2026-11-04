@@ -1,7 +1,7 @@
 # PROMPT MUSE — Design v3 + inscription + plan coté (à exécuter phase par phase)
 
 Tu travailles sur Studio Couture (SvelteKit SSR, TypeScript strict, PostgreSQL).
-Lis d'abord CLAUDE.md, HANDOFF.md et ce fichier en entier. Puis lis le dossier docs/maquette/ :
+Lis d'abord le fichier de consignes du projet, HANDOFF.md et ce fichier en entier. Puis lis le dossier docs/maquette/ :
 - `*.png` : captures de la maquette validée par le client (Accueil, Atelier = tableau de bord, Fiche, Salle, Salle3d).
 - `*.dc.html` : le même contenu en HTML. Ce sont des fichiers de maquette : ignore les balises <x-dc>, <helmet> et le script support.js. Les styles en ligne donnent les valeurs exactes (couleurs, rayons, espacements, textes). Ne copie pas le HTML tel quel : recrée des composants Svelte propres.
 - `trace_patron_reference.py` : tracé du dessin coté. Sert de référence pour le composant PatronCote (voir phase 4).

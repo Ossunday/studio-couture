@@ -41,7 +41,7 @@ Résultat des contrôles faits par le client (déjà exécutés) :
   - tests : `npm test`, `npm run check`, `npm run build`, `npm run test:e2e`, avec les nombres réels ;
   - architecture en 10 lignes ;
   - limites connues, écrites franchement : patron = brouillon non validé par un maître tailleur, 3D indicative et pas une simulation de drapé, pas de vérification d'e-mail, pas de « mot de passe oublié », limites de débit en mémoire ;
-  - « Built with Muse Code » : décris l'usage réel de Muse Code (playbook CLAUDE.md, HANDOFF.md, docs/PHASE_*.md, phases, tests après chaque phase). Ajoute la ligne : « Product and design briefs were drafted with the help of another AI assistant (Claude by Anthropic); all code was written and tested by Muse Code. »
+  - « Built with Muse Code » : décris l'usage réel de Muse Code, Meta's coding agent (consignes du projet, HANDOFF.md, docs/PHASE_*.md, phases, tests après chaque phase). Ajoute la ligne : « Product and design briefs were drafted with the help of another AI assistant; the code was written and tested with Muse Code (Meta's coding agent). »
   - n'affirme AUCUN usage d'un modèle Meta à l'exécution si l'application n'en appelle aucun.
 - `docs/ARCHITECTURE.md` court et `docs/META_USAGE.md` (usage réel de Muse Code, sans exagération).
 - Vérifie qu'aucune mention de chemins personnels (C:\Users\os…), d'e-mails ou de numéros de téléphone réels ne reste dans les fichiers suivis.

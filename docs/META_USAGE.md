@@ -34,13 +34,16 @@ This file states only what the project actually does — nothing else.
   absent, no Meta call happens at all**: the button stays visible and the
   chat honestly answers “Assistant bientôt disponible”.
 
-## During development: Muse
+## During development: Muse Code
 
-- The application was built with **Muse** (Anthropic's CLI), driven
-  by the project playbook in `CLAUDE.md`, the running state in `HANDOFF.md`,
-  and the phase briefs in `docs/PHASE_0.md` and `docs/PROMPT_*.md`, with the
-  test suite run after every phase. See the README's “Built with
-  Muse” section.
+- Built with Muse Code (Meta). The application was built with
+  **Muse Code, Meta's coding agent**, driven by the project instructions,
+  the running state in `HANDOFF.md`, and the phase briefs in
+  `docs/PHASE_0.md` and `docs/PROMPT_*.md`, with the test suite run after
+  every phase. Product and design briefs were drafted with the help of
+  another AI assistant; the code was written and tested with Muse Code
+  (Meta's coding agent). See the README's “Built with Muse Code”
+  section.
 
 ## Nothing else
 

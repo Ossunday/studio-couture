@@ -60,6 +60,10 @@ Everything disappears when you stop the server (Ctrl+C). A public guided demo wi
 
 The assistant only proposes a model, options inside the registry's ranges, and clamped indicative estimates. Its JSON is strictly validated (unknown model refused, never substituted; unknown keys dropped). **The TypeScript pattern engine always computes the geometry**, and the seamstress validates before anything is saved. See `docs/META_USAGE.md` for exactly how Meta technology is used, and `docs/ARCHITECTURE.md` for the short architecture.
 
+## Architecture (short)
+
+SvelteKit SSR (TypeScript, adapter-node) → `Repository` interface → PostgreSQL in production, in-memory for demo/tests. The pattern registry (`src/lib/patterns/registre.ts`) is the single source of truth for the 3 models, their measurement ranges, and their options; pure geometry modules compute every piece and the A4 PDF. The optional AI assistant sits behind `POST /api/suggestion-modele` (session + CSRF + 20 req/h/workshop), strictly validated, and never computes geometry. Passwords use scrypt; client photos are AES-256-GCM encrypted and deleted after 7 days. Full version: `docs/ARCHITECTURE.md`. Developer notes (routes, ORIGIN/CSRF in production, sign-up rules, project conventions): `docs/NOTES_DEVELOPPEUR.md`.
+
 ## Installation (production)
 
 Requirements: Node ≥ 20, PostgreSQL (database `studio_couture`).
@@ -72,7 +76,7 @@ psql "$STUDIO_COUTURE_DATABASE_URL" -f migrations/0001_init.sql
 npm run build && node build/index.js
 ```
 
-### Environment variables (names only — set real values in your own `.env`, never commit it)
+## Environment variables (names only — set real values in your own `.env`, never commit it)
 
 | Variable | Purpose |
 | --- | --- |
@@ -106,10 +110,6 @@ npm run test:e2e    # Playwright against the in-memory repository
 
 Last full run recorded in `HANDOFF.md`. At the phase-12 checkpoint: **187 unit tests passed / 6 skipped, check clean on 918 files, 38/38 Playwright**.
 
-## Architecture (short)
-
-SvelteKit SSR (TypeScript, adapter-node) → `Repository` interface → PostgreSQL in production, in-memory for demo/tests. The pattern registry (`src/lib/patterns/registre.ts`) is the single source of truth for the 3 models, their measurement ranges, and their options; pure geometry modules compute every piece and the A4 PDF. The optional AI assistant sits behind `POST /api/suggestion-modele` (session + CSRF + 20 req/h/workshop), strictly validated, and never computes geometry. Passwords use scrypt; client photos are AES-256-GCM encrypted and deleted after 7 days. Full version: `docs/ARCHITECTURE.md`.
-
 ## Known limitations
 
 - Patterns are **drafts not yet validated by a master tailor** — do not cut fabric from them without professional review.
@@ -125,9 +125,9 @@ SvelteKit SSR (TypeScript, adapter-node) → `Repository` interface → PostgreS
 - The home-page garment photo (`static/img/accueil-pantalon-bleu.jpg`) was provided by the project owner, who confirms the rights; an earlier downloaded image was removed from the repository and its history.
 - Test fixtures use obviously fictional identities (`demo@exemple.bj`, “Cliente Démo”).
 
-## Built with Muse
+## Built with Muse Code
 
-Studio Couture was built with **Muse** (Anthropic's CLI), driven by the project playbook in `CLAUDE.md`, the running state file `HANDOFF.md`, and the phase briefs in `docs/` (`PHASE_0.md`, `PROMPT_*.md`), with tests run after every phase. Product and design briefs were drafted with the help of another AI assistant (Claude by Anthropic); all code was written and tested by Muse Code.
+Built with Muse Code (Meta). Studio Couture was built with **Muse Code, Meta's coding agent**, driven by the project instructions, the running state file `HANDOFF.md`, and the phase briefs in `docs/` (`PHASE_0.md`, `PROMPT_*.md`), with tests run after every phase. Product and design briefs were drafted with the help of another AI assistant; the code was written and tested with Muse Code (Meta's coding agent).
 
 Meta usage — runtime and development — is detailed honestly in `docs/META_USAGE.md`.
 

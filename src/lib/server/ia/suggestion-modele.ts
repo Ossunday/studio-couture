@@ -155,7 +155,7 @@ export function lireConfigIa(env: NodeJS.ProcessEnv = process.env): ConfigIa | n
 }
 
 /**
- * Client HTTP compatible API Messages d’Anthropic (POST /v1/messages).
+ * Client HTTP Messages-compatible (POST /v1/messages) de l’API Meta.
  * La même clé est envoyée dans les deux en-têtes que ces endpoints peuvent
  * accepter (`x-api-key` et `Authorization: Bearer`) ; elle n'est jamais
  * journalisée et n'apparaît dans aucun message d'erreur.
@@ -223,7 +223,7 @@ export type ResultatSuggestion =
   | { statut: 'echec' };
 
 export interface DependancesSuggestion {
-  /** Client injectable (tests : faux client, aucun réseau). Défaut : client Anthropic-compatible si configuré. */
+  /** Client injectable (tests : faux client, aucun réseau). Défaut : client Messages-compatible de l’API Meta si configuré. */
   client?: ClientIa;
   env?: NodeJS.ProcessEnv;
   delaiMs?: number;
